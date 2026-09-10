@@ -24,6 +24,18 @@ const MAXIMUM_PNG_BYTES: usize = 32 * 1024 * 1024;
 /// 默认返回图最长边。
 const DEFAULT_MAX_DIMENSION: u64 = 1280;
 
+/// 单次长流程执行允许的批次数上限；每批自身仍受 128 步输入契约约束。
+const MAXIMUM_RUN_BATCHES: usize = 64;
+
+/// 长流程回读图像张数上限。
+const MAXIMUM_RUN_FRAMES: usize = 8;
+
+/// 长流程缺省总预算，留在 MCP 客户端缺省工具超时之内。
+const DEFAULT_RUN_TOTAL_MS: u64 = 45_000;
+
+/// 长流程最大总预算；实际能否用满取决于调用方的工具超时配置。
+const MAXIMUM_RUN_TOTAL_MS: u64 = 600_000;
+
 /// 工具执行结果：MCP `content` 数组与是否错误。
 pub struct ToolOutcome {
     pub content: Vec<Value>,
@@ -197,6 +209,11 @@ impl Desktop {
                 self.require_authorization(&arguments, true)?;
                 self.require_session(&arguments)?;
                 self.input(name, &arguments)
+            }
+            "computer_run" => {
+                self.require_authorization(&arguments, true)?;
+                self.require_session(&arguments)?;
+                self.run(&arguments)
             }
             _ => Err(BrokerFailure::failed(
                 "INVALID_ARGUMENT",
@@ -516,6 +533,223 @@ impl Desktop {
         self.image_result(&response, &capture)
     }
 
+    /// 长流程批量执行：服务端在内部循环「补帧 → 送一批 → 读回新帧」，把多批合成一次工具调用。
+    ///
+    /// 帧契约不变：每一批都用送出当时的最新帧。任一环节失败都停止后续批次并保留事实，
+    /// 绝不自动重放；回读图像数量有界，避免把整段流程的截图都塞回模型。
+    fn run(
+        &mut self,
+        arguments: &serde_json::Map<String, Value>,
+    ) -> Result<ToolOutcome, BrokerFailure> {
+        let batches = arguments
+            .get("batches")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        if batches.is_empty() || batches.len() > MAXIMUM_RUN_BATCHES {
+            return Err(BrokerFailure::failed(
+                "INVALID_ARGUMENT",
+                format!("computer_run requires 1..={MAXIMUM_RUN_BATCHES} batches."),
+            ));
+        }
+        let total = batches.len();
+        let capture_every = arguments
+            .get("captureEveryBatches")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+        let max_frames = arguments
+            .get("maxFrames")
+            .and_then(Value::as_u64)
+            .unwrap_or(1)
+            .clamp(1, MAXIMUM_RUN_FRAMES as u64) as usize;
+        let stop_on_error = arguments
+            .get("stopOnError")
+            .and_then(Value::as_bool)
+            .unwrap_or(true);
+        let total_ms = arguments
+            .get("totalTimeoutMs")
+            .and_then(Value::as_u64)
+            .unwrap_or(DEFAULT_RUN_TOTAL_MS)
+            .clamp(1_000, MAXIMUM_RUN_TOTAL_MS);
+        let started = std::time::Instant::now();
+        let session = self.session.clone().unwrap_or_default();
+
+        // 起始帧由 run 自己补：调用方不必先 observe，也不必逐批给 frameId。
+        self.frame = None;
+        let mut frame = self.observe_frame(&session, arguments)?;
+        let mut records: Vec<Value> = Vec::new();
+        let mut frames: Vec<(usize, Vec<u8>)> = Vec::new();
+        let mut stopped: Option<Value> = None;
+
+        for (index, batch) in batches.iter().enumerate() {
+            if self.cancellation.is_cancelled() {
+                stopped = Some(json!({ "reason": "CANCELLED", "batch": index + 1 }));
+                break;
+            }
+            if started.elapsed().as_millis() as u64 >= total_ms {
+                stopped = Some(json!({ "reason": "TOTAL_TIMEOUT", "batch": index + 1 }));
+                break;
+            }
+            let steps = batch.get("steps").cloned().unwrap_or(json!([]));
+            let timeout_ms = batch
+                .get("timeoutMs")
+                .and_then(Value::as_u64)
+                .unwrap_or(3_000)
+                .clamp(1, 30_000);
+            let capture = self.capture_fields(arguments);
+            let path = capture
+                .get("path")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned();
+            let broker = self
+                .broker
+                .as_mut()
+                .ok_or_else(|| BrokerFailure::failed("BROKER_CLOSED", "No active broker."))?;
+            let response = broker.call(
+                "interact",
+                json!({
+                    "sessionId": session,
+                    "confirmed": true,
+                    "foregroundConsent": true,
+                    "strictIsolation": false,
+                    "input": { "frameId": frame, "steps": steps, "timeoutMs": timeout_ms },
+                    "observation": capture,
+                }),
+                Duration::from_millis(timeout_ms) + Duration::from_secs(70),
+            );
+            let response = match response {
+                Ok(response) => response,
+                Err(failure) => {
+                    // 输入可能已经送出：这一帧作废，不重放；预检拒绝才允许补帧继续。
+                    self.frame = None;
+                    let may_have_occurred = failure.accepted_may_have_occurred;
+                    records.push(json!({
+                        "batch": index + 1,
+                        "name": batch.get("name"),
+                        "accepted": false,
+                        "error": failure.payload(),
+                        "acceptedMayHaveOccurred": may_have_occurred,
+                    }));
+                    if stop_on_error || may_have_occurred {
+                        stopped = Some(json!({
+                            "reason": "INPUT_FAILED",
+                            "batch": index + 1,
+                            "message": failure.message,
+                        }));
+                        break;
+                    }
+                    frame = self.observe_frame(&session, arguments)?;
+                    continue;
+                }
+            };
+            let data = response.get("data").cloned().unwrap_or(json!({}));
+            let observation = data
+                .get("observation")
+                .cloned()
+                .unwrap_or_else(|| data.clone());
+            let next = observation
+                .get("frameId")
+                .and_then(Value::as_str)
+                .map(str::to_owned);
+            records.push(json!({
+                "batch": index + 1,
+                "name": batch.get("name"),
+                "accepted": true,
+                "completedSteps": data.get("completedSteps"),
+                "inputEventsSent": data.get("inputEventsSent"),
+                "effectConfirmed": data.get("effectConfirmed"),
+                "frameId": next,
+            }));
+            // 关键帧回读：只读被选中的批次，且张数有界。
+            if wants_frame(index, total, capture_every) && frames.len() < max_frames {
+                if let Ok(raw) =
+                    read_capture(Path::new(&path), &observation, Some(session.as_str()))
+                {
+                    frames.push((index + 1, raw));
+                }
+            }
+            let _ = fs::remove_file(&path);
+            match next {
+                Some(next) => {
+                    frame = next.clone();
+                    self.frame = Some(next);
+                }
+                None => {
+                    self.frame = None;
+                    frame = self.observe_frame(&session, arguments)?;
+                }
+            }
+        }
+
+        let mut summary = json!({
+            "requestedBatches": total,
+            "executedBatches": records.len(),
+            "batches": records,
+            "capturedFrames": frames.iter().map(|(index, _)| *index).collect::<Vec<_>>(),
+            "elapsedMs": started.elapsed().as_millis() as u64,
+        });
+        if let (Some(target), Some(reason)) = (summary.as_object_mut(), stopped) {
+            target.insert("stopped".to_owned(), reason);
+        }
+        let mut content = vec![json!({ "type": "text", "text": summary.to_string() })];
+        for (_, raw) in &frames {
+            content.push(json!({
+                "type": "image",
+                "mimeType": "image/png",
+                "data": BASE64_STANDARD.encode(raw),
+            }));
+        }
+        Ok(ToolOutcome {
+            content,
+            is_error: false,
+        })
+    }
+
+    /// 只补帧不回图：长流程内部用，帧内容不必回传模型。
+    ///
+    /// 内部帧与回读帧使用同一个 maxDimension：observation-px 由捕获图尺寸决定，
+    /// 两者不一致会让调用方按前一张图算出的坐标落到另一套坐标系里。
+    fn observe_frame(
+        &mut self,
+        session: &str,
+        arguments: &serde_json::Map<String, Value>,
+    ) -> Result<String, BrokerFailure> {
+        let capture = self.capture_fields(arguments);
+        let path = capture
+            .get("path")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned();
+        let broker = self
+            .broker
+            .as_mut()
+            .ok_or_else(|| BrokerFailure::failed("BROKER_CLOSED", "No active broker."))?;
+        let response = broker.call(
+            "observe",
+            json!({
+                "sessionId": session,
+                "confirmed": true,
+                "strictIsolation": false,
+                "input": capture,
+            }),
+            Duration::from_secs(70),
+        );
+        let _ = fs::remove_file(&path);
+        let response = response?;
+        let data = response.get("data").cloned().unwrap_or(json!({}));
+        let observation = data.get("observation").cloned().unwrap_or(data);
+        let frame = observation
+            .get("frameId")
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+            .ok_or_else(|| {
+                BrokerFailure::failed("OBSERVATION_FAILED", "Observation returned no frameId.")
+            })?;
+        self.frame = Some(frame.clone());
+        Ok(frame)
+    }
+
     /// 构造截图请求字段：私有临时文件 + 有界尺寸。
     fn capture_fields(&self, arguments: &serde_json::Map<String, Value>) -> Value {
         let path = self.directory.join(format!("{}.png", unique_name()));
@@ -583,6 +817,14 @@ impl Desktop {
         }
         let _ = fs::remove_dir_all(&self.directory);
     }
+}
+
+/// 该批次是否需要回读图像：总是回读最后一批，其余按 captureEveryBatches 采样。
+fn wants_frame(index: usize, total: usize, capture_every: u64) -> bool {
+    if index + 1 == total {
+        return true;
+    }
+    capture_every > 0 && (index as u64 + 1) % capture_every == 0
 }
 
 /// 预检拒绝时把帧还给会话：broker 明确报告没有投递事件，观察结论仍然成立。
@@ -655,6 +897,19 @@ fn unique_name() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn long_run_reads_back_the_last_batch_and_sampled_batches() {
+        // 默认只回读最后一批：长流程的截图数量不随批次数增长。
+        assert!(!wants_frame(0, 4, 0));
+        assert!(wants_frame(3, 4, 0));
+        // 采样时按间隔回读，最后一批始终回读。
+        assert!(wants_frame(1, 4, 2));
+        assert!(!wants_frame(2, 4, 2));
+        assert!(wants_frame(3, 4, 2));
+        // 单批也要回读，调用方才看得到结果。
+        assert!(wants_frame(0, 1, 0));
+    }
 
     #[test]
     fn pre_dispatch_rejection_keeps_the_observation_alive() {
