@@ -82,10 +82,15 @@ Supported protocol versions: `2024-11-05`, `2025-03-26`, `2025-06-18`.
 | `computer_interact` | Move/click in screenshot coordinates, or a small batch of keys/text. |
 | `computer_keys` | Send a full key or shortcut such as `["left-shift", "f5"]`. |
 | `computer_pointer` | Relative movement, scroll and complete drags. |
+| `computer_run` | Run many input batches in one call; the server refreshes the frame between batches. |
 | `computer_disconnect` | Close the session, read back empty `sessions`, release the broker. |
 
 Operate as `connect → observe → confirm the target in the image →
-interact/keys/pointer → verify the returned image → disconnect`.
+interact/keys/pointer → verify the returned image → disconnect`. For long
+deterministic sequences use `computer_run`: it keeps the same freshness contract
+(every batch binds the frame captured right before it) but moves the
+observe/input loop into the toolkit process, so one call drives many batches
+instead of one round trip per batch.
 
 - `interact` coordinates are **observation-px**, taken from the returned image.
   `pointer` deltas are **relative-logical-px**; do not mix them.
