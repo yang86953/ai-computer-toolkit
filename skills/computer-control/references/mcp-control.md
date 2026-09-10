@@ -1,6 +1,6 @@
 # MCP 直接控制
 
-适用于 computer-control-toolkit 的桌面 MCP（Linux/Wayland 与 Windows 共用标准 MCP 入口，实机验收分别记录）；不假定其他主机已安装或授权桌面。工程通常在 `~/data/code/computer-control-toolkit`（GitHub `yang86953/ai-computer-toolkit`），以实况为准。
+适用于 ai-computer-toolkit 的桌面 MCP（Linux/Wayland 与 Windows 共用标准 MCP 入口，实机验收分别记录）；不假定其他主机已安装或授权桌面。源码以 GitHub `yang86953/ai-computer-toolkit` 为准；服务器 `yang-server / yang` 的开发目录为 `/home/yang/data/code/ai-computer-toolkit`，其他主机以实况为准。
 
 ## 入口与接入
 
@@ -18,7 +18,7 @@
 ```
 
 - 连接前服务会检查 broker 的 `postInputObservation` 能力，旧二进制报 `BROKER_FEATURE_UNAVAILABLE`，不试发输入；源码存在、文件时间较新或增量构建命中缓存都不等于运行产物含该接口。
-- 初始化与 `tools/list` 不连接桌面；只有显式 `computer_connect` 才建立 Portal 会话。协议版本支持 2024-11-05、2025-03-26、2025-06-18。
+- 初始化与 `tools/list` 不连接桌面；只有显式 `computer_connect` 才建立平台桌面会话。协议版本支持 2024-11-05、2025-03-26、2025-06-18。
 - 框架依赖、配置已登记、文件已部署和当前会话已加载是不同事实。以当前 `tools/list` 为准；需要时由用户在安全时重载或新开会话，不擅自打断活跃任务。
 
 ## 最小操作链

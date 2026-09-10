@@ -1,11 +1,11 @@
 ---
 name: "computer-control"
-description: "通过 computer-control-toolkit 直接截图、鼠标和快捷键操作第三方桌面软件，测试或排查其控制链路；不接管 UIX 应用后台。"
+description: "通过 ai-computer-toolkit 直接截图、鼠标和快捷键操作第三方桌面软件，测试或排查其控制链路；不接管 UIX 应用后台。"
 ---
 
-# computer-control-toolkit 接口参考
+# ai-computer-toolkit 接口参考
 
-当任务采用该工具包时，项目通常位于 `~/data/code/computer-control-toolkit`，二进制与 Cargo 包名为 `ai-computer-toolkit`。实际路径、能力与调用约束从当前项目和安装版本读取。其他桌面或浏览器任务可直接选择宿主提供的适合工具，不必先构建此项目。
+当任务采用该工具包时，源码以 GitHub `yang86953/ai-computer-toolkit` 为准，二进制与 Cargo 包名为 `ai-computer-toolkit`。服务器 `yang-server / yang` 的开发目录为 `/home/yang/data/code/ai-computer-toolkit`；其他主机的实际路径、能力与调用约束从当前项目和安装版本读取。其他桌面或浏览器任务可直接选择宿主提供的适合工具，不必先构建此项目。
 
 本项目控制目标为第三方前台软件，支持 Linux/Wayland 与 Windows 两条桌面路线，不提供后台隔离。UIX 平台层作为外部版本化依赖使用，包内不包含 UIX 源码或特定客户端扩展；UIX 自身应用的 AI 接口与验证归 UIX 项目。
 
