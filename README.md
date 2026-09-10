@@ -22,8 +22,8 @@ cargo build --locked --bin ai-computer-toolkit
 Latest stable Rust (see `rust-toolchain.toml`; the manifest declares the minimum supported version). Linux and
 Windows are both supported.
 
-All dependencies come from crates.io and the public UIX Git repository, so no
-credentials or private registry configuration are required.
+All dependencies come from crates.io, so no credentials or private registry
+configuration are required.
 
 Requirements by host:
 
@@ -147,11 +147,14 @@ remain Linux-only and are advertised by the broker feature flag.
 
 ## UIX dependency
 
-Cargo fetches UIX and its workspace crates from the pinned revision of the public
-repository <https://github.com/yang86953/uix-app> (MIT licensed). No credentials
-or registry configuration are required. UIX platform changes belong in the UIX
-repository and are consumed by updating the dependency revision. No framework
-source is copied into this package.
+UIX is consumed from crates.io as the pinned `uix-app = "=0.0.8"` dependency
+(MIT licensed), together with its `uix-derive`, `uix-lang-compiler` and
+`uix-lang-runtime` workspace crates. No credentials or private registry
+configuration are required. UIX platform changes belong in the upstream
+repository <https://github.com/yang86953/uix-app> and are consumed by updating
+the pinned crates.io version. No framework source is copied into this package.
+(History: before the crates.io migration the dependency pinned Git revision
+`b652c0843cd69e3ca3bdf99e8d4d4604ed60e556` of that repository.)
 
 ## Tests
 

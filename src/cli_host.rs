@@ -1,6 +1,6 @@
 //! 新任务机器入口由 UIX 的真实 CLI 模式承载；旧 v1 单次命令保持兼容。
 
-use uix::app::{App, AppMode, Cli, CliArgs};
+use uix_app::app::{App, AppMode, Cli, CliArgs};
 
 pub(crate) fn try_run(arguments: &[String]) -> Option<i32> {
     if arguments.first().map(String::as_str) != Some("serve") {

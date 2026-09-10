@@ -34,7 +34,7 @@ use std::{
     rc::Rc,
     time::{Duration, Instant},
 };
-use uix::platform::{Platform, windowing::desktop_cursor};
+use uix_app::platform::{Platform, windowing::desktop_cursor};
 use windows::Win32::{
     Foundation::POINT,
     Graphics::Gdi::{MONITOR_DEFAULTTONULL, MonitorFromPoint},

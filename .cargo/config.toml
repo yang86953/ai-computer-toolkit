@@ -1,3 +1,0 @@
-# UIX 及其工作区 crate 从公开 Git 仓库按锁定修订获取，无需私有 registry 或凭据。
-[net]
-git-fetch-with-cli = true

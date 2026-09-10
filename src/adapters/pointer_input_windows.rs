@@ -284,7 +284,7 @@ pub(crate) fn resolve_physical_point(
 // 把光标移动到已认证物理点。
 pub(crate) fn move_pointer(point: PhysicalScreenPoint) -> AppResult<()> {
     // 调用 Windows 光标定位接口。
-    uix::platform::windowing::desktop_cursor::set_cursor_position(point.x, point.y).map_err(|_| {
+    uix_app::platform::windowing::desktop_cursor::set_cursor_position(point.x, point.y).map_err(|_| {
         // 不公开 last-error 或坐标边界。
         PointerInputWindowsErrorCode::PointerDispatchFailed
             .error("Windows did not accept the pointer move.")

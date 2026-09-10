@@ -69,7 +69,7 @@ dependencies = [
  "tar",
  "thiserror",
  "toml",
- "uix",
+ "uix-app",
  "url",
  "windows",
  "windows-future",
@@ -1992,9 +1992,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "uix"
+name = "uix-app"
 version = "0.0.8"
-source = "git+https://github.com/yang86953/uix-app.git?rev=b652c0843cd69e3ca3bdf99e8d4d4604ed60e556#b652c0843cd69e3ca3bdf99e8d4d4604ed60e556"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8a60d8b51a00e422244c2772c9743a7985f7214736e4789fb2d529121474d29"
 dependencies = [
  "ab_glyph",
  "bytemuck",
@@ -2018,7 +2019,8 @@ dependencies = [
 [[package]]
 name = "uix-derive"
 version = "0.0.8"
-source = "git+https://github.com/yang86953/uix-app.git?rev=b652c0843cd69e3ca3bdf99e8d4d4604ed60e556#b652c0843cd69e3ca3bdf99e8d4d4604ed60e556"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "241413780a9607fdc495f19e58eb29d75b0d914f381543a6906a0b07d90ca39d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2030,7 +2032,8 @@ dependencies = [
 [[package]]
 name = "uix-lang-compiler"
 version = "0.0.8"
-source = "git+https://github.com/yang86953/uix-app.git?rev=b652c0843cd69e3ca3bdf99e8d4d4604ed60e556#b652c0843cd69e3ca3bdf99e8d4d4604ed60e556"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18913b9e4599864d997f33e9d5d6b0df024e83f4dd07febfb4e4746fc4dc4722"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2041,7 +2044,8 @@ dependencies = [
 [[package]]
 name = "uix-lang-runtime"
 version = "0.0.8"
-source = "git+https://github.com/yang86953/uix-app.git?rev=b652c0843cd69e3ca3bdf99e8d4d4604ed60e556#b652c0843cd69e3ca3bdf99e8d4d4604ed60e556"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e997c87a018a51a87114e83d0f03fe91d786b2fa012b2567b22ce68d389ba2e2"
 
 [[package]]
 name = "unicode-bidi"
