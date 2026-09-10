@@ -1994,7 +1994,7 @@ dependencies = [
 [[package]]
 name = "uix"
 version = "0.0.8"
-source = "git+https://github.com/yang86953/uix-app.git?rev=fdd7fb185925ed0a18c98b269f2bd0bd491a8a01#fdd7fb185925ed0a18c98b269f2bd0bd491a8a01"
+source = "git+https://github.com/yang86953/uix-app.git?rev=b652c0843cd69e3ca3bdf99e8d4d4604ed60e556#b652c0843cd69e3ca3bdf99e8d4d4604ed60e556"
 dependencies = [
  "ab_glyph",
  "bytemuck",
@@ -2018,7 +2018,7 @@ dependencies = [
 [[package]]
 name = "uix-derive"
 version = "0.0.8"
-source = "git+https://github.com/yang86953/uix-app.git?rev=fdd7fb185925ed0a18c98b269f2bd0bd491a8a01#fdd7fb185925ed0a18c98b269f2bd0bd491a8a01"
+source = "git+https://github.com/yang86953/uix-app.git?rev=b652c0843cd69e3ca3bdf99e8d4d4604ed60e556#b652c0843cd69e3ca3bdf99e8d4d4604ed60e556"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2030,7 +2030,7 @@ dependencies = [
 [[package]]
 name = "uix-lang-compiler"
 version = "0.0.8"
-source = "git+https://github.com/yang86953/uix-app.git?rev=fdd7fb185925ed0a18c98b269f2bd0bd491a8a01#fdd7fb185925ed0a18c98b269f2bd0bd491a8a01"
+source = "git+https://github.com/yang86953/uix-app.git?rev=b652c0843cd69e3ca3bdf99e8d4d4604ed60e556#b652c0843cd69e3ca3bdf99e8d4d4604ed60e556"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2041,7 +2041,7 @@ dependencies = [
 [[package]]
 name = "uix-lang-runtime"
 version = "0.0.8"
-source = "git+https://github.com/yang86953/uix-app.git?rev=fdd7fb185925ed0a18c98b269f2bd0bd491a8a01#fdd7fb185925ed0a18c98b269f2bd0bd491a8a01"
+source = "git+https://github.com/yang86953/uix-app.git?rev=b652c0843cd69e3ca3bdf99e8d4d4604ed60e556#b652c0843cd69e3ca3bdf99e8d4d4604ed60e556"
 
 [[package]]
 name = "unicode-bidi"

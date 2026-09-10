@@ -573,7 +573,7 @@ sha1 = "0.10.6"
 thiserror = "2.0.18"
 # UIX 作为外部版本化依赖维护，不将其源码复制到本仓库。
 # 基础输入控件依赖 feedback；显式启用它，不启用图形 backend 默认集合。
-uix = { git = "https://github.com/yang86953/uix-app.git", rev = "fdd7fb185925ed0a18c98b269f2bd0bd491a8a01", default-features = false, features = ["feedback"] }
+uix = { git = "https://github.com/yang86953/uix-app.git", rev = "b652c0843cd69e3ca3bdf99e8d4d4604ed60e556", default-features = false, features = ["feedback"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-future = "0.3.2"
