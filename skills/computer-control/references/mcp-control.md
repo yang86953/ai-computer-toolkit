@@ -26,7 +26,7 @@
 1. `computer_connect`：依据当前用户授权传 `confirmed`、`foregroundConsent`、`strictIsolation`，使用真实返回的 `sessionId`。此路线是前台桌面，不能承诺后台隔离；拒绝不换通道绕过。
 2. `computer_observe`：直接返回 PNG 图片、`frameId`、尺寸；看图确认目标、窗口遮挡和焦点。默认最长边 1280，细节不足再增大。
 3. `computer_interact`：直接移动/点击，或确定的小批次键鼠；`computer_keys` 发单键/快捷键；`computer_pointer` 做相对移动、滚轮和完整拖拽。输入后均返回截图，核验再决定下一步。
-4. `computer_run`：长流程用。一次调用内跑多批（≤64 批、每批 ≤128 步），服务端在批与批之间自己补帧，因此不必逐批往返；`captureEveryBatches` + `maxFrames` 决定回读多少关键帧。单批 `wait` 仍受该批 `timeoutMs` 约束，`totalTimeoutMs` 默认 45s、上限 600s。
+4. `computer_run`：长流程用。一次调用内跑多批（≤64 批、每批 ≤648 步），服务端在批与批之间自己补帧，因此不必逐批往返；`captureEveryBatches` + `maxFrames` 决定回读多少关键帧。单批 `wait` 之和受该批 `timeoutMs`（≤30000ms）约束，`totalTimeoutMs` 默认 45s、上限 600s；单批另有 16384 工作单元上限（点击 3／移动 1／每键 2／每字符 4），文本密集批次先撞这条。
 5. `computer_disconnect`：关闭本客户端桌面会话，验证空会话并释放 broker；不关闭被操作应用。
 
 位置和按键以当前 `tools/list` schema 为准：

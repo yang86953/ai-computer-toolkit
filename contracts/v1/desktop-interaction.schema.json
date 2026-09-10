@@ -21,7 +21,7 @@
     "steps": {
       "type": "array",
       "minItems": 1,
-      "maxItems": 128,
+      "maxItems": 648,
       "items": {
         "oneOf": [
           {

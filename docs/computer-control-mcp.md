@@ -52,7 +52,7 @@ Windows 使用当前活动交互桌面；不绕过锁屏、安全桌面或权限
 
 单批调用（`interact`）每次都要调用方先观察一次并回传 `frameId`，长流程因此被迫在「模型往返」和「输入批次」之间交替；`computer_run` 把这段循环搬进工具包进程内：
 
-- 调用方给 `batches`（1..64 批，每批 1..128 步 + 自己的 `timeoutMs`），**不需要先 observe，也不需要给 frameId**。
+- 调用方给 `batches`（1..64 批，每批 1..648 步 + 自己的 `timeoutMs`），**不需要先 observe，也不需要给 frameId**。
 - 服务端在每批前补一帧，因此每批仍绑定送出当时的最新帧，绝不复用旧帧；契约不变，只是不再把换帧的成本推给调用方。
 - 出错默认停止后续批次并回读该批已发生的效果。预检拒绝（`acceptedMayHaveOccurred=false`）没有投递事件，属于可跳过的批次；`stopOnError=false` 时跳过并继续，但「输入可能已送出」永远停止，不自动重放。
 - `captureEveryBatches` 采样回读关键帧，`maxFrames`（≤8）封顶；`totalTimeoutMs` 默认 45s、上限 600s，实际可用值取决于 MCP 客户端自己的工具超时（例如某客户端缺省 60s）。

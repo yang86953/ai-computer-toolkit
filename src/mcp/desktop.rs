@@ -494,6 +494,7 @@ impl Desktop {
                         ),
                         outcome_unknown: true,
                         accepted_may_have_occurred: true,
+                        details: error.details,
                     });
                 }
             };
@@ -849,6 +850,7 @@ fn read_capture(
             message: "Capture identity mismatch; input may already have completed. Observe, never replay.".to_owned(),
             outcome_unknown: true,
             accepted_may_have_occurred: true,
+            details: Value::Null,
         });
     }
     let metadata = fs::symlink_metadata(path).map_err(|error| BrokerFailure {
@@ -856,6 +858,7 @@ fn read_capture(
         message: format!("Capture is unavailable: {error}"),
         outcome_unknown: true,
         accepted_may_have_occurred: true,
+        details: Value::Null,
     })?;
     if metadata.file_type().is_symlink() || metadata.len() > MAXIMUM_PNG_BYTES as u64 {
         return Err(BrokerFailure {
@@ -863,6 +866,7 @@ fn read_capture(
             message: "Capture is a symlink or exceeds the inline image limit.".to_owned(),
             outcome_unknown: true,
             accepted_may_have_occurred: true,
+            details: Value::Null,
         });
     }
     let raw = fs::read(path).map_err(|error| BrokerFailure {
@@ -870,6 +874,7 @@ fn read_capture(
         message: format!("Capture cannot be read: {error}"),
         outcome_unknown: true,
         accepted_may_have_occurred: true,
+        details: Value::Null,
     })?;
     if !raw.starts_with(PNG_MAGIC) {
         return Err(BrokerFailure {
@@ -877,6 +882,7 @@ fn read_capture(
             message: "Capture is not a PNG image.".to_owned(),
             outcome_unknown: true,
             accepted_may_have_occurred: true,
+            details: Value::Null,
         });
     }
     Ok(raw)

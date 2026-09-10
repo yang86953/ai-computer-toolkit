@@ -8,6 +8,13 @@ use crate::{
     domain::{AppControlError, AppResult},
 };
 
+/// 固定一次交互请求允许的最大公开步骤数。
+pub(crate) const MAXIMUM_INTERACTION_STEPS: usize = 648;
+/// 固定展开后的最大平台工作单元数。
+pub(crate) const MAXIMUM_INTERACTION_UNITS: usize = 16_384;
+/// 固定交互请求最长 deadline；同时是 wait 合计的唯一上界。
+pub(crate) const MAXIMUM_INTERACTION_TIMEOUT_MS: u32 = 30_000;
+
 /// 截图对应的输入区域代际；不携带平台设备或映射身份。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct FrameMapping {
@@ -95,10 +102,13 @@ fn invalid(message: &str) -> AppControlError {
 pub(crate) fn parse(value: &Value) -> AppResult<InteractionPlan> {
     let wire: WirePlan = serde_json::from_value(value.clone())
         .map_err(|_| invalid("Interaction input has unknown or invalid fields."))?;
-    if wire.steps.is_empty() || wire.steps.len() > 128 || !(1..=30_000).contains(&wire.timeout_ms) {
-        return Err(invalid(
-            "Interaction requires 1..128 steps and a 1..30000ms timeout.",
-        ));
+    if wire.steps.is_empty()
+        || wire.steps.len() > MAXIMUM_INTERACTION_STEPS
+        || !(1..=MAXIMUM_INTERACTION_TIMEOUT_MS).contains(&wire.timeout_ms)
+    {
+        return Err(invalid(&format!(
+            "Interaction requires 1..{MAXIMUM_INTERACTION_STEPS} steps and a 1..{MAXIMUM_INTERACTION_TIMEOUT_MS}ms timeout.",
+        )));
     }
     if wire.frame_id.as_ref().is_some_and(|id| {
         id.len() != 32
@@ -147,12 +157,14 @@ pub(crate) fn parse(value: &Value) -> AppResult<InteractionPlan> {
                 InteractionStep::Wait(ms)
             }
         });
-        if units > 16_384 {
+        if units > MAXIMUM_INTERACTION_UNITS {
             return Err(invalid(&format!(
-                "Interaction spends {units} input units, above the 16384 limit; split it into smaller batches."
+                "Interaction spends {units} input units, above the {MAXIMUM_INTERACTION_UNITS} limit; split it into smaller batches."
             )));
         }
-        if waits > 10_000 || waits >= wire.timeout_ms {
+        // wait 合计只受本批 timeoutMs 约束：timeoutMs 已封顶，再叠一层独立上限会让
+        // 大批次无法附带等待，等于把步数上限变成空头承诺。
+        if waits >= wire.timeout_ms {
             return Err(invalid(&format!(
                 "Waits total {waits}ms and must stay below timeoutMs ({}ms): raise timeoutMs or shorten the waits.",
                 wire.timeout_ms
@@ -235,6 +247,44 @@ pub(crate) fn normalized_point(point: &FramePoint) -> AppResult<(f64, f64)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 步数上限、等待预算与工作单元边界都按公开契约取值，不接受各写一份。
+    #[test]
+    fn step_wait_and_unit_budgets_follow_the_published_contract() {
+        let keys = |count: usize| {
+            let steps = (0..count)
+                .map(|_| json!({"type": "key", "keys": ["a"]}))
+                .collect::<Vec<_>>();
+            json!({"steps": steps, "timeoutMs": MAXIMUM_INTERACTION_TIMEOUT_MS})
+        };
+        // 上限内接受，越界拒绝：边界本身是契约的一部分。
+        assert!(parse(&keys(MAXIMUM_INTERACTION_STEPS)).is_ok());
+        let Err(over) = parse(&keys(MAXIMUM_INTERACTION_STEPS + 1)) else {
+            panic!("over-limit batch must be rejected before dispatch")
+        };
+        assert!(over.message.contains(&MAXIMUM_INTERACTION_STEPS.to_string()));
+
+        // wait 合计只需低于本批 timeoutMs：不再叠一层独立的等待总额上限。
+        // 单步仍封顶 1000ms，所以长停顿由多个 wait 步累加。
+        let waits = |count: u32, timeout: u32| {
+            let steps = (0..count)
+                .map(|_| json!({"type": "wait", "ms": 1_000}))
+                .collect::<Vec<_>>();
+            json!({"steps": steps, "timeoutMs": timeout})
+        };
+        assert!(parse(&waits(1, MAXIMUM_INTERACTION_TIMEOUT_MS)).is_ok());
+        assert!(parse(&waits(25, MAXIMUM_INTERACTION_TIMEOUT_MS)).is_ok());
+        assert!(parse(&waits(30, 30_000)).is_err());
+
+        // 文本按每字符 4 单元计费：648 步对文本密集批次不成立。
+        let text_steps = (0..MAXIMUM_INTERACTION_STEPS)
+            .map(|_| json!({"type": "text", "text": "abcdefgh"}))
+            .collect::<Vec<_>>();
+        let Err(dense) = parse(&json!({"steps": text_steps, "timeoutMs": 30_000})) else {
+            panic!("text-heavy batch must bind on the work-unit budget")
+        };
+        assert!(dense.message.contains("input units"));
+    }
 
     #[test]
     fn printable_ascii_is_bounded_and_balanced_including_every_symbol() {
