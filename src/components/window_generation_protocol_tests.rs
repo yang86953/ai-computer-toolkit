@@ -117,7 +117,7 @@ fn metadata_and_failures_are_stable_and_private() {
     // broker build ID 不得包含路径分隔符或用户名。
     assert_eq!(
         BROKER_BUILD_ID,
-        "ai-computer-toolkit/0.0.1/window-generation-broker/v1"
+        "ai-computer-toolkit/0.0.2/window-generation-broker/v1"
     );
     // epoch parser 只接受 canonical 文本。
     assert_eq!(

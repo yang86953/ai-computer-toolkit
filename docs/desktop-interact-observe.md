@@ -46,7 +46,7 @@
 - `steps` 内所有 `wait` 的毫秒之和必须严格小于本次请求的 `timeoutMs`（MCP 客户端默认 3000ms），单步 `wait` 上限 1000ms；按键、文本、点击与移动都不计入这条预算。超限整批拒收、不部分执行，错误信息给出实际合计与 `timeoutMs`，需要更长停顿就抬 `timeoutMs`，或者把批次拆小。
 - 单批步数上限 648（`contracts/v1/desktop-interaction.schema.json` 与 `desktop_interaction` 的同一常量，MCP schema 直接引用它，避免两处再漂移）。wait 合计只受本批 `timeoutMs` 约束——`timeoutMs` 已封顶 30000ms，不再叠一层独立的等待上限，否则大批次装得下步骤却装不下停顿。
 - 另一条独立预算是展开后的平台工作单元：点击 3、移动 1、按键每键 2、文本每字符 4，单批上限 16384。所以「648 步」对文本密集批次不成立，超限会报出实际单元数并要求拆批。
-- **坐标步有实测天花板，且超出是破坏性的**：坐标步逐个派发，每次派发都要 start-emulating → 发帧 → stop-emulating。在本机 KWin/libei 上实测单个请求连续派发约 90 次绝对指针后 EIS 连接断开，返回 `OUTCOME_UNKNOWN`、`stage=stop-emulating`、`releasesConfirmed=false`，并作废该会话；60 与 65 次稳定通过。这不是步数上限造成的（旧的 128 上限同样会踩），但意味着「648 步」对纯坐标批次不可用：坐标密集的活儿按 ≤64 步拆批，用 `computer_run` 串多批，而不是把坐标步堆进一批。
+- **坐标步与其它步同预算，不再有单独天花板**：一次交互请求里绝对指针共用一个 emulation 会话（首点 `start-emulating`、批末 `finish_frame_points` 收尾），写缓冲遇到对端一时读不过来（`EAGAIN`）会在本请求 deadline 内重试，不再当成断连。修复前逐点 start/stop + 把任何写错误当 `OUTCOME_UNKNOWN`，实测单请求约第 93 步就作废会话。修复后实测单个请求连续 648 次绝对指针派发一次通过（`completedSteps: 648`、`inputEventsSent: 648`、64ms），649 步被预检干净拒绝（`acceptedMayHaveOccurred: false`，不投递也不伤会话）。所以坐标批次的预算就是步数（≤648）、工作单元（移动 1／点击 3，≤16384）与该批 `timeoutMs`（≤30000ms）。
 - 键盘与快捷键只送达持有焦点的窗口。批量发键前先用点击确认焦点在目标窗口，并留意同机其他窗口（包括用户正在操作的窗口）随时可能抢走焦点。
 
 ## 推荐连续执行链
