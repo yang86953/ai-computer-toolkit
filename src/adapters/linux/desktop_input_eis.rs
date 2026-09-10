@@ -150,6 +150,9 @@ fn blocking_handshake(
     result
 }
 
+/// 固定收尾停机允许的宽限：设备已不再持有按键时，重试刷写不值得占满整段请求预算。
+const RELEASE_GRACE: Duration = Duration::from_millis(1_000);
+
 /// 同一 broker 线程唯一持有的 EIS 键盘、相对指针设备与事件流。
 pub(crate) struct DesktopEisInput {
     connection: reis::event::Connection,
@@ -160,6 +163,12 @@ pub(crate) struct DesktopEisInput {
     absolute_generation: u64,
     capture_mapping_id: Option<String>,
     sequence: u32,
+    /// 绝对指针是否正处于本客户端的 emulation 会话中。
+    ///
+    /// 一次 emulation 会话覆盖整段点派发：逐点 start/stop 会让 compositor 在约 90 次
+    /// 开关后断开 EIS 连接（实测 `stage=stop-emulating`、会话作废）。会话由
+    /// `finish_frame_points` 在小批次结束时关闭。
+    absolute_emulating: bool,
 }
 
 #[path = "desktop_input_eis_absolute.rs"]
@@ -209,6 +218,7 @@ impl DesktopEisInput {
             absolute_generation: 1,
             capture_mapping_id: None,
             sequence: 1,
+            absolute_emulating: false,
         };
         let deadline = Instant::now() + timeout;
         while input.keyboard_device.is_none() || input.pointer_device.is_none() {
@@ -285,7 +295,7 @@ impl DesktopEisInput {
         let serial = self.connection.serial();
         device.device().start_emulating(serial, self.sequence);
         self.advance_sequence();
-        if self.connection.flush().is_err() {
+        if self.flush_bounded(deadline).is_err() {
             return Err(DesktopSessionInputFailure::after_dispatch(
                 "OUTCOME_UNKNOWN",
                 "start-emulating",
@@ -324,7 +334,7 @@ impl DesktopEisInput {
             ));
         }
         device.device().stop_emulating(self.connection.serial());
-        if self.connection.flush().is_err() {
+        if self.flush_bounded(deadline).is_err() {
             return Err(DesktopSessionInputFailure::after_dispatch(
                 "OUTCOME_UNKNOWN",
                 "stop-emulating",
@@ -403,7 +413,7 @@ impl DesktopEisInput {
         let serial = self.connection.serial();
         device.device().start_emulating(serial, self.sequence);
         self.advance_sequence();
-        if self.connection.flush().is_err() {
+        if self.flush_bounded(deadline).is_err() {
             return Err(DesktopSessionInputFailure::after_dispatch(
                 "OUTCOME_UNKNOWN",
                 "start-emulating",
@@ -443,7 +453,7 @@ impl DesktopEisInput {
             ));
         }
         device.device().stop_emulating(self.connection.serial());
-        if self.connection.flush().is_err() {
+        if self.flush_bounded(deadline).is_err() {
             return Err(DesktopSessionInputFailure::after_dispatch(
                 "OUTCOME_UNKNOWN",
                 "stop-emulating",
@@ -747,7 +757,7 @@ impl DesktopEisInput {
         device
             .device()
             .frame(self.connection.serial(), monotonic_microseconds());
-        self.connection.flush().map_err(|_| RuntimeFailure {
+        self.flush_bounded(deadline).map_err(|_| RuntimeFailure {
             code: "OUTCOME_UNKNOWN",
             stage: "keyboard-dispatch",
         })
@@ -763,7 +773,7 @@ impl DesktopEisInput {
     ) -> Result<(), RuntimeFailure> {
         self.ensure_pointer_live(device, guard, deadline, "pointer-motion")?;
         pointer.motion_relative(delta.x as f32, delta.y as f32);
-        self.flush_pointer_frame(device, "pointer-motion")
+        self.flush_pointer_frame(device, "pointer-motion", deadline)
     }
 
     fn emit_pointer_button(
@@ -777,7 +787,7 @@ impl DesktopEisInput {
     ) -> Result<(), RuntimeFailure> {
         self.ensure_pointer_live(device, guard, deadline, "pointer-button")?;
         button.button(code, state);
-        self.flush_pointer_frame(device, "pointer-button")
+        self.flush_pointer_frame(device, "pointer-button", deadline)
     }
 
     fn emit_pointer_scroll(
@@ -791,18 +801,19 @@ impl DesktopEisInput {
     ) -> Result<(), RuntimeFailure> {
         self.ensure_pointer_live(device, guard, deadline, "pointer-scroll")?;
         scroll.scroll_discrete(x, y);
-        self.flush_pointer_frame(device, "pointer-scroll")
+        self.flush_pointer_frame(device, "pointer-scroll", deadline)
     }
 
     fn flush_pointer_frame(
         &self,
         device: &Device,
         stage: &'static str,
+        deadline: Instant,
     ) -> Result<(), RuntimeFailure> {
         device
             .device()
             .frame(self.connection.serial(), monotonic_microseconds());
-        self.connection.flush().map_err(|_| RuntimeFailure {
+        self.flush_bounded(deadline).map_err(|_| RuntimeFailure {
             code: "OUTCOME_UNKNOWN",
             stage,
         })
@@ -812,6 +823,29 @@ impl DesktopEisInput {
         self.sequence = self.sequence.wrapping_add(1);
         if self.sequence == 0 {
             self.sequence = 1;
+        }
+    }
+
+    /// 刷写连接；对端一时读不过来（`EAGAIN`）时在 deadline 内重试。
+    ///
+    /// reis 的 `flush` 会把写缓冲里的每条消息推给 socket，socket 暂满就**直接返回
+    /// `EAGAIN`**。长批次里这是正常背压：等对端读走再写即可。此前把任何写错误都当成
+    /// `OUTCOME_UNKNOWN`，于是单请求写到第 278 次刷写就"连接断开"并作废会话——实测
+    /// 649 步批次死在 `stage=absolute-motion`、已完成 277 步。只有超出本请求 deadline
+    /// 或真正的写错误才算失败。
+    fn flush_bounded(&self, deadline: Instant) -> Result<(), rustix::io::Errno> {
+        loop {
+            match self.connection.flush() {
+                Ok(()) => return Ok(()),
+                Err(rustix::io::Errno::AGAIN) => {
+                    if Instant::now() >= deadline {
+                        return Err(rustix::io::Errno::AGAIN);
+                    }
+                    // 让出 CPU 给对端读走数据，避免纯自旋。
+                    thread::sleep(Duration::from_millis(1));
+                }
+                Err(error) => return Err(error),
+            }
         }
     }
 
@@ -1013,7 +1047,7 @@ impl DesktopEisInput {
                 .frame(self.connection.serial(), monotonic_microseconds());
         }
         device.device().stop_emulating(self.connection.serial());
-        self.connection.flush().is_ok()
+        self.flush_bounded(Instant::now() + RELEASE_GRACE).is_ok()
     }
 
     fn best_effort_pointer_stop(&self, device: &Device, button: &ei::Button, held: &[u32]) -> bool {
@@ -1033,7 +1067,7 @@ impl DesktopEisInput {
                 .frame(self.connection.serial(), monotonic_microseconds());
         }
         device.device().stop_emulating(self.connection.serial());
-        self.connection.flush().is_ok()
+        self.flush_bounded(Instant::now() + RELEASE_GRACE).is_ok()
     }
 }
 

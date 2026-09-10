@@ -18,7 +18,7 @@ use tar::{Archive, EntryType};
 use zstd::stream::read::Decoder;
 
 const RELEASE_TOOL: &str = env!("CARGO_BIN_EXE_ai-computer-toolkit-linux-release");
-const ARCHIVE_ROOT: &str = "ai-computer-toolkit-0.0.1-x86_64-unknown-linux-gnu";
+const ARCHIVE_ROOT: &str = "ai-computer-toolkit-0.0.2-x86_64-unknown-linux-gnu";
 
 struct Fixture {
     root: PathBuf,

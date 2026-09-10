@@ -49,7 +49,7 @@ dependencies = [
 
 [[package]]
 name = "ai-computer-toolkit"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "async-io",
  "base64",

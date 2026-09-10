@@ -7,6 +7,7 @@ struct Trace {
     calls: usize,
     fail_at: Option<usize>,
     closes: usize,
+    finishes: usize,
     points: Vec<FramePoint>,
 }
 struct Port(Arc<Mutex<Trace>>);
@@ -66,6 +67,10 @@ impl DesktopSessionLease for Lease {
         t.calls += 1;
         t.points.push(*p);
         Ok(DesktopPointerDispatchFacts::new(1, 3))
+    }
+    fn finish_frame_points(&mut self) -> Result<(), DesktopSessionInputFailure> {
+        self.0.lock().unwrap().finishes += 1;
+        Ok(())
     }
     fn close(self: Box<Self>) -> Result<(), DesktopSessionPortFailure> {
         self.0.lock().unwrap().closes += 1;
@@ -227,4 +232,34 @@ fn cancellation_during_wait_does_not_send_later_input() {
     assert_eq!(e.code, "CANCELLED");
     assert_eq!(t.lock().unwrap().calls, 0);
     assert_eq!(t.lock().unwrap().closes, 1);
+}
+
+#[test]
+fn every_batch_closes_the_pointer_injection_session() {
+    // EIS 绝对指针在整批点派发期间维持一个 emulation 会话，逐点开关会被 compositor
+    // 断开（实测第 93 步）。批末必须显式收尾，且每次交互恰好一次。
+    let (mut m, id, t) = fixture();
+    run(
+        &mut m,
+        &id,
+        json!({"frameId":"a".repeat(32),"steps":[
+            {"type":"move","x":10,"y":10},
+            {"type":"move","x":11,"y":11},
+            {"type":"click","x":12,"y":12}
+        ]}),
+    )
+    .unwrap();
+    assert_eq!(t.lock().unwrap().finishes, 1);
+
+    // 失败批次同样收尾，不留开着的注入会话。
+    t.lock().unwrap().fail_at = Some(4);
+    assert!(
+        run(
+            &mut m,
+            &id,
+            json!({"frameId":"a".repeat(32),"steps":[{"type":"key","keys":["a"]}]})
+        )
+        .is_err()
+    );
+    assert_eq!(t.lock().unwrap().finishes, 2);
 }

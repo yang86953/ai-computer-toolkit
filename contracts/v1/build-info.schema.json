@@ -17,7 +17,7 @@
         "name": { "const": "ai-computer-toolkit" },
         "version": { "type": "string", "minLength": 1 },
         "mainLanguage": { "enum": ["Rust 2024", "C++23"] },
-        "compatibilityVersion": { "const": "0.0.1" }
+        "compatibilityVersion": { "const": "0.0.2" }
       }
     }
   }

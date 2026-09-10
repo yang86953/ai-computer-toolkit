@@ -179,6 +179,13 @@ pub(crate) trait DesktopSessionLease {
             "frame-point",
         ))
     }
+    /// 结束一段连续点派发。
+    ///
+    /// 后端可能在点之间维持一个跨越整批的 emulation/注入会话（EIS 绝对指针就是如此：
+    /// 逐点开关会被 compositor 断开），所以批结束时必须显式收尾。默认后端不持有会话。
+    fn finish_frame_points(&mut self) -> Result<(), DesktopSessionInputFailure> {
+        Ok(())
+    }
     fn send_keyboard(
         &mut self,
         input: &KeyboardInput,

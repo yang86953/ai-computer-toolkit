@@ -276,27 +276,30 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
                 interaction_checkpoint(cancellation, deadline)
             })();
             if let Err(failure) = result {
-                let entry = self
+                let mut entry = self
                     .sessions
                     .remove(session_id)
                     .ok_or_else(stale_session_error)?;
+                // 批内失败同样要收掉后端可能仍开着的注入会话，再关 lease。
+                let released = entry.lease.finish_frame_points().is_ok();
                 let cleanup = entry.lease.close().is_ok();
-                let mut error = input_port_error(failure, cleanup);
-                let accepted = sent > 0 || failure.accepted_may_have_occurred();
-                error.details["acceptedMayHaveOccurred"] = json!(accepted);
-                error.details["outcome"] = json!(if failure.code() == "CANCELLED" {
-                    "cancelled"
-                } else if accepted {
-                    "unknown"
-                } else {
-                    "failed"
-                });
-                error.details["completedInteractionSteps"] = json!(completed);
-                error.details["inputEventsSent"] =
-                    json!(sent.saturating_add(failure.input_events_sent()));
-                return Err(error);
+                return Err(interaction_input_error(
+                    failure, cleanup, sent, completed, released,
+                ));
             }
             completed += 1;
+        }
+        // 批结束：后端可能跨整批维持着一个注入会话（EIS 绝对指针就是如此），这里显式收尾。
+        // 收不掉说明连接已经不可信：按批内失败的同一套事实处理，作废会话、不重放。
+        if let Err(failure) = entry.lease.finish_frame_points() {
+            let entry = self
+                .sessions
+                .remove(session_id)
+                .ok_or_else(stale_session_error)?;
+            let cleanup = entry.lease.close().is_ok();
+            return Err(interaction_input_error(
+                failure, cleanup, sent, completed, false,
+            ));
         }
         entry.view.input_events_sent = entry.view.input_events_sent.saturating_add(sent);
         Ok(InteractionReport {
@@ -304,6 +307,33 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
             input_events_sent: sent,
         })
     }
+}
+
+/// 把后端输入失败补齐成对调用方可见的收尾事实。
+///
+/// 输入失败必须同时说清三件事：有没有可能已经发出事件、完成到第几步、注入会话收没收干净。
+/// 批内失败与批末收尾失败两条路径必须同形，所以只在这里定义一次。
+fn interaction_input_error(
+    failure: DesktopSessionInputFailure,
+    session_cleanup_confirmed: bool,
+    sent: usize,
+    completed: usize,
+    released: bool,
+) -> AppControlError {
+    let accepted = sent > 0 || failure.accepted_may_have_occurred();
+    let mut error = input_port_error(failure, session_cleanup_confirmed);
+    error.details["acceptedMayHaveOccurred"] = json!(accepted);
+    error.details["outcome"] = json!(if failure.code() == "CANCELLED" {
+        "cancelled"
+    } else if accepted {
+        "unknown"
+    } else {
+        "failed"
+    });
+    error.details["completedInteractionSteps"] = json!(completed);
+    error.details["inputEventsSent"] = json!(sent.saturating_add(failure.input_events_sent()));
+    error.details["releasesConfirmed"] = json!(failure.releases_confirmed() && released);
+    error
 }
 
 fn observation_changes(

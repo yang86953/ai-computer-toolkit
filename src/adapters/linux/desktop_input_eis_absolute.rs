@@ -89,21 +89,25 @@ impl DesktopEisInput {
         let deadline = Instant::now() + Duration::from_millis(u64::from(timeout_ms));
         self.ensure_absolute_live(&device, point.mapping.generation, &mut guard, deadline)
             .map_err(before_dispatch_failure)?;
-        device
-            .device()
-            .start_emulating(self.connection.serial(), self.sequence);
-        self.advance_sequence();
         let mut sent = 0usize;
         let mut held = None;
         let result = (|| {
-            self.connection.flush().map_err(|_| RuntimeFailure {
-                code: "OUTCOME_UNKNOWN",
-                stage: "start-emulating",
-            })?;
+            // emulation 会话覆盖整段点派发：已开着就只发帧，不再每个点开关一次。
+            if !self.absolute_emulating {
+                device
+                    .device()
+                    .start_emulating(self.connection.serial(), self.sequence);
+                self.advance_sequence();
+                self.flush_bounded(deadline).map_err(|_| RuntimeFailure {
+                    code: "OUTCOME_UNKNOWN",
+                    stage: "start-emulating",
+                })?;
+                self.absolute_emulating = true;
+            }
             self.ensure_absolute_live(&device, point.mapping.generation, &mut guard, deadline)?;
             pointer.motion_absolute(x, y);
             sent += 1;
-            self.flush_pointer_frame(&device, "absolute-motion")?;
+            self.flush_pointer_frame(&device, "absolute-motion", deadline)?;
             if let Some(public) = point.button {
                 let code = match public {
                     1 => 0x110,
@@ -120,19 +124,14 @@ impl DesktopEisInput {
                 button.button(code, ButtonState::Press);
                 held = Some(code);
                 sent += 1;
-                self.flush_pointer_frame(&device, "absolute-button-down")?;
+                self.flush_pointer_frame(&device, "absolute-button-down", deadline)?;
                 self.ensure_absolute_live(&device, point.mapping.generation, &mut guard, deadline)?;
                 button.button(code, ButtonState::Released);
                 sent += 1;
-                self.flush_pointer_frame(&device, "absolute-button-up")?;
+                self.flush_pointer_frame(&device, "absolute-button-up", deadline)?;
                 held = None;
             }
             self.ensure_absolute_live(&device, point.mapping.generation, &mut guard, deadline)?;
-            device.device().stop_emulating(self.connection.serial());
-            self.connection.flush().map_err(|_| RuntimeFailure {
-                code: "OUTCOME_UNKNOWN",
-                stage: "stop-emulating",
-            })?;
             guard.check_with_deadline(deadline, "absolute-complete")
         })();
         if let Err(failure) = result {
@@ -145,8 +144,11 @@ impl DesktopEisInput {
                         .frame(self.connection.serial(), monotonic_microseconds());
                 }
                 device.device().stop_emulating(self.connection.serial());
-                self.connection.flush().is_ok()
+                self.absolute_emulating = false;
+                self.flush_bounded(Instant::now() + RELEASE_GRACE).is_ok()
             } else {
+                // 设备已不在，本客户端不可能仍在仿真它。
+                self.absolute_emulating = false;
                 true
             };
             if failure.code == "CANCELLED" {
@@ -161,6 +163,26 @@ impl DesktopEisInput {
             ));
         }
         Ok(DesktopPointerDispatchFacts::new(1, sent))
+    }
+
+    /// 结束本段点派发：关闭仍开着的 emulation 会话。
+    ///
+    /// 关不掉说明连接已经不可信，按已投递处理；标记一律清零，不留「仍在仿真」的假状态。
+    pub(crate) fn finish_frame_points(&mut self) -> Result<(), DesktopSessionInputFailure> {
+        if !self.absolute_emulating {
+            return Ok(());
+        }
+        self.absolute_emulating = false;
+        let Some((device, _)) = self.mapped_device() else {
+            return Ok(());
+        };
+        if !device.device().is_alive() {
+            return Ok(());
+        }
+        device.device().stop_emulating(self.connection.serial());
+        self.flush_bounded(Instant::now() + RELEASE_GRACE).map_err(|_| {
+            DesktopSessionInputFailure::after_dispatch("OUTCOME_UNKNOWN", "stop-emulating", false, 0, 0)
+        })
     }
 
     fn ensure_absolute_live(

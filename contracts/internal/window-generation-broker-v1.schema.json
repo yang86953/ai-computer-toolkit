@@ -52,7 +52,7 @@
       "properties": {
         "contractVersion": { "const": "act/window-generation-broker/v1" },
         "messageType": { "const": "broker-ready" },
-        "brokerBuildId": { "const": "ai-computer-toolkit/0.0.1/window-generation-broker/v1" },
+        "brokerBuildId": { "const": "ai-computer-toolkit/0.0.2/window-generation-broker/v1" },
         "brokerEpoch": { "$ref": "#/$defs/nonce" },
         "ownerState": { "const": "healthy" },
         "eventSource": { "const": "winevent-out-of-context-sequential" },

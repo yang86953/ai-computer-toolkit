@@ -136,8 +136,10 @@ fn broker_frames_are_closed_and_revisioned() -> serde_json::Result<()> {
     assert_eq!(
         // 读取 input 引用。
         schema["$defs"]["startRequest"]["properties"]["input"]["$ref"],
-        // 对比固定公开 Schema 路径。
-        "../../v1/sequence-input.schema.json"
+        // 对比固定公开 Schema 路径：相对本文件所在的 contracts/internal/ 解析，
+        // ../v1/ 才落在 contracts/v1/；../../v1/ 会解析到仓库根下的 v1/ 而落空。
+        // 同目录的 sequence-execution-journal-v1 用的是同一条相对路径。
+        "../v1/sequence-input.schema.json"
     );
     // resume 必须使用 expected execution revision。
     assert!(

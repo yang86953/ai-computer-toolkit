@@ -13,8 +13,8 @@ use std::{
 
 use tar::Archive;
 
-const ARCHIVE_NAME: &str = "ai-computer-toolkit-0.0.1-x86_64-unknown-linux-gnu.tar.zst";
-const ROOT: &str = "ai-computer-toolkit-0.0.1-x86_64-unknown-linux-gnu";
+const ARCHIVE_NAME: &str = "ai-computer-toolkit-0.0.2-x86_64-unknown-linux-gnu.tar.zst";
+const ROOT: &str = "ai-computer-toolkit-0.0.2-x86_64-unknown-linux-gnu";
 
 struct Fixture(PathBuf);
 

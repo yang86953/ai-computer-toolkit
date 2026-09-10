@@ -114,6 +114,9 @@ impl DesktopSessionLease for PortalDesktopSessionLease {
             .input
             .send_frame_point(point, timeout_ms, cancellation, &mut liveness)
     }
+    fn finish_frame_points(&mut self) -> Result<(), DesktopSessionInputFailure> {
+        self.live.input.finish_frame_points()
+    }
     fn send_keyboard(
         &mut self,
         request: &KeyboardInput,
