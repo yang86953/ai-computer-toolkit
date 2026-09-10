@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/internal/sequence-step-worker-v1.schema.json",
+  "title": "Sequence step worker JSON Lines frame",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/control" },
+    { "$ref": "#/$defs/accepted" },
+    { "$ref": "#/$defs/notDispatched" },
+    { "$ref": "#/$defs/completed" },
+    { "$ref": "#/$defs/failed" },
+    { "$ref": "#/$defs/unknown" }
+  ],
+  "$defs": {
+    "version": { "const": "act/sequence-step-worker/v1" },
+    "nonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "error": {
+      "type": "object",
+      "required": ["code"],
+      "properties": { "code": { "type": "string", "minLength": 1 } }
+    },
+    "determinedError": {
+      "allOf": [
+        { "$ref": "#/$defs/error" },
+        {
+          "not": {
+            "required": ["code"],
+            "properties": { "code": { "const": "OUTCOME_UNKNOWN" } }
+          }
+        }
+      ]
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verb",
+        "app",
+        "operation",
+        "target",
+        "args",
+        "maxItems",
+        "maxDepth",
+        "confirmed",
+        "foregroundConsent",
+        "isolationRequirement"
+      ],
+      "properties": {
+        "verb": { "enum": ["status", "sessions", "inspect", "run"] },
+        "app": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "operation": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
+        "target": { "type": "object" },
+        "args": { "type": "object" },
+        "maxItems": { "type": "integer", "minimum": 0 },
+        "maxDepth": { "type": "integer", "minimum": 0 },
+        "confirmed": { "type": "boolean" },
+        "foregroundConsent": { "type": "boolean" },
+        "isolationRequirement": { "enum": ["standard", "strict"] }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestNonce", "timeoutMs", "command"],
+      "properties": {
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000 },
+        "command": { "$ref": "#/$defs/command" }
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestNonce", "kind"],
+      "properties": {
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "kind": { "const": "cancel" }
+      }
+    },
+    "accepted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "contractVersion", "requestNonce", "dispatchAccepted", "completed"],
+      "properties": {
+        "kind": { "const": "dispatch-accepted" },
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "dispatchAccepted": { "const": true },
+        "completed": { "const": false }
+      }
+    },
+    "notDispatched": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind", "contractVersion", "requestNonce", "dispatchAccepted", "completed",
+        "outcome", "retrySafe", "acceptedMayHaveOccurred", "error"
+      ],
+      "properties": {
+        "kind": { "const": "final" },
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "dispatchAccepted": { "const": false },
+        "completed": { "const": false },
+        "outcome": { "const": "not-dispatched" },
+        "retrySafe": { "const": true },
+        "acceptedMayHaveOccurred": { "const": false },
+        "error": { "$ref": "#/$defs/determinedError" }
+      }
+    },
+    "completed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind", "contractVersion", "requestNonce", "dispatchAccepted", "completed",
+        "outcome", "retrySafe", "acceptedMayHaveOccurred", "result"
+      ],
+      "properties": {
+        "kind": { "const": "final" },
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "dispatchAccepted": { "const": true },
+        "completed": { "const": true },
+        "outcome": { "const": "completed" },
+        "retrySafe": { "const": false },
+        "acceptedMayHaveOccurred": { "const": true },
+        "result": {}
+      }
+    },
+    "failed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind", "contractVersion", "requestNonce", "dispatchAccepted", "completed",
+        "outcome", "retrySafe", "acceptedMayHaveOccurred", "error"
+      ],
+      "properties": {
+        "kind": { "const": "final" },
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "dispatchAccepted": { "const": true },
+        "completed": { "const": true },
+        "outcome": { "const": "failed" },
+        "retrySafe": { "const": false },
+        "acceptedMayHaveOccurred": { "const": true },
+        "error": { "$ref": "#/$defs/determinedError" }
+      }
+    },
+    "unknown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind", "contractVersion", "requestNonce", "dispatchAccepted", "completed",
+        "outcome", "retrySafe", "acceptedMayHaveOccurred", "error"
+      ],
+      "properties": {
+        "kind": { "const": "final" },
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "dispatchAccepted": { "const": true },
+        "completed": { "const": false },
+        "outcome": { "const": "unknown" },
+        "retrySafe": { "const": false },
+        "acceptedMayHaveOccurred": { "const": true },
+        "error": {
+          "allOf": [
+            { "$ref": "#/$defs/error" },
+            { "properties": { "code": { "const": "OUTCOME_UNKNOWN" } } }
+          ]
+        }
+      }
+    }
+  }
+}

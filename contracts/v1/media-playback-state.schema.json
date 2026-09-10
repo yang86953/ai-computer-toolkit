@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/media-playback-state.schema.json",
+  "title": "Exact media playback state read",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capability",
+    "readOnly",
+    "executionDomain",
+    "foregroundUnchanged",
+    "session"
+  ],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "capability": { "const": "media.playback.state.read@1" },
+    "readOnly": { "const": true },
+    "executionDomain": { "const": "isolated-worker" },
+    "foregroundUnchanged": { "const": true },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "targetKind",
+        "playbackStatus",
+        "title",
+        "artist",
+        "albumTitle",
+        "availableControls"
+      ],
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "pattern": "^s2:m:[0-9a-f]{16}$"
+        },
+        "targetKind": { "const": "media-session" },
+        "playbackStatus": {
+          "enum": [
+            "closed",
+            "opened",
+            "changing",
+            "stopped",
+            "playing",
+            "paused",
+            "unknown"
+          ]
+        },
+        "title": { "type": "string" },
+        "artist": { "type": "string" },
+        "albumTitle": { "type": "string" },
+        "availableControls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "play",
+            "pause",
+            "togglePlayPause",
+            "skipNext",
+            "skipPrevious"
+          ],
+          "properties": {
+            "play": { "type": "boolean" },
+            "pause": { "type": "boolean" },
+            "togglePlayPause": { "type": "boolean" },
+            "skipNext": { "type": "boolean" },
+            "skipPrevious": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}

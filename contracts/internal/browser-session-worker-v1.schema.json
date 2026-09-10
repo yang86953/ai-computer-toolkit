@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/internal/browser-session-worker-v1.schema.json",
+  "title": "Browser session worker v1 JSON Lines frame",
+  "oneOf": [
+    { "$ref": "#/$defs/openAuthorizedEndpoint" },
+    { "$ref": "#/$defs/openIsolatedProfile" },
+    { "$ref": "#/$defs/cancel" },
+    { "$ref": "#/$defs/openAccepted" },
+    { "$ref": "#/$defs/readyFinal" },
+    { "$ref": "#/$defs/notDispatchedFinal" },
+    { "$ref": "#/$defs/failedFinal" },
+    { "$ref": "#/$defs/unknownFinal" }
+  ],
+  "$defs": {
+    "version": { "const": "act/browser-session-worker/v1" },
+    "nonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "endpointId": { "type": "string", "pattern": "^bse1:[0-9a-f]{32}$" },
+    "sessionId": { "type": "string", "pattern": "^s2:bs:[0-9a-f]{32}$" },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "details": { "type": ["object", "array", "string", "number", "boolean", "null"] }
+      }
+    },
+    "authorizedSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "endpointId", "authorizationNonce"],
+      "properties": {
+        "kind": { "const": "authorized-endpoint" },
+        "endpointId": { "$ref": "#/$defs/endpointId" },
+        "authorizationNonce": { "$ref": "#/$defs/nonce" }
+      }
+    },
+    "isolatedSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": { "kind": { "const": "isolated-profile" } }
+    },
+    "openBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "contractVersion", "requestNonce", "timeoutMs", "source"],
+      "properties": {
+        "kind": { "const": "open" },
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000 },
+        "source": {}
+      }
+    },
+    "openAuthorizedEndpoint": {
+      "allOf": [
+        { "$ref": "#/$defs/openBase" },
+        { "properties": { "source": { "$ref": "#/$defs/authorizedSource" } } }
+      ]
+    },
+    "openIsolatedProfile": {
+      "allOf": [
+        { "$ref": "#/$defs/openBase" },
+        { "properties": { "source": { "$ref": "#/$defs/isolatedSource" } } }
+      ]
+    },
+    "cancel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "contractVersion", "requestNonce"],
+      "properties": {
+        "kind": { "const": "cancel" },
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" }
+      }
+    },
+    "openAccepted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "contractVersion", "requestNonce", "dispatchAccepted", "completed"],
+      "properties": {
+        "kind": { "const": "open-accepted" },
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "dispatchAccepted": { "const": true },
+        "completed": { "const": false }
+      }
+    },
+    "finalBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "contractVersion", "requestNonce", "outcome", "completed", "retrySafe", "acceptedMayHaveOccurred"],
+      "properties": {
+        "kind": { "const": "open-final" },
+        "contractVersion": { "$ref": "#/$defs/version" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "outcome": {},
+        "completed": { "type": "boolean" },
+        "retrySafe": { "type": "boolean" },
+        "acceptedMayHaveOccurred": { "type": "boolean" },
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    },
+    "readyFinal": {
+      "allOf": [
+        { "$ref": "#/$defs/finalBase" },
+        { "required": ["sessionId"], "not": { "required": ["error"] }, "properties": { "outcome": { "const": "ready" }, "completed": { "const": true }, "retrySafe": { "const": false }, "acceptedMayHaveOccurred": { "const": true } } }
+      ]
+    },
+    "notDispatchedFinal": {
+      "allOf": [
+        { "$ref": "#/$defs/finalBase" },
+        { "required": ["error"], "not": { "required": ["sessionId"] }, "properties": { "outcome": { "const": "not-dispatched" }, "completed": { "const": true }, "retrySafe": { "const": true }, "acceptedMayHaveOccurred": { "const": false } } }
+      ]
+    },
+    "failedFinal": {
+      "allOf": [
+        { "$ref": "#/$defs/finalBase" },
+        { "required": ["error"], "not": { "required": ["sessionId"] }, "properties": { "outcome": { "const": "failed" }, "completed": { "const": true }, "retrySafe": { "const": false }, "acceptedMayHaveOccurred": { "const": true } } }
+      ]
+    },
+    "unknownFinal": {
+      "allOf": [
+        { "$ref": "#/$defs/finalBase" },
+        {
+          "required": ["error"],
+          "not": { "required": ["sessionId"] },
+          "properties": {
+            "outcome": { "const": "unknown" },
+            "completed": { "const": false },
+            "retrySafe": { "const": false },
+            "acceptedMayHaveOccurred": { "const": true },
+            "error": { "allOf": [{ "$ref": "#/$defs/error" }, { "properties": { "code": { "const": "OUTCOME_UNKNOWN" } } }] }
+          }
+        }
+      ]
+    }
+  }
+}

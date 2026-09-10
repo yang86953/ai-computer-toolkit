@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://desktop/session-open/v1",
+  "title": "Wayland Portal desktop session open input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["timeoutMs"],
+  "properties": {
+    "timeoutMs": { "type": "integer", "minimum": 10000, "maximum": 300000 }
+  }
+}

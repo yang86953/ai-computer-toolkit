@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://desktop/session-close/v1",
+  "title": "Wayland Portal desktop session close input v1",
+  "type": "object",
+  "additionalProperties": false
+}

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/ui-element-action-input.schema.json",
+  "title": "Provider-neutral semantic element action input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["selector", "action"],
+  "properties": {
+    "selector": { "$ref": "#/$defs/selector" },
+    "action": { "$ref": "#/$defs/action" },
+    "maximumDepth": { "type": "integer", "minimum": 0, "maximum": 20, "default": 8 },
+    "maximumItems": { "type": "integer", "minimum": 1, "maximum": 4096, "default": 1024 },
+    "view": { "enum": ["control", "raw"], "default": "control" },
+    "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 2000 }
+  },
+  "$defs": {
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "automationId": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "className": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "frameworkId": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "controlType": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+      }
+    },
+    "scrollAmount": {
+      "enum": [
+        "no-amount",
+        "large-decrement",
+        "small-decrement",
+        "large-increment",
+        "small-increment"
+      ]
+    },
+    "action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "invoke" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "value" },
+            "value": { "type": "string", "maxLength": 65536 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "toggle" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "select" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "scroll" },
+            "horizontal": { "$ref": "#/$defs/scrollAmount", "default": "no-amount" },
+            "vertical": { "$ref": "#/$defs/scrollAmount", "default": "no-amount" }
+          },
+          "anyOf": [
+            {
+              "required": ["horizontal"],
+              "properties": { "horizontal": { "not": { "const": "no-amount" } } }
+            },
+            {
+              "required": ["vertical"],
+              "properties": { "vertical": { "not": { "const": "no-amount" } } }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

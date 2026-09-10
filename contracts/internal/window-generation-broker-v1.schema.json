@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/internal/window-generation-broker-v1.schema.json",
+  "title": "Private persistent window generation broker protocol v1",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/ready" },
+    { "$ref": "#/$defs/healthResult" },
+    { "$ref": "#/$defs/resolveResult" },
+    { "$ref": "#/$defs/rejection" }
+  ],
+  "$defs": {
+    "nonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "fact64": { "type": "string", "pattern": "^[0-9a-f]{16}$", "not": { "const": "0000000000000000" } },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["processId", "currentWindowToken", "processGeneration"],
+      "properties": {
+        "processId": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+        "currentWindowToken": { "$ref": "#/$defs/fact64" },
+        "processGeneration": { "$ref": "#/$defs/fact64" }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestNonce", "expectedBrokerEpoch", "operation"],
+      "properties": {
+        "contractVersion": { "const": "act/window-generation-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "expectedBrokerEpoch": { "$ref": "#/$defs/nonce" },
+        "operation": { "enum": ["health", "resolve-snapshot"] },
+        "windows": {
+          "type": "array",
+          "maxItems": 16384,
+          "items": { "$ref": "#/$defs/window" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "operation": { "const": "resolve-snapshot" } }, "required": ["operation"] },
+          "then": { "required": ["windows"] },
+          "else": { "not": { "required": ["windows"] } }
+        }
+      ]
+    },
+    "ready": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "messageType", "brokerBuildId", "brokerEpoch", "ownerState", "eventSource", "snapshotBarrier"],
+      "properties": {
+        "contractVersion": { "const": "act/window-generation-broker/v1" },
+        "messageType": { "const": "broker-ready" },
+        "brokerBuildId": { "const": "ai-computer-toolkit/0.0.1/window-generation-broker/v1" },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" },
+        "ownerState": { "const": "healthy" },
+        "eventSource": { "const": "winevent-out-of-context-sequential" },
+        "snapshotBarrier": { "const": "hook-enumerate-drain-validate" }
+      }
+    },
+    "healthResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "messageType", "requestNonce", "brokerEpoch", "transportAccepted", "ownerHealthy", "producerSequence", "appliedSequence", "liveWindows"],
+      "properties": {
+        "contractVersion": { "const": "act/window-generation-broker/v1" },
+        "messageType": { "const": "health-result" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" },
+        "transportAccepted": { "const": true },
+        "ownerHealthy": { "const": true },
+        "producerSequence": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+        "appliedSequence": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+        "liveWindows": { "type": "integer", "minimum": 0, "maximum": 65536 }
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "status"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 0, "maximum": 16383 },
+        "status": { "enum": ["resolved", "stale"] },
+        "ownerGeneration": { "$ref": "#/$defs/fact64" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "resolved" } }, "required": ["status"] },
+          "then": { "required": ["ownerGeneration"] },
+          "else": { "not": { "required": ["ownerGeneration"] } }
+        }
+      ]
+    },
+    "resolveResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "messageType", "requestNonce", "brokerEpoch", "transportAccepted", "ownerHealthy", "producerSequence", "appliedSequence", "entries"],
+      "properties": {
+        "contractVersion": { "const": "act/window-generation-broker/v1" },
+        "messageType": { "const": "resolve-result" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" },
+        "transportAccepted": { "const": true },
+        "ownerHealthy": { "const": true },
+        "producerSequence": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+        "appliedSequence": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+        "entries": { "type": "array", "maxItems": 16384, "items": { "$ref": "#/$defs/resolution" } }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "enum": ["INVALID_ARGUMENT", "STALE_BROKER_EPOCH", "WINDOW_GENERATION_OWNER_UNAVAILABLE", "WINDOW_GENERATION_OWNER_CAPACITY_EXHAUSTED"] },
+        "message": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "rejection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "messageType", "transportAccepted", "ownerHealthy", "error"],
+      "properties": {
+        "contractVersion": { "const": "act/window-generation-broker/v1" },
+        "messageType": { "const": "rejection" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "transportAccepted": { "type": "boolean" },
+        "ownerHealthy": { "type": "boolean" },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    }
+  }
+}

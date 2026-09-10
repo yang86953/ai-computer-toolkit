@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://ui/element-transition/v1/result",
+  "title": "UIX semantic element action with postcondition result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "app", "verb", "capability", "targetId", "executionRealm",
+    "requiredExecutionRealm", "executionRealmCertified", "isolationRequirement",
+    "hostImpactPolicy", "data", "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "ui.element.transition@1" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "activationRequested",
+            "semanticPostconditionObservationRequested"
+          ],
+          "properties": {
+            "activationRequested": { "const": false },
+            "semanticPostconditionObservationRequested": { "const": true }
+          }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "snapshotId": {
+      "type": "string",
+      "pattern": "^as3:[0-9a-f]{16}$"
+    },
+    "elementId": {
+      "type": "string",
+      "pattern": "^s2:e:[0-9a-f]{16}$"
+    },
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number", "minimum": -1000000000, "maximum": 1000000000 },
+        "y": { "type": "number", "minimum": -1000000000, "maximum": 1000000000 },
+        "width": { "type": "number", "minimum": 0, "maximum": 1000000000 },
+        "height": { "type": "number", "minimum": 0, "maximum": 1000000000 }
+      }
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coordinateSpace", "unit", "frame", "visibleBounds"],
+      "properties": {
+        "coordinateSpace": { "const": "application-client" },
+        "unit": { "const": "logical-px" },
+        "frame": { "$ref": "#/$defs/rect" },
+        "visibleBounds": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/rect" }
+          ]
+        }
+      }
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elementId", "identityFreshness", "automationId", "role", "name",
+        "focused", "enabled", "actions", "geometry"
+      ],
+      "properties": {
+        "elementId": { "$ref": "#/$defs/elementId" },
+        "identityFreshness": { "const": "snapshot-revision" },
+        "automationId": { "type": ["string", "null"], "maxLength": 512 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 256 },
+        "focused": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+        },
+        "geometry": { "$ref": "#/$defs/geometry" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider", "providerCache", "sameAuthenticatedConnectionUsed",
+        "windowGenerationFixed", "revisionWaitUsed", "providerPolling",
+        "stabilitySemantics", "nativeIdentityExposed", "transportIdentityExposed",
+        "confirmIdentityExposed", "sensitiveSnapshotPublished",
+        "hostCoordinateMappingPublished", "clickPointInferred",
+        "foregroundActivationRequested", "desktopInputInjected",
+        "desktopPointerMoved", "x11Used", "fallback"
+      ],
+      "properties": {
+        "provider": { "const": "uix-agent-v1" },
+        "providerCache": { "const": "disabled" },
+        "sameAuthenticatedConnectionUsed": { "const": true },
+        "windowGenerationFixed": { "const": true },
+        "revisionWaitUsed": { "type": "boolean" },
+        "providerPolling": { "const": false },
+        "stabilitySemantics": { "const": false },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "confirmIdentityExposed": { "const": false },
+        "sensitiveSnapshotPublished": { "const": false },
+        "hostCoordinateMappingPublished": { "const": false },
+        "clickPointInferred": { "const": false },
+        "foregroundActivationRequested": { "const": false },
+        "desktopInputInjected": { "const": false },
+        "desktopPointerMoved": { "const": false },
+        "x11Used": { "const": false },
+        "fallback": { "const": "none" }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok", "contractVersion", "capability", "targetId", "sourceSnapshotId",
+        "sourceElementId", "action", "actionAccepted", "actionRevision",
+        "actionPresentedRevision", "actionSettled", "applicationConfirmation",
+        "postcondition", "selectorSemantics", "postconditionMatchedAfterDispatch",
+        "snapshotId", "matchState", "matchCount", "sampleCount", "waitCount",
+        "revision", "presentedRevision", "revisionWaitUsed", "element", "outcome",
+        "dispatchState", "accepted", "sameAuthenticatedConnectionUsed",
+        "effectConfirmed", "causalityConfirmed", "finalStateReached",
+        "applicationPolicyEvaluated", "confirmationEvaluatedBeforeDiscovery",
+        "hostForegroundActivationRequested", "effectObservation",
+        "automaticRetryProhibited", "retrySafe", "timeoutMs", "executionRealm",
+        "readOnly", "mutationAllowed", "safety"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/ui-element-transition/v1" },
+        "capability": { "const": "ui.element.transition@1" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "sourceSnapshotId": { "$ref": "#/$defs/snapshotId" },
+        "sourceElementId": { "$ref": "#/$defs/elementId" },
+        "action": {
+          "enum": [
+            "invoke", "focus", "set-value", "insert-text", "select",
+            "toggle", "increment", "decrement", "scroll"
+          ]
+        },
+        "actionAccepted": { "const": true },
+        "actionRevision": { "type": "integer", "minimum": 0 },
+        "actionPresentedRevision": { "type": "integer", "minimum": 0 },
+        "actionSettled": { "type": "boolean" },
+        "applicationConfirmation": { "enum": ["approved", "not-required"] },
+        "postcondition": { "enum": ["unique", "missing"] },
+        "selectorSemantics": { "const": "exact-and" },
+        "postconditionMatchedAfterDispatch": { "const": true },
+        "snapshotId": { "$ref": "#/$defs/snapshotId" },
+        "matchState": { "enum": ["missing", "unique"] },
+        "matchCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "sampleCount": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+        "waitCount": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "revisionWaitUsed": { "type": "boolean" },
+        "element": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/element" }
+          ]
+        },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "sameAuthenticatedConnectionUsed": { "const": true },
+        "effectConfirmed": { "const": false },
+        "causalityConfirmed": { "const": false },
+        "finalStateReached": { "const": false },
+        "applicationPolicyEvaluated": { "const": true },
+        "confirmationEvaluatedBeforeDiscovery": { "const": true },
+        "hostForegroundActivationRequested": { "const": false },
+        "effectObservation": {
+          "const": "semantic-postcondition-after-dispatch-no-causal-claim"
+        },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000
+        },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "readOnly": { "const": false },
+        "mutationAllowed": { "const": true },
+        "safety": { "$ref": "#/$defs/safety" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "postcondition": { "const": "missing" } },
+            "required": ["postcondition"]
+          },
+          "then": {
+            "properties": {
+              "matchState": { "const": "missing" },
+              "matchCount": { "const": 0 },
+              "element": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "postcondition": { "const": "unique" } },
+            "required": ["postcondition"]
+          },
+          "then": {
+            "properties": {
+              "matchState": { "const": "unique" },
+              "matchCount": { "const": 1 },
+              "element": { "$ref": "#/$defs/element" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "waitCount": { "const": 0 } },
+            "required": ["waitCount"]
+          },
+          "then": {
+            "properties": {
+              "revisionWaitUsed": { "const": false },
+              "safety": {
+                "properties": { "revisionWaitUsed": { "const": false } }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "revisionWaitUsed": { "const": true },
+              "safety": {
+                "properties": { "revisionWaitUsed": { "const": true } }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

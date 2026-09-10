@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/window-screenshot.schema.json",
+  "title": "Confirmed exact-window screenshot result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capability",
+    "targetId",
+    "targetKind",
+    "executionDomain",
+    "confirmationRequired",
+    "confirmationSatisfied",
+    "overwriteConfirmed",
+    "path",
+    "bytes",
+    "width",
+    "height",
+    "deviceDriver",
+    "pixelDigest",
+    "atomicOutput",
+    "cursorCaptured",
+    "systemCaptureIndicatorMayAppear",
+    "foregroundUnchanged"
+  ],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "capability": { "const": "window.screenshot@1" },
+    "targetId": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "targetKind": { "const": "application-window" },
+    "executionDomain": { "const": "isolated-worker" },
+    "confirmationRequired": { "const": true },
+    "confirmationSatisfied": { "const": true },
+    "overwriteConfirmed": { "type": "boolean" },
+    "path": { "type": "string", "minLength": 5 },
+    "bytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 67108864
+    },
+    "width": { "type": "integer", "minimum": 1, "maximum": 4096 },
+    "height": { "type": "integer", "minimum": 1, "maximum": 4096 },
+    "deviceDriver": { "enum": ["hardware", "warp"] },
+    "pixelDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "atomicOutput": { "const": true },
+    "cursorCaptured": { "const": false },
+    "systemCaptureIndicatorMayAppear": { "const": true },
+    "foregroundUnchanged": { "const": true }
+  }
+}

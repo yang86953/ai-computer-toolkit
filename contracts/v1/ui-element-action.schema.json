@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/ui-element-action.schema.json",
+  "title": "Provider-neutral semantic element action result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "app", "verb", "capability", "targetId", "data", "meta"],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "ui.element.action@1" },
+    "targetId": { "type": "string", "pattern": "^s2:w:[0-9a-f]{16}$" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "outcome",
+        "dispatchState",
+        "acceptedMayHaveOccurred",
+        "automaticRetryProhibited",
+        "retrySafe",
+        "windowReResolved",
+        "elementReResolved",
+        "selectorSemantics",
+        "visited",
+        "pointerFallbackUsed",
+        "writePerformed",
+        "foregroundUnchanged",
+        "permissionPreflight",
+        "capabilityEvaluatedBeforeDispatch",
+        "confirmationEvaluatedBeforeDispatch",
+        "foregroundImpactEvaluatedBeforeDispatch",
+        "providerTimeoutIsolation",
+        "executionRealm",
+        "readOnly",
+        "workerTimeoutMs"
+      ],
+      "properties": {
+        "action": { "enum": ["invoke", "value", "toggle", "select", "scroll"] },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "acceptedMayHaveOccurred": { "const": true },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "windowReResolved": { "const": true },
+        "elementReResolved": { "const": true },
+        "selectorSemantics": { "const": "exact-and" },
+        "visited": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "pointerFallbackUsed": { "const": false },
+        "writePerformed": { "const": true },
+        "foregroundUnchanged": { "const": true },
+        "permissionPreflight": { "const": "allowed-after-confirmation" },
+        "capabilityEvaluatedBeforeDispatch": { "const": true },
+        "confirmationEvaluatedBeforeDispatch": { "const": true },
+        "foregroundImpactEvaluatedBeforeDispatch": { "const": true },
+        "providerTimeoutIsolation": { "const": "job-bounded-worker" },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "readOnly": { "const": false },
+        "workerTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000 }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unchanged"],
+          "properties": { "unchanged": { "const": true } }
+        },
+        "targeting": { "const": "opaque exact session" }
+      }
+    }
+  }
+}

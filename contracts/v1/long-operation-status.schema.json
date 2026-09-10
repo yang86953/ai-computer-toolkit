@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/long-operation-status.schema.json",
+  "title": "Bounded long operation status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "operationId",
+    "capabilityId",
+    "status",
+    "dispatchStarted",
+    "terminal",
+    "acceptedMayHaveOccurred",
+    "retrySafe",
+    "cancelRequested",
+    "expiresAt"
+  ],
+  "properties": {
+    "contractVersion": { "const": "act/long-operation/v1" },
+    "operationId": { "type": "string", "pattern": "^s2:o:[0-9a-f]{16}$" },
+    "capabilityId": { "const": "window.record@1" },
+    "status": {
+      "enum": [
+        "accepted",
+        "running",
+        "cancel-requested",
+        "completed",
+        "failed",
+        "outcome-unknown"
+      ]
+    },
+    "dispatchStarted": { "type": "boolean" },
+    "terminal": { "type": "boolean" },
+    "acceptedMayHaveOccurred": { "const": true },
+    "retrySafe": { "type": "boolean" },
+    "cancelRequested": { "type": "boolean" },
+    "expiresAt": {
+      "anyOf": [
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    },
+    "result": true,
+    "error": { "$ref": "#/$defs/error" }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/nonTerminal" },
+    { "$ref": "#/$defs/completed" },
+    { "$ref": "#/$defs/failed" },
+    { "$ref": "#/$defs/outcomeUnknown" }
+  ],
+  "$defs": {
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 }
+      }
+    },
+    "nonTerminal": {
+      "properties": {
+        "status": { "enum": ["accepted", "running", "cancel-requested"] },
+        "terminal": { "const": false },
+        "expiresAt": { "const": null }
+      },
+      "not": { "anyOf": [{ "required": ["result"] }, { "required": ["error"] }] }
+    },
+    "completed": {
+      "required": ["result"],
+      "properties": {
+        "status": { "const": "completed" },
+        "dispatchStarted": { "const": true },
+        "terminal": { "const": true },
+        "retrySafe": { "const": false },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "not": { "required": ["error"] }
+    },
+    "failed": {
+      "required": ["error"],
+      "properties": {
+        "status": { "const": "failed" },
+        "terminal": { "const": true },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "not": { "required": ["result"] }
+    },
+    "outcomeUnknown": {
+      "required": ["error"],
+      "properties": {
+        "status": { "const": "outcome-unknown" },
+        "dispatchStarted": { "const": true },
+        "terminal": { "const": true },
+        "retrySafe": { "const": false },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "error": {
+          "allOf": [
+            { "$ref": "#/$defs/error" },
+            { "properties": { "code": { "const": "OUTCOME_UNKNOWN" } } }
+          ]
+        }
+      },
+      "not": { "required": ["result"] }
+    }
+  }
+}

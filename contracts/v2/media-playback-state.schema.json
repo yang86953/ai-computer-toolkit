@@ -1,0 +1,12 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema", "$id":"https://local.ai-computer-toolkit/contracts/v2/media-playback-state.schema.json",
+  "type":"object","additionalProperties":false,"required":["ok","contractVersion","capability","data"],
+  "properties":{"ok":{"const":true},"contractVersion":{"const":"act/control/v2"},"capability":{"const":"media.playback.state.read@2"},
+    "executionRealm":{"const":"isolated-worker"},"requiredExecutionRealm":{"const":"isolated-worker"},"executionRealmCertified":{"const":true},
+    "isolationRequirement":{"enum":["standard","strict"]},"hostImpactPolicy":{"enum":["background-preferred","strict-no-interference"]},
+    "data":{"type":"object","additionalProperties":false,"required":["sessionId","targetKind","playbackStatus","availableControls"],"properties":{
+      "sessionId":{"type":"string","pattern":"^s2:m:[0-9a-f]{16}$"},"targetKind":{"const":"media-session"},"playbackStatus":{"enum":["playing","paused","stopped","unknown"]},
+      "availableControls":{"type":"object","additionalProperties":false,"required":["play","pause","togglePlayPause","stop","skipNext","skipPrevious"],"properties":{"play":{"type":"boolean"},"pause":{"type":"boolean"},"togglePlayPause":{"type":"boolean"},"stop":{"type":"boolean"},"skipNext":{"type":"boolean"},"skipPrevious":{"type":"boolean"}}}
+    }}
+  }
+}

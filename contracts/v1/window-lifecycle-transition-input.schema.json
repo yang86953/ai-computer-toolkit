@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/lifecycle-transition/v1",
+  "title": "UIX window lifecycle dispatch and framework state transition input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "condition"],
+  "properties": {
+    "action": { "$ref": "#/$defs/action" },
+    "condition": { "$ref": "#/$defs/condition" },
+    "pollIntervalMs": {
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 500,
+      "default": 50
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 30000,
+      "default": 30000
+    }
+  },
+  "$defs": {
+    "action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "restore" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "minimize" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "maximize" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "coordinateSpace", "width", "height"],
+          "properties": {
+            "type": { "const": "resize" },
+            "coordinateSpace": { "const": "client-logical-px" },
+            "width": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "height": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        }
+      ]
+    },
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "visibility" },
+            "visible": { "type": "boolean" },
+            "presentable": { "type": "boolean" }
+          },
+          "anyOf": [
+            { "required": ["visible"] },
+            { "required": ["presentable"] }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "focused"],
+          "properties": {
+            "type": { "const": "focus" },
+            "focused": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "width", "height"],
+          "properties": {
+            "type": { "const": "client-size" },
+            "width": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "height": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "window-flags" },
+            "maximized": { "type": "boolean" },
+            "minimized": { "type": "boolean" },
+            "fullscreen": { "type": "boolean" }
+          },
+          "anyOf": [
+            { "required": ["maximized"] },
+            { "required": ["minimized"] },
+            { "required": ["fullscreen"] }
+          ]
+        }
+      ]
+    }
+  }
+}

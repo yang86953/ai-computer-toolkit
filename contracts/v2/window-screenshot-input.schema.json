@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/screenshot/v2",
+  "title": "UIX exact-window application-surface screenshot input v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path"],
+  "properties": {
+    "path": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 32767,
+      "pattern": "\\.png$"
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 30000,
+      "default": 30000
+    },
+    "overwrite": { "type": "boolean", "default": false }
+  }
+}

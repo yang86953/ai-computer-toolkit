@@ -1,0 +1,12 @@
+{
+  "contractVersion": "act/linux-atspi-capability-golden/v2",
+  "capabilities": [
+    "accessibility.tree.read@2",
+    "window.discover@2",
+    "window.metadata.read@2"
+  ],
+  "platform": "linux",
+  "status": "candidate-private-fixture-only",
+  "executionRealm": "none",
+  "fallback": "none"
+}

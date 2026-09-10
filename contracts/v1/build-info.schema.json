@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/v1/build-info.schema.json",
+  "title": "Provider-neutral build metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "implementation", "data"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/control/v1" },
+    "implementation": { "const": "rust" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "mainLanguage", "compatibilityVersion"],
+      "properties": {
+        "name": { "const": "ai-computer-toolkit" },
+        "version": { "type": "string", "minLength": 1 },
+        "mainLanguage": { "enum": ["Rust 2024", "C++23"] },
+        "compatibilityVersion": { "const": "0.0.1" }
+      }
+    }
+  }
+}

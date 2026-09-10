@@ -1,0 +1,32 @@
+{
+  "contractVersion": "act/stage5-rust-closeout/v1",
+  "executionLanguage": "rust",
+  "legacyOperations": [
+    "desktop.screenshot",
+    "app.screenshot",
+    "browser.screenshot",
+    "desktop.record",
+    "app.record"
+  ],
+  "descriptorStatus": "retired-rust-primary",
+  "cppExecutionEnabled": false,
+  "cppDynamicParityRequired": false,
+  "launcherFallback": "none",
+  "certifiedWorkers": [
+    "ai-computer-toolkit-capture-worker.exe",
+    "ai-computer-toolkit-browser-worker.exe",
+    "ai-computer-toolkit-recording-worker.exe",
+    "ai-computer-toolkit-sequence-step-worker.exe"
+  ],
+  "retiredValidationScripts": [
+    "tools/Test-WgcCppMemoryProbe.ps1",
+    "tools/Test-CppScreenshotModulePolicy.ps1",
+    "tools/Test-RustCppScreenshotEquivalence.ps1",
+    "tools/Test-RustCppRecordingEquivalence.ps1"
+  ],
+  "remainingGates": [
+    "media-foundation-recording-success",
+    "owner-visual-acceptance"
+  ],
+  "historicalCppSourceDeletionStage": 7
+}

@@ -1,0 +1,291 @@
+[package]
+name = "ai-computer-toolkit"
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.96"
+description = "Capability-first computer-control toolkit for AI agents"
+license = "MIT"
+autobins = false
+
+[features]
+default = []
+windows-workers = []
+test-fixtures = []
+# 发布工具只参与 Linux 制品构建与临时前缀安装，不进入主 CLI archive。
+linux-release-tools = ["dep:toml"]
+# Linux AT-SPI 候选只用于私有双 D-Bus 合成验收；默认 CLI 与发布包不启用。
+linux-atspi-candidate = []
+# Linux MPRIS 候选只允许显式私有总线验收；默认生产与发布不启用。
+linux-mpris-candidate = []
+
+[[bin]]
+name = "ai-computer-toolkit"
+path = "src/main.rs"
+
+[[bin]]
+name = "ai-computer-toolkit-linux-release"
+path = "src/bin/ai-computer-toolkit-linux-release.rs"
+required-features = ["linux-release-tools"]
+
+[[bin]]
+name = "ai-computer-toolkit-atspi-observation-worker"
+path = "src/bin/ai-computer-toolkit-atspi-observation-worker.rs"
+required-features = ["linux-atspi-candidate"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-broker"
+path = "src/bin/ai-computer-toolkit-browser-session-broker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-worker"
+path = "src/bin/ai-computer-toolkit-browser-session-worker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-worker"
+path = "src/bin/ai-computer-toolkit-browser-worker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-capture-worker"
+path = "src/bin/ai-computer-toolkit-capture-worker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-interactive-command-worker"
+path = "src/bin/ai-computer-toolkit-interactive-command-worker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-interactive-session-broker"
+path = "src/bin/ai-computer-toolkit-interactive-session-broker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-long-operation-broker"
+path = "src/bin/ai-computer-toolkit-long-operation-broker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-observation-worker"
+path = "src/bin/ai-computer-toolkit-observation-worker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-recording-worker"
+path = "src/bin/ai-computer-toolkit-recording-worker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-semantic-action-worker"
+path = "src/bin/ai-computer-toolkit-semantic-action-worker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-sequence-step-worker"
+path = "src/bin/ai-computer-toolkit-sequence-step-worker.rs"
+required-features = ["windows-workers"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-fixture"
+path = "src/bin/ai-computer-toolkit-browser-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-accepted-only-worker-fixture"
+path = "src/bin/ai-computer-toolkit-browser-session-accepted-only-worker-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-client-fixture"
+path = "src/bin/ai-computer-toolkit-browser-session-client-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-command-fixture"
+path = "src/bin/ai-computer-toolkit-browser-session-command-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-outcome-unknown-fixture"
+path = "src/bin/ai-computer-toolkit-browser-session-outcome-unknown-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-production-worker-fixture"
+path = "src/bin/ai-computer-toolkit-browser-session-production-worker-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-raw-protocol-fixture"
+path = "src/bin/ai-computer-toolkit-browser-session-raw-protocol-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-runtime-fixture"
+path = "src/bin/ai-computer-toolkit-browser-session-runtime-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-transport-client-fixture"
+path = "src/bin/ai-computer-toolkit-browser-session-transport-client-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-browser-session-worker-fixture"
+path = "src/bin/ai-computer-toolkit-browser-session-worker-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-capture-fixture"
+path = "src/bin/ai-computer-toolkit-capture-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-exclusive-fullscreen-fixture"
+path = "src/bin/ai-computer-toolkit-exclusive-fullscreen-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-raw-input-fixture"
+path = "src/bin/ai-computer-toolkit-raw-input-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-semantic-action-fixture"
+path = "src/bin/ai-computer-toolkit-semantic-action-fixture.rs"
+required-features = ["test-fixtures"]
+
+[[bin]]
+name = "ai-computer-toolkit-sequence-step-fixture"
+path = "src/bin/ai-computer-toolkit-sequence-step-fixture.rs"
+required-features = ["test-fixtures"]
+
+[dependencies]
+# 使用纯 Rust RFC 4648 编码验证 WebSocket 升级握手与页面截图。
+base64 = "0.22.1"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+# 使用纯 Rust SHA-1 验证 WebSocket Sec-WebSocket-Accept。
+sha1 = "0.10.6"
+thiserror = "2.0.18"
+# UIX 作为外部版本化依赖维护，不将其源码复制到本仓库。
+# 基础输入控件依赖 feedback；显式启用它，不启用图形 backend 默认集合。
+uix = { git = "ssh://gitea@100.79.245.29:2222/admin/uix-app.git", rev = "981941643735813be0a39233587277ddc840c540", default-features = false, features = ["feedback"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-future = "0.3.2"
+windows = { version = "0.62.2", features = [
+    "Foundation",
+    "Foundation_Collections",
+    "Graphics_Capture",
+    "Graphics_DirectX",
+    "Graphics_DirectX_Direct3D11",
+    "Media_Control",
+    # 使用 Windows 内建 Media Foundation 完成项目自有 H.264/MP4 编码。
+    "Win32_Media_MediaFoundation",
+    "Win32_Foundation",
+    # 通过匿名管道读取 companion worker 的有界 JSON 输出。
+    "Win32_Storage_FileSystem",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
+    # 只读查询 DWM 组合状态与窗口 cloaked 标记，供零帧捕获预检使用。
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Graphics_Gdi",
+    # 只读查询进程 token 完整性等级，用于公开相对关系而不泄漏 RID。
+    "Win32_Security",
+    # 使用系统首选随机源生成一次性 endpoint lease 和授权代际。
+    "Win32_Security_Cryptography",
+    # 为固定本机 pipe 建立仅 SYSTEM 与当前用户可访问的显式 DACL。
+    "Win32_Security_Authorization",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    # 把 Ctrl+C 与 Ctrl+Break 转换为 worker cancellation 信号。
+    "Win32_System_Console",
+    "Win32_System_Diagnostics_ToolHelp",
+    # ReadFile/WriteFile 的同步 OVERLAPPED 类型门禁。
+    "Win32_System_IO",
+    # 在 worker 首条指令前绑定 KILL_ON_JOB_CLOSE Job。
+    "Win32_System_JobObjects",
+    "Win32_System_Ole",
+    # 建立只继承 worker 端点的匿名 stdio 管道。
+    "Win32_System_Pipes",
+    # 只读枚举传统卸载注册源，不写注册表。
+    "Win32_System_Registry",
+    # 读取当前进程所属的 Windows session ID 以生成主机身份。
+    "Win32_System_RemoteDesktop",
+    # 只读比较当前线程桌面与输入桌面，拒绝锁屏、UAC 和非输入桌面控制。
+    "Win32_System_StationsAndDesktops",
+    # 读取进程创建 FILETIME 以构造可检测 PID 复用的私有窗口身份。
+    "Win32_System_Threading",
+    "Win32_System_Variant",
+    "Win32_System_WinRT",
+    "Win32_System_WinRT_Direct3D11",
+    "Win32_System_WinRT_Graphics_Capture",
+    # 读取当前 Windows 用户名并与 C++ host identity 对齐。
+    "Win32_System_WindowsProgramming",
+    "Win32_UI_Accessibility",
+    # 为 UIA 物理屏幕坐标建立 Per-Monitor-V2 线程上下文。
+    "Win32_UI_HiDpi",
+    # 仅供工具自有兼容夹具注册固定 Raw Input 鼠标或键盘 usage。
+    "Win32_UI_Input",
+    "Win32_UI_Input_KeyboardAndMouse",
+    # 只读枚举公开 Shell AppsFolder 应用目录。
+    "Win32_UI_Shell",
+    # 使用 Shell item 列举所需的公开 ITEMIDLIST 类型。
+    "Win32_UI_Shell_Common",
+    # 读取 AppUserModelId 属性作为私有去重事实。
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# 使用标准 D-Bus 客户端实现 XDG Desktop Portal Screenshot 请求状态机。
+async-io = "2.6.0"
+futures-lite = "2.6.1"
+# 只在固定自进程 Workflow worker 边界安装信号处理与父进程死亡回收。
+libc = "=0.2.189"
+# 生产路径只通过 Portal 授权 FD 连接受限 PipeWire remote，支持单帧与有界常驻订阅。
+pipewire = { version = "=0.10.1", features = ["v0_3_44"] }
+# 通过标准 Portal 返回的 EIS FD 建立 sender 握手并发送有界会话级输入。
+reis = { version = "0.7.1", default-features = false, features = ["async-io"] }
+# 使用 fd-relative、NOFOLLOW/NONBLOCK 打开实现 Desktop Entry 安全 walker。
+rustix = { version = "1.1.4", features = ["event", "fs", "net", "process", "time"] }
+# Linux Release System 生成/校验 tar.zst；只进入 Linux target，Windows 依赖树不命中。
+goblin = "0.10.7"
+sha2 = "0.10.9"
+spdx = "0.13.5"
+tar = "0.4.44"
+toml = { version = "1.0.4", optional = true }
+zstd = "0.13.3"
+url = "2.5.7"
+zbus = { version = "5.19.0", default-features = false, features = ["async-io"] }
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+# 用真实 Linux CLI 实例执行 Draft 2020-12 公共契约门禁，不带网络或文件解析功能。
+jsonschema = { version = "0.51.0", default-features = false }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_unsafe = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+
+# 常用桌面宿主从 dev 构建启动；PNG 自适应滤波需要优化以避免每帧数百毫秒的开销。
+# 只优化已测热点依赖，保留主程序的快速增量编译、调试信息和默认检查。
+[profile.dev.package.png]
+opt-level = 3
+
+[package.metadata.smc]
+schema = 1
+spec_version = "2.0"
+spec_revision = "64f55bc5634bf5a647a37cfc296a4b75a4799734"
+spec_repository = "../smc"
+scope = "all-first-party-rust"
+adoption_document = "../../workspace/projects/computer-control-toolkit/docs/SMC架构采用.md"

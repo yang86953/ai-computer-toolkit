@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/window-lifecycle-result.schema.json",
+  "title": "Provider-neutral exact window lifecycle success result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "app", "verb", "capability", "targetId", "data", "meta"],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "interactiveSessionId": { "type": "string", "pattern": "^s2:i:[0-9a-f]{16}$" },
+    "isolationKind": { "const": "independent-interactive-session" },
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "window.lifecycle@1" },
+    "targetId": { "type": "string", "pattern": "^s2:w:[0-9a-f]{16}$" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "action",
+        "outcome",
+        "dispatchState",
+        "accepted",
+        "finalStateReached",
+        "state",
+        "coordinateSpace",
+        "bounds",
+        "dpi",
+        "minimumSize",
+        "virtualScreen",
+        "coordinateContext",
+        "signedVirtualScreenCoordinates",
+        "targetReresolvedBeforeDispatch",
+        "targetIdentityStrength",
+        "foregroundChangedDuringDispatch",
+        "permissionPreflight",
+        "activeWriteProbePerformed",
+        "confirmationEvaluatedBeforeDispatch",
+        "foregroundConsentEvaluatedBeforeDispatch",
+        "retrySafe",
+        "automaticRetryProhibited"
+      ],
+      "properties": {
+        "capability": { "const": "window.lifecycle@1" },
+        "action": { "enum": ["restore", "minimize", "maximize", "move", "resize"] },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "finalStateReached": { "const": true },
+        "state": { "enum": ["normal", "minimized", "maximized"] },
+        "coordinateSpace": { "const": "screen-physical-px" },
+        "bounds": { "$ref": "#/$defs/rectangle" },
+        "dpi": { "type": "integer", "minimum": 1, "maximum": 960 },
+        "minimumSize": { "$ref": "#/$defs/size" },
+        "virtualScreen": { "$ref": "#/$defs/rectangle" },
+        "coordinateContext": { "const": "per-monitor-v2-virtual-screen-physical-px" },
+        "signedVirtualScreenCoordinates": { "const": true },
+        "targetReresolvedBeforeDispatch": { "const": true },
+        "targetIdentityStrength": { "$ref": "window-target-identity.schema.json" },
+        "foregroundChangedDuringDispatch": { "type": "boolean" },
+        "permissionPreflight": { "const": "no-static-integrity-block-observed" },
+        "activeWriteProbePerformed": { "const": false },
+        "confirmationEvaluatedBeforeDispatch": { "const": true },
+        "foregroundConsentEvaluatedBeforeDispatch": { "const": true },
+        "retrySafe": { "const": false },
+        "automaticRetryProhibited": { "const": true }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unchanged"],
+          "properties": { "unchanged": { "type": "boolean" } }
+        },
+        "targeting": { "const": "opaque exact session" }
+      }
+    }
+  },
+  "$defs": {
+    "rectangle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "y": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    }
+  }
+}

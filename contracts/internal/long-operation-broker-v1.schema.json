@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/internal/long-operation-broker-v1.schema.json",
+  "title": "Fixed same-session long operation broker frame",
+  "oneOf": [
+    { "$ref": "#/$defs/submitRequest" },
+    { "$ref": "#/$defs/statusRequest" },
+    { "$ref": "#/$defs/cancelRequest" },
+    { "$ref": "#/$defs/successResponse" },
+    { "$ref": "#/$defs/rejectionBeforeTransport" },
+    { "$ref": "#/$defs/rejectionBeforeBusinessAcceptance" }
+  ],
+  "$defs": {
+    "requestNonce": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "operationId": {
+      "type": "string",
+      "pattern": "^s2:o:[0-9a-f]{16}$"
+    },
+    "windowTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId"],
+      "properties": {
+        "sessionId": { "type": "string", "pattern": "^s2:w:[0-9a-f]{16}$" }
+      }
+    },
+    "submitRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestNonce",
+        "action",
+        "capabilityId",
+        "target",
+        "input",
+        "confirmed"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/long-operation-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" },
+        "action": { "const": "submit" },
+        "capabilityId": { "const": "window.record@1" },
+        "target": { "$ref": "#/$defs/windowTarget" },
+        "input": { "$ref": "../v1/window-record-input.schema.json" },
+        "confirmed": { "const": true }
+      }
+    },
+    "statusRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestNonce", "action", "operationId"],
+      "properties": {
+        "contractVersion": { "const": "act/long-operation-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" },
+        "action": { "const": "status" },
+        "operationId": { "$ref": "#/$defs/operationId" }
+      }
+    },
+    "cancelRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestNonce", "action", "operationId"],
+      "properties": {
+        "contractVersion": { "const": "act/long-operation-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" },
+        "action": { "const": "cancel" },
+        "operationId": { "$ref": "#/$defs/operationId" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "enum": [
+            "INVALID_ARGUMENT",
+            "CONFIRMATION_REQUIRED",
+            "OPERATION_CAPACITY_EXHAUSTED",
+            "OPERATION_NOT_FOUND",
+            "OPERATION_RESULT_TOO_LARGE",
+            "BROKER_UNAVAILABLE"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 }
+      }
+    },
+    "successResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestNonce",
+        "transportAccepted",
+        "businessAccepted",
+        "operation"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/long-operation-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" },
+        "transportAccepted": { "const": true },
+        "businessAccepted": { "const": true },
+        "operation": { "$ref": "../v1/long-operation-status.schema.json" }
+      }
+    },
+    "rejectionBeforeTransport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "transportAccepted", "businessAccepted", "error"],
+      "properties": {
+        "contractVersion": { "const": "act/long-operation-broker/v1" },
+        "transportAccepted": { "const": false },
+        "businessAccepted": { "const": false },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    },
+    "rejectionBeforeBusinessAcceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestNonce",
+        "transportAccepted",
+        "businessAccepted",
+        "error"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/long-operation-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" },
+        "transportAccepted": { "const": true },
+        "businessAccepted": { "const": false },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    }
+  }
+}

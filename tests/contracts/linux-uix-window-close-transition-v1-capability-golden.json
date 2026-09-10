@@ -1,0 +1,25 @@
+{
+  "contractVersion": "act/linux-uix-window-close-transition-capability-golden/v1",
+  "capabilities": [
+    "window.close.transition@1"
+  ],
+  "platform": "linux",
+  "status": "production-route-protocol-fixture-verified-owner-interaction-and-observation-acceptance-deferred",
+  "executionRealm": "same-session-no-focus",
+  "coverage": "opt-in-uix-agent-applications",
+  "target": "exact-window-generation",
+  "windowAction": "close_window",
+  "sameAuthenticatedConnectionUsed": true,
+  "waitProtocolUsed": true,
+  "providerPolling": false,
+  "terminalReplyRequired": true,
+  "connectionCloseAcceptedAsProof": false,
+  "causalityConfirmed": false,
+  "applicationClosedConfirmed": false,
+  "foregroundActivationRequested": false,
+  "desktopInputInjected": false,
+  "nativeIdentityExposed": false,
+  "transportIdentityExposed": false,
+  "x11Used": false,
+  "fallback": "none"
+}

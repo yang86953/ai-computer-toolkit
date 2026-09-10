@@ -1,0 +1,40 @@
+{
+  "contractVersion": "act/capture-privacy-indicator-policy/v1",
+  "owner": "Capture Module",
+  "systemIndicatorMayAppear": true,
+  "borderSuppressionAllowed": false,
+  "systemBehaviorMustNotBeOverridden": true,
+  "requiresHumanVisualAcceptance": true,
+  "productionSourceRoots": [
+    "src"
+  ],
+  "activeWgcSources": [
+    "src/adapters/window_capture.rs"
+  ],
+  "schemaClaims": [
+    {
+      "path": "contracts/v1/window-screenshot.schema.json",
+      "pointer": "/properties/systemCaptureIndicatorMayAppear/const"
+    },
+    {
+      "path": "contracts/v1/capture-frame-probe.schema.json",
+      "pointer": "/properties/safety/properties/privacyIndicatorMayHaveAppeared/const"
+    },
+    {
+      "path": "contracts/v1/capture-preflight.schema.json",
+      "pointer": "/properties/privacyIndicatorMayAppearOnCapture/const"
+    }
+  ],
+  "forbiddenSourceTokens": [
+    "IsBorderRequired(false)",
+    "SetIsBorderRequired(false)",
+    "GraphicsCaptureAccessKind::Borderless",
+    "GraphicsCaptureAccess"
+  ],
+  "humanVisualAcceptance": {
+    "vikunjaProjectId": 2,
+    "taskId": 1650,
+    "assignee": "project-owner",
+    "aiMayClose": false
+  }
+}

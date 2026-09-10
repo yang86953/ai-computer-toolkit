@@ -1,0 +1,43 @@
+{
+  "contractVersion": "act/structured-image-output-migration-policy/v1",
+  "capabilities": [
+    "artifact.save@1",
+    "image.export@1"
+  ],
+  "legacyOperations": [
+    "app.save",
+    "app.export"
+  ],
+  "cppExecutionStatus": "candidate-not-certified",
+  "publicWriteRouteEnabled": false,
+  "readOnlySessionDiscoveryEnabled": true,
+  "observationIsolation": {
+    "worker": "ai-computer-toolkit-structured-image-worker.exe",
+    "jobBounded": true,
+    "timeoutMs": 5000,
+    "cancellable": true,
+    "writeMethodsCalled": false
+  },
+  "requiresConfirmation": true,
+  "targetPrefix": "s2:d:",
+  "provider": "attach-only-fixed-com-provider",
+  "applicationLaunchAllowed": false,
+  "arbitraryProgIdAccepted": false,
+  "arbitraryComMemberAccepted": false,
+  "arbitraryScriptAccepted": false,
+  "formats": {
+    "artifact.save@1": "psd",
+    "image.export@1": "png"
+  },
+  "overwriteProtection": true,
+  "nativeIdentityExposed": false,
+  "writeTimeoutReported": false,
+  "unknownOutcomeRetrySafe": false,
+  "candidateEvidence": {
+    "providerInstalled": true,
+    "providerRunning": false,
+    "userDocumentsWritten": 0,
+    "foregroundUnchanged": true
+  },
+  "formalGate": "explicit-tool-owned-provider-document-rust-cpp-equivalence"
+}

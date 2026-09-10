@@ -1,0 +1,24 @@
+{
+  "contractVersion": "act/control/v1",
+  "minimumApplicationNameJaccard": 0.9,
+  "minimumProcessNameJaccard": 0.95,
+  "minimumVisibleWindowJaccard": 0.75,
+  "rustCppEquivalentAssessments": [
+    "accessibility.tree.read@1",
+    "application.discover@1",
+    "process.discover@1",
+    "process.metadata.read@1",
+    "uncataloged.read@1",
+    "window.discover@1"
+  ],
+  "requiredAssessmentDecisions": {
+    "application.discover@1": "executable-background",
+    "process.discover@1": "executable-background",
+    "window.discover@1": "executable-background",
+    "process.metadata.read@1": "executable-background",
+    "accessibility.tree.read@1": "executable-background",
+    "uncataloged.read@1": "capability-gap",
+    "application.open@1": "unavailable",
+    "ui.input.key@1": "unavailable"
+  }
+}

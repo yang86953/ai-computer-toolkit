@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/doctor-result.schema.json",
+  "title": "C++ reference migration-aware read-only diagnostics",
+  "$comment": "C++ compatibility baseline only; Rust runtime diagnostics use runtime-diagnostic-envelope.schema.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "policy",
+    "cppPolicy",
+    "ok",
+    "readOnly",
+    "allCppExecutionAvailable",
+    "results"
+  ],
+  "properties": {
+    "policy": { "const": "background-preferred" },
+    "cppPolicy": { "const": "capability-first-no-silent-fallback" },
+    "ok": { "const": true },
+    "readOnly": { "const": true },
+    "allCppExecutionAvailable": { "const": false },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "required": ["app", "ok", "readOnly", "cppStatus"],
+        "properties": {
+          "app": { "type": "string" },
+          "ok": { "type": "boolean" },
+          "readOnly": { "const": true },
+          "cppStatus": {
+            "enum": [
+              "available-read-only",
+              "available-read-only-control-rust-compatibility",
+              "available-read-only-mutation-rust-compatibility",
+              "available-confirmed-opaque-control",
+              "available-confirmed-opaque-target",
+              "available-confirmed-isolated",
+              "runtime-observed-execution-rust-compatibility",
+              "rust-compatibility-only"
+            ]
+          },
+          "executionEnabled": { "const": false },
+          "diagnostic": { "type": "object" },
+          "error": { "type": "object" }
+        }
+      }
+    }
+  }
+}

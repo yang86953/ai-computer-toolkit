@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/window-observation.schema.json",
+  "title": "AT-SPI partial exporter window observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "capability", "coverage", "readOnly", "mutationAllowed", "visibilityEvidence", "count", "total", "truncated", "truncationReasons", "windows", "safety"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/window-observation/v2" },
+    "capability": { "const": "window.discover@2" },
+    "coverage": { "const": "partial-accessibility-exporters" },
+    "readOnly": { "const": true },
+    "mutationAllowed": { "const": false },
+    "visibilityEvidence": { "const": "accessibility-visible-and-showing" },
+    "count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "total": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "truncated": { "type": "boolean" },
+    "truncationReasons": { "$ref": "#/$defs/reasons" },
+    "windows": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/window" } },
+    "safety": { "$ref": "#/$defs/safety" }
+  },
+  "$defs": {
+    "reasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["item-limit", "stale-descendant", "property-error", "name-limit"] }
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "targetKind", "role", "title", "visible", "visibilityEvidence", "targetIdentity", "capabilities"],
+      "properties": {
+        "sessionId": { "type": "string", "pattern": "^s2:w:[0-9a-f]{16}$" },
+        "targetKind": { "const": "accessibility-exporter-window" },
+        "role": { "enum": ["dialog", "frame", "window"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "visible": { "const": true },
+        "visibilityEvidence": { "const": "accessibility-visible-and-showing" },
+        "targetIdentity": { "$ref": "window-target-identity.schema.json" },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "enum": ["window.metadata.read@2", "accessibility.tree.read@2"] }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foregroundClaimed", "compositorVisibilityClaimed", "globalWindowDirectoryClaimed", "nativeIdentityExposed"],
+      "properties": {
+        "foregroundClaimed": { "const": false },
+        "compositorVisibilityClaimed": { "const": false },
+        "globalWindowDirectoryClaimed": { "const": false },
+        "nativeIdentityExposed": { "const": false }
+      }
+    }
+  }
+}

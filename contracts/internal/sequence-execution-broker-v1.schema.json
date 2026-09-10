@@ -1,0 +1,268 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/internal/sequence-execution-broker-v1.schema.json",
+  "title": "Fixed same-session sequence execution broker frame",
+  "oneOf": [
+    { "$ref": "#/$defs/brokerReady" },
+    { "$ref": "#/$defs/startRequest" },
+    { "$ref": "#/$defs/statusRequest" },
+    { "$ref": "#/$defs/resumeRequest" },
+    { "$ref": "#/$defs/cancelRequest" },
+    { "$ref": "#/$defs/forgetRequest" },
+    { "$ref": "#/$defs/acceptedResponse" },
+    { "$ref": "#/$defs/finalResponse" }
+  ],
+  "$defs": {
+    "nonce": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "executionId": {
+      "type": "string",
+      "pattern": "^s2:q:[0-9a-f]{32}$"
+    },
+    "timeout": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000
+    },
+    "brokerReady": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "kind", "brokerEpoch"],
+      "properties": {
+        "contractVersion": { "const": "act/sequence-execution-broker/v1" },
+        "kind": { "const": "broker-ready" },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" }
+      }
+    },
+    "startRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "kind",
+        "requestNonce",
+        "semanticFingerprint",
+        "expectedBrokerEpoch",
+        "remainingTimeoutMs",
+        "action",
+        "input"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/sequence-execution-broker/v1" },
+        "kind": { "const": "request" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "semanticFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "expectedBrokerEpoch": { "$ref": "#/$defs/nonce" },
+        "remainingTimeoutMs": { "$ref": "#/$defs/timeout" },
+        "action": { "const": "start" },
+        "input": { "$ref": "../v1/sequence-input.schema.json" }
+      }
+    },
+    "statusRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "kind",
+        "requestNonce",
+        "semanticFingerprint",
+        "expectedBrokerEpoch",
+        "remainingTimeoutMs",
+        "action",
+        "executionId"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/sequence-execution-broker/v1" },
+        "kind": { "const": "request" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "semanticFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "expectedBrokerEpoch": { "$ref": "#/$defs/nonce" },
+        "remainingTimeoutMs": { "$ref": "#/$defs/timeout" },
+        "action": { "const": "status" },
+        "executionId": { "$ref": "#/$defs/executionId" }
+      }
+    },
+    "resumeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "kind",
+        "requestNonce",
+        "semanticFingerprint",
+        "expectedBrokerEpoch",
+        "remainingTimeoutMs",
+        "action",
+        "executionId",
+        "expectedExecutionRevision"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/sequence-execution-broker/v1" },
+        "kind": { "const": "request" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "semanticFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "expectedBrokerEpoch": { "$ref": "#/$defs/nonce" },
+        "remainingTimeoutMs": { "$ref": "#/$defs/timeout" },
+        "action": { "const": "resume" },
+        "executionId": { "$ref": "#/$defs/executionId" },
+        "expectedExecutionRevision": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "cancelRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "kind",
+        "requestNonce",
+        "semanticFingerprint",
+        "expectedBrokerEpoch",
+        "remainingTimeoutMs",
+        "action",
+        "executionId",
+        "expectedExecutionRevision"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/sequence-execution-broker/v1" },
+        "kind": { "const": "request" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "semanticFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "expectedBrokerEpoch": { "$ref": "#/$defs/nonce" },
+        "remainingTimeoutMs": { "$ref": "#/$defs/timeout" },
+        "action": { "const": "cancel" },
+        "executionId": { "$ref": "#/$defs/executionId" },
+        "expectedExecutionRevision": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "forgetRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "kind",
+        "requestNonce",
+        "semanticFingerprint",
+        "expectedBrokerEpoch",
+        "remainingTimeoutMs",
+        "action",
+        "executionId",
+        "expectedExecutionRevision",
+        "confirmed"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/sequence-execution-broker/v1" },
+        "kind": { "const": "request" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "semanticFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "expectedBrokerEpoch": { "$ref": "#/$defs/nonce" },
+        "remainingTimeoutMs": { "$ref": "#/$defs/timeout" },
+        "action": { "const": "forget" },
+        "executionId": { "$ref": "#/$defs/executionId" },
+        "expectedExecutionRevision": { "type": "integer", "minimum": 0 },
+        "confirmed": { "const": true }
+      }
+    },
+    "acceptedResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "kind",
+        "requestNonce",
+        "requestRevision",
+        "brokerEpoch",
+        "action",
+        "transportAccepted",
+        "businessAccepted",
+        "snapshot"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/sequence-execution-broker/v1" },
+        "kind": { "const": "accepted" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "requestRevision": { "const": 0 },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" },
+        "action": { "enum": ["start", "status", "resume", "cancel", "forget"] },
+        "transportAccepted": { "const": true },
+        "businessAccepted": { "const": true },
+        "snapshot": {
+          "$ref": "sequence-execution-journal-v1.schema.json#/$defs/executionSnapshot"
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "enum": [
+            "INVALID_ARGUMENT",
+            "BROKER_REQUEST_LEDGER_FULL",
+            "BROKER_UNAVAILABLE",
+            "NONCE_SEMANTIC_CONFLICT",
+            "SEQUENCE_EXECUTION_CAPACITY_EXHAUSTED",
+            "SEQUENCE_EXECUTION_NOT_FOUND",
+            "SEQUENCE_EXECUTION_FORGOTTEN",
+            "SEQUENCE_EXECUTION_NOT_RESUMABLE",
+            "SEQUENCE_EXECUTION_REVISION_CONFLICT",
+            "SEQUENCE_JOURNAL_CORRUPT",
+            "SEQUENCE_JOURNAL_UNAVAILABLE",
+            "SEQUENCE_RESUME_CONFLICT",
+            "OUTCOME_UNKNOWN"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "details": { "type": "object" }
+      }
+    },
+    "finalResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "kind",
+        "requestNonce",
+        "requestRevision",
+        "brokerEpoch",
+        "action",
+        "transportAccepted",
+        "businessAccepted",
+        "requestOutcome",
+        "snapshot",
+        "error"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/sequence-execution-broker/v1" },
+        "kind": { "const": "final" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "requestRevision": { "enum": [0, 1] },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" },
+        "action": { "enum": ["start", "status", "resume", "cancel", "forget"] },
+        "transportAccepted": { "type": "boolean" },
+        "businessAccepted": { "type": "boolean" },
+        "requestOutcome": { "enum": ["rejected", "completed", "unknown"] },
+        "snapshot": {
+          "oneOf": [
+            {
+              "$ref": "sequence-execution-journal-v1.schema.json#/$defs/executionSnapshot"
+            },
+            { "type": "null" }
+          ]
+        },
+        "error": {
+          "oneOf": [
+            { "$ref": "#/$defs/error" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

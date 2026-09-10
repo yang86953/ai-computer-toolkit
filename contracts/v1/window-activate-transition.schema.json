@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/activate-transition/v1/result",
+  "title": "UIX exact window activation transition result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "app", "verb", "capability", "targetId", "executionRealm",
+    "requiredExecutionRealm", "executionRealmCertified", "isolationRequirement",
+    "hostImpactPolicy", "data", "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "window.activate.transition@1" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "host-foreground" },
+    "requiredExecutionRealm": { "const": "host-foreground" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested", "focusObservationRequested"],
+          "properties": {
+            "activationRequested": { "const": true },
+            "focusObservationRequested": { "const": true }
+          }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider", "providerCache", "sameAuthenticatedConnectionUsed",
+        "windowGenerationFixed", "focusedFieldNegotiated", "providerPolling",
+        "waitProtocolUsed", "nativeIdentityExposed", "transportIdentityExposed",
+        "hostForegroundActivationRequested", "desktopInputInjected", "x11Used",
+        "fallback"
+      ],
+      "properties": {
+        "provider": { "const": "uix-agent-v1" },
+        "providerCache": { "const": "disabled" },
+        "sameAuthenticatedConnectionUsed": { "const": true },
+        "windowGenerationFixed": { "const": true },
+        "focusedFieldNegotiated": { "const": true },
+        "providerPolling": { "const": true },
+        "waitProtocolUsed": { "const": false },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "hostForegroundActivationRequested": { "const": true },
+        "desktopInputInjected": { "const": false },
+        "x11Used": { "const": false },
+        "fallback": { "const": "none" }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok", "contractVersion", "capability", "targetId", "outcome",
+        "dispatchState", "accepted", "activationRequestAccepted", "actionAccepted",
+        "actionRevision", "actionPresentedRevision", "actionSettled", "revision",
+        "presentedRevision", "focused", "focusObservedAfterDispatch", "focusConfirmed",
+        "focusMatchedAfterDispatch", "targetGenerationCurrentAfterDispatch", "pollCount",
+        "sameAuthenticatedConnectionUsed", "providerPolling", "waitProtocolUsed",
+        "effectConfirmed", "causalityConfirmed", "finalFocusStateGuaranteed",
+        "finalStateReached", "effectObservation", "windowReResolved",
+        "applicationPolicyEvaluated", "confirmationEvaluatedBeforeDiscovery",
+        "foregroundConsentEvaluatedBeforeDiscovery", "foregroundConsentRequired",
+        "foregroundActivationRequested", "automaticRetryProhibited", "retrySafe",
+        "pollIntervalMs", "timeoutMs", "executionRealm", "readOnly", "mutationAllowed",
+        "safety"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/window-activation-transition/v1" },
+        "capability": { "const": "window.activate.transition@1" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "outcome": { "const": "focused" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "activationRequestAccepted": { "const": true },
+        "actionAccepted": { "const": true },
+        "actionRevision": { "type": "integer", "minimum": 0 },
+        "actionPresentedRevision": { "type": "integer", "minimum": 0 },
+        "actionSettled": { "type": "boolean" },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "focused": { "const": true },
+        "focusObservedAfterDispatch": { "const": true },
+        "focusConfirmed": { "const": true },
+        "focusMatchedAfterDispatch": { "const": true },
+        "targetGenerationCurrentAfterDispatch": { "const": true },
+        "pollCount": { "type": "integer", "minimum": 1 },
+        "sameAuthenticatedConnectionUsed": { "const": true },
+        "providerPolling": { "const": true },
+        "waitProtocolUsed": { "const": false },
+        "effectConfirmed": { "const": false },
+        "causalityConfirmed": { "const": false },
+        "finalFocusStateGuaranteed": { "const": false },
+        "finalStateReached": { "const": false },
+        "effectObservation": {
+          "const": "same-connection-exact-generation-focused-after-dispatch-no-causal-or-persistence-claim"
+        },
+        "windowReResolved": { "const": true },
+        "applicationPolicyEvaluated": { "const": true },
+        "confirmationEvaluatedBeforeDiscovery": { "const": true },
+        "foregroundConsentEvaluatedBeforeDiscovery": { "const": true },
+        "foregroundConsentRequired": { "const": true },
+        "foregroundActivationRequested": { "const": true },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "pollIntervalMs": {
+          "type": "integer",
+          "minimum": 20,
+          "maximum": 500
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000
+        },
+        "executionRealm": { "const": "host-foreground" },
+        "readOnly": { "const": false },
+        "mutationAllowed": { "const": true },
+        "safety": { "$ref": "#/$defs/safety" }
+      }
+    }
+  }
+}

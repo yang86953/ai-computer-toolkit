@@ -1,0 +1,14 @@
+{
+  "contractVersion": "act/linux-application-launch-capability-golden/v2",
+  "capabilities": [
+    "application.discover@3",
+    "application.open@2"
+  ],
+  "policy": {
+    "windowsV1SemanticsReused": false,
+    "toolkitOwnedFixtureOnly": true,
+    "publicPathOrArgumentsAccepted": false,
+    "shellUsed": false,
+    "foregroundConsentRequired": true
+  }
+}

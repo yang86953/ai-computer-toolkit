@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/revision-wait/v1",
+  "title": "Exact window revision wait input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["condition"],
+  "properties": {
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "revision"],
+          "properties": {
+            "type": { "const": "revision-after" },
+            "revision": { "type": "integer", "minimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "revision"],
+          "properties": {
+            "type": { "const": "presented-at-least" },
+            "revision": { "type": "integer", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 30000,
+      "default": 30000
+    }
+  }
+}

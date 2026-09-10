@@ -1,0 +1,41 @@
+{
+  "contractVersion": "act/control/v1",
+  "maximumDepth": 2,
+  "maximumItems": 100,
+  "defaultTimeoutMs": 5000,
+  "maximumTimeoutMs": 30000,
+  "workerContractVersion": "act/observation-worker/v1",
+  "requiresProcessIsolation": true,
+  "timeoutError": "TIMEOUT",
+  "cancellationError": "CANCELLED",
+  "minimumNodeFactJaccard": 0.75,
+  "views": ["control", "raw"],
+  "forbiddenPublicFields": [
+    "hwnd",
+    "pid",
+    "processId",
+    "nativeHandle",
+    "bounds",
+    "value",
+    "textContent"
+  ],
+  "forbiddenCppApis": [
+    "SetForegroundWindow",
+    "SendInput",
+    "SetFocus",
+    "SetClipboardData",
+    "IUIAutomationInvokePattern",
+    "IUIAutomationValuePattern",
+    "IUIAutomationTextPattern",
+    "GetCurrentPattern"
+  ],
+  "forbiddenRustWorkerApis": [
+    "CurrentBoundingRectangle",
+    "CurrentProcessId",
+    "CurrentNativeWindowHandle",
+    "IUIAutomationInvokePattern",
+    "IUIAutomationValuePattern",
+    "IUIAutomationTextPattern",
+    "GetCurrentPattern"
+  ]
+}

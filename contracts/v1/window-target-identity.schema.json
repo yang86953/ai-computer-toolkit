@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/window-target-identity.schema.json",
+  "title": "Provider-neutral window target identity assurance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "assurance",
+    "processReuse",
+    "simultaneouslyLiveWindows",
+    "sameProcessRecycledWindowToken",
+    "generationOwner",
+    "mutationStopline"
+  ],
+  "properties": {
+    "contractVersion": { "const": "act/window-target-identity/v1" },
+    "assurance": { "const": "process-generation-plus-current-window-token" },
+    "processReuse": { "const": "detected-when-process-generation-available" },
+    "simultaneouslyLiveWindows": { "const": "distinct-current-window-token" },
+    "sameProcessRecycledWindowToken": { "const": "not-guaranteed" },
+    "generationOwner": { "const": "none" },
+    "mutationStopline": { "const": "lifetime-bound-atomic-dispatch-unavailable-for-arbitrary-windows" }
+  }
+}

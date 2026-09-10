@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/internal/linux-mpris-observation-worker-v1.schema.json",
+  "title": "Private Linux MPRIS observation worker request v1",
+  "$comment": "This schema describes the single request. The worker is feature-gated and fixture-only; its one terminal response is bounded to 2 MiB by the surrounding worker contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "operation",
+    "sessionBusAddress",
+    "brokerEpoch"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "const": "act/internal/linux-mpris-observation/v1"
+    },
+    "operation": {
+      "enum": ["discover", "state"]
+    },
+    "sessionBusAddress": {
+      "type": "string",
+      "minLength": 11,
+      "maxLength": 4096,
+      "pattern": "^unix:path=[^\\u0000\\r\\n;]+$"
+    },
+    "brokerEpoch": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "expectedBusGuid": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 32,
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "maximumItems": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 128,
+      "default": 128
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000,
+      "default": 30000
+    },
+    "targetId": {
+      "type": "string",
+      "pattern": "^s2:m:[0-9a-f]{16}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": { "const": "discover" }
+        },
+        "required": ["operation"]
+      },
+      "then": {
+        "not": { "required": ["targetId"] }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": { "const": "state" }
+        },
+        "required": ["operation"]
+      },
+      "then": {
+        "required": ["targetId"]
+      }
+    }
+  ]
+}

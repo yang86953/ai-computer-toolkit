@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/v1/execution-policy.schema.json",
+  "title": "Computer-control execution policy evidence v1",
+  "type": "object",
+  "required": [
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy"
+  ],
+  "properties": {
+    "executionRealm": { "$ref": "#/$defs/executionRealm" },
+    "requiredExecutionRealm": { "$ref": "#/$defs/executionRealm" },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": {
+      "enum": ["standard", "strict"]
+    },
+    "hostImpactPolicy": {
+      "enum": ["background-preferred", "strict-no-interference"]
+    }
+  },
+  "$defs": {
+    "executionRealm": {
+      "enum": [
+        "host-headless",
+        "host-background",
+        "same-session-no-focus",
+        "isolated-worker",
+        "host-foreground",
+        "none"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

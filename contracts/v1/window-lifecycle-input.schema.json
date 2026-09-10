@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/window-lifecycle-input.schema.json",
+  "title": "Provider-neutral exact window lifecycle input",
+  "oneOf": [
+    { "$ref": "#/$defs/restore" },
+    { "$ref": "#/$defs/minimize" },
+    { "$ref": "#/$defs/maximize" },
+    { "$ref": "#/$defs/move" },
+    { "$ref": "#/$defs/resize" }
+  ],
+  "$defs": {
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000,
+      "default": 2000
+    },
+    "coordinateSpace": {
+      "const": "screen-physical-px"
+    },
+    "restore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": { "const": "restore" },
+        "timeoutMs": { "$ref": "#/$defs/timeoutMs" }
+      }
+    },
+    "minimize": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": { "const": "minimize" },
+        "timeoutMs": { "$ref": "#/$defs/timeoutMs" }
+      }
+    },
+    "maximize": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": { "const": "maximize" },
+        "timeoutMs": { "$ref": "#/$defs/timeoutMs" }
+      }
+    },
+    "move": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "coordinateSpace", "x", "y"],
+      "properties": {
+        "action": { "const": "move" },
+        "coordinateSpace": { "$ref": "#/$defs/coordinateSpace" },
+        "x": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "y": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "timeoutMs": { "$ref": "#/$defs/timeoutMs" }
+      }
+    },
+    "resize": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "coordinateSpace", "width", "height"],
+      "properties": {
+        "action": { "const": "resize" },
+        "coordinateSpace": { "$ref": "#/$defs/coordinateSpace" },
+        "width": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "timeoutMs": { "$ref": "#/$defs/timeoutMs" }
+      }
+    }
+  }
+}

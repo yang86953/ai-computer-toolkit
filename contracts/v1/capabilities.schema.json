@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/v1/capabilities.schema.json",
+  "title": "Provider-neutral capability migration metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "implementation", "data"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/control/v1" },
+    "implementation": { "enum": ["rust", "cpp"] },
+    "data": {
+      "oneOf": [
+        { "$ref": "#/$defs/surface" },
+        { "$ref": "#/$defs/methods" },
+        { "$ref": "#/$defs/descriptor" }
+      ]
+    }
+  },
+  "$defs": {
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface", "productPromise", "supportLevel", "capabilities"],
+      "properties": {
+        "surface": { "const": "app" },
+        "productPromise": { "const": "broad-general-control-with-capability-degradation" },
+        "supportLevel": { "const": "L2-confirmed-background" },
+        "platformPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["desktopProtocol", "x11Supported", "xwaylandFallback", "fallback", "desktopStatus"],
+          "properties": {
+            "desktopProtocol": { "const": "wayland-only" },
+            "x11Supported": { "const": false },
+            "xwaylandFallback": { "const": false },
+            "fallback": { "const": "none" },
+            "desktopStatus": {
+              "enum": ["portal-interactive-screenshot-ready", "no-certified-desktop-provider"]
+            }
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "status", "risk"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$" },
+              "status": { "type": "string", "minLength": 1 },
+              "risk": { "enum": ["read", "read-sensitive", "mutation"] },
+              "linuxClassification": {
+                "enum": [
+                  "partial",
+                  "verified",
+                  "production-route-target-assessment-required",
+                  "live-acceptance-pending",
+                  "candidate",
+                  "conditional-or-permanent-unavailable"
+                ]
+              },
+              "executionDomain": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+              "requiresConfirmation": { "type": "boolean" },
+              "requiresForegroundConsent": { "type": "boolean" },
+              "constraint": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "methods": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["readOnly", "policy", "methods"],
+      "properties": {
+        "readOnly": { "const": true },
+        "policy": { "const": "capability-first-no-silent-fallback" },
+        "methods": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "executionScope", "availability", "summary", "cppStatus", "safetyBoundary"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "executionScope": { "type": "string", "minLength": 1 },
+              "availability": { "type": "string", "minLength": 1 },
+              "summary": { "type": "string", "minLength": 1 },
+              "cppStatus": { "type": "string", "minLength": 1 },
+              "safetyBoundary": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["readOnly", "descriptor"],
+      "properties": {
+        "readOnly": { "const": true },
+        "descriptor": {
+          "type": "object",
+          "oneOf": [
+            { "required": ["cppDirectoryStatus"] },
+            { "required": ["cppStatus", "cppExecutionEnabled"] }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/v1/sequence-input.schema.json",
+  "title": "Bounded sequence workflow input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["steps"],
+  "properties": {
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "continueOnError": { "type": "boolean", "default": false },
+    "maxResultBytes": {
+      "type": "integer",
+      "minimum": 256,
+      "maximum": 16777216,
+      "default": 1048576
+    },
+    "totalTimeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1920000,
+      "default": 300000
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verb", "app"],
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "verb": { "enum": ["status", "sessions", "inspect", "run"] },
+        "app": { "type": "string" },
+        "operation": { "type": ["string", "null"] },
+        "target": { "type": "object", "default": {} },
+        "args": { "type": "object", "default": {} },
+        "maxItems": { "type": "integer", "minimum": 0, "default": 50 },
+        "maxDepth": { "type": "integer", "minimum": 0, "default": 4 },
+        "confirmed": { "type": "boolean", "default": false },
+        "foregroundConsent": { "type": "boolean", "default": false },
+        "isolationRequirement": {
+          "enum": ["standard", "strict"],
+          "default": "standard"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 30000
+        },
+        "bindings": {
+          "type": "array",
+          "maxItems": 16,
+          "default": [],
+          "items": { "$ref": "#/$defs/binding" }
+        },
+        "preconditions": {
+          "type": "array",
+          "maxItems": 16,
+          "default": [],
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/existsPrecondition" },
+              { "$ref": "#/$defs/equalsPrecondition" }
+            ]
+          }
+        },
+        "postconditions": {
+          "type": "array",
+          "maxItems": 16,
+          "default": [],
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/existsPostcondition" },
+              { "$ref": "#/$defs/equalsPostcondition" }
+            ]
+          }
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["destination"],
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "required": ["sourceStep", "sourcePointer"],
+              "not": { "required": ["template"] }
+            },
+            {
+              "required": ["template"],
+              "not": {
+                "anyOf": [
+                  { "required": ["sourceStep"] },
+                  { "required": ["sourcePointer"] }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "required": ["destinationField"],
+              "not": { "required": ["destinationPointer"] }
+            },
+            {
+              "required": ["destinationPointer"],
+              "not": { "required": ["destinationField"] }
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "sourceStep": { "type": "integer", "minimum": 1 },
+        "sourcePointer": { "type": "string", "maxLength": 256 },
+        "template": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "contains": { "$ref": "#/$defs/sourceTemplateSegment" },
+          "minContains": 1,
+          "maxContains": 16,
+          "items": { "$ref": "#/$defs/templateSegment" }
+        },
+        "destination": { "enum": ["target", "args"] },
+        "destinationField": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "destinationPointer": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "templateSegment": {
+      "oneOf": [
+        { "$ref": "#/$defs/literalTemplateSegment" },
+        { "$ref": "#/$defs/sourceTemplateSegment" }
+      ]
+    },
+    "literalTemplateSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "text"],
+      "properties": {
+        "kind": { "const": "literal" },
+        "text": { "type": "string", "maxLength": 1024 }
+      }
+    },
+    "sourceTemplateSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sourceStep", "sourcePointer"],
+      "properties": {
+        "kind": { "const": "source" },
+        "sourceStep": { "type": "integer", "minimum": 1 },
+        "sourcePointer": { "type": "string", "maxLength": 256 }
+      }
+    },
+    "existsPrecondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operator", "sourceStep", "pointer"],
+      "properties": {
+        "operator": { "const": "exists" },
+        "sourceStep": { "type": "integer", "minimum": 1 },
+        "pointer": { "type": "string", "maxLength": 256 }
+      }
+    },
+    "equalsPrecondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operator", "sourceStep", "pointer", "expected"],
+      "properties": {
+        "operator": { "const": "equals" },
+        "sourceStep": { "type": "integer", "minimum": 1 },
+        "pointer": { "type": "string", "maxLength": 256 },
+        "expected": {}
+      }
+    },
+    "existsPostcondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operator", "pointer"],
+      "properties": {
+        "operator": { "const": "exists" },
+        "pointer": { "type": "string", "maxLength": 256 }
+      }
+    },
+    "equalsPostcondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operator", "pointer", "expected"],
+      "properties": {
+        "operator": { "const": "equals" },
+        "pointer": { "type": "string", "maxLength": 256 },
+        "expected": {}
+      }
+    }
+  }
+}

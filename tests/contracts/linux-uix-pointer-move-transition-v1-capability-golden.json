@@ -1,0 +1,6 @@
+{
+  "contractVersion": "act/linux-uix-pointer-move-transition-capability-golden/v1",
+  "capabilities": [
+    "ui.input.pointer.move.transition@1"
+  ]
+}

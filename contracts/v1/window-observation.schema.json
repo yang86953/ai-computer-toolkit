@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/window-observation.schema.json",
+  "title": "Read-only visible titled window observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "surface",
+    "capability",
+    "readOnly",
+    "foregroundUnchanged",
+    "targetIdentity",
+    "count",
+    "total",
+    "truncated",
+    "sessions"
+  ],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "surface": { "const": "app" },
+    "capability": { "const": "window.discover@1" },
+    "readOnly": { "const": true },
+    "foregroundUnchanged": { "const": true },
+    "targetIdentity": { "const": "opaque-versioned-session-id" },
+    "count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "total": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "truncated": { "type": "boolean" },
+    "sessions": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "kind",
+          "targetKind",
+          "applicationName",
+          "title",
+          "visible",
+          "targetIdentityStrength",
+          "capabilities"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "pattern": "^s2:w:[0-9a-f]{16}$"
+          },
+          "kind": { "const": "window" },
+          "targetKind": { "const": "application-window" },
+          "applicationName": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "visible": { "const": true },
+          "targetIdentityStrength": { "$ref": "window-target-identity.schema.json" },
+          "capabilities": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "not": {
+                  "enum": [
+                    "hwnd",
+                    "processId",
+                    "className",
+                    "bounds",
+                    "path",
+                    "providerId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

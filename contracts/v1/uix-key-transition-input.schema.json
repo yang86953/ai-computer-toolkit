@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://ui/key-transition/v1",
+  "title": "UIX cooperative application-internal key transition input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["key", "postcondition"],
+  "properties": {
+    "key": { "$ref": "#/$defs/keyName" },
+    "modifiers": {
+      "type": "array",
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "enum": ["control", "alt", "shift", "super"] },
+      "default": []
+    },
+    "postcondition": { "$ref": "#/$defs/postcondition" },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 30000,
+      "default": 30000
+    }
+  },
+  "$defs": {
+    "keyName": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-z0-9]$" },
+        { "type": "string", "pattern": "^f([1-9]|1[0-2])$" },
+        {
+          "enum": [
+            "enter", "tab", "escape", "backspace", "delete", "insert", "space",
+            "left", "up", "right", "down", "home", "end", "page-up", "page-down",
+            "control", "alt", "shift", "super"
+          ]
+        }
+      ]
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "automationId": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "focused": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "action": { "type": "string", "minLength": 1, "maxLength": 64 }
+      },
+      "anyOf": [
+        { "required": ["automationId"] },
+        { "required": ["role"] },
+        { "required": ["name"] },
+        { "required": ["focused"] },
+        { "required": ["enabled"] },
+        { "required": ["action"] }
+      ]
+    },
+    "postcondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selector", "condition"],
+      "properties": {
+        "selector": { "$ref": "#/$defs/selector" },
+        "condition": { "enum": ["unique", "missing"] }
+      }
+    }
+  }
+}

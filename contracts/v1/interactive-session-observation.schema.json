@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/v1/interactive-session-observation.schema.json",
+  "title": "Authorized independent interactive session observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sessionId",
+    "targetKind",
+    "state",
+    "executionRealm",
+    "isolationKind",
+    "capabilities",
+    "identityFreshness"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "pattern": "^s2:i:[0-9a-f]{16}$"
+    },
+    "targetKind": {
+      "const": "independent-interactive-session"
+    },
+    "state": {
+      "enum": ["available", "permission-blocked", "unavailable"]
+    },
+    "executionRealm": {
+      "const": "isolated-worker"
+    },
+    "isolationKind": {
+      "const": "independent-interactive-session"
+    },
+    "capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "ui.input.key@1",
+          "ui.input.pointer@1",
+          "window.lifecycle@1",
+          "window.close@1"
+        ]
+      }
+    },
+    "identityFreshness": {
+      "const": "authorization-and-session-lifetime"
+    }
+  }
+}

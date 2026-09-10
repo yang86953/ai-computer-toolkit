@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v3/window-metadata.schema.json",
+  "title": "Exact opt-in UIX Agent window metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "capability", "coverage", "executionDomain", "readOnly", "mutationAllowed", "window", "safety"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/window-metadata/v3" },
+    "capability": { "const": "window.metadata.read@3" },
+    "coverage": { "const": "opt-in-uix-agent-applications" },
+    "executionDomain": { "const": "same-session-no-focus" },
+    "readOnly": { "const": true },
+    "mutationAllowed": { "const": false },
+    "window": { "$ref": "window-observation.schema.json#/$defs/window" },
+    "safety": { "$ref": "window-observation.schema.json#/$defs/safety" }
+  }
+}

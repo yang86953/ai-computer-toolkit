@@ -1,0 +1,64 @@
+{
+  "contractVersion": "act/linux-process-termination-security/v2",
+  "capability": "process.terminate.graceful@2",
+  "owner": "Linux Process Termination Module",
+  "policy": {
+    "confirmationBeforeInputAndTarget": true,
+    "processOwnerGenerationRequired": true,
+    "sameNonRootUidRequired": true,
+    "effectiveCapKillDenied": true,
+    "namespaceInitDenied": true,
+    "currentAndVisibleAncestorsDenied": true,
+    "pidfdGenerationBindingRequired": true,
+    "forceFallback": false,
+    "automaticRetryAfterAcceptance": false
+  },
+  "sourceAssertions": [
+    {
+      "path": "src/adapters/linux/procfs.rs",
+      "requiredTokens": [
+        "/proc/sys/kernel/random/boot_id",
+        "/proc/self/ns/pid",
+        "MetadataExt",
+        "owner_epoch",
+        "process_identity"
+      ]
+    },
+    {
+      "path": "src/adapters/linux/process_termination_pidfd.rs",
+      "requiredTokens": [
+        "current_credential_facts",
+        "CAP_KILL_BIT",
+        "namespace_pids.contains(&1)",
+        "pidfd_send_signal",
+        "PollFlags::HUP"
+      ]
+    },
+    {
+      "path": "src/modules/linux_process_termination.rs",
+      "requiredTokens": [
+        "if !confirmed",
+        "confirmationEvaluatedBeforeTargetAccess",
+        "automaticRetryProhibited"
+      ]
+    },
+    {
+      "path": "src/policy_linux.rs",
+      "requiredTokens": [
+        "operation.requires_confirmation",
+        "validate_fields(&request.target"
+      ]
+    }
+  ],
+  "forbiddenPublicFields": [
+    "processId",
+    "ownerUid",
+    "signalNumber",
+    "nativePid",
+    "fileDescriptor",
+    "bootId",
+    "ownerEpoch",
+    "path",
+    "argv"
+  ]
+}

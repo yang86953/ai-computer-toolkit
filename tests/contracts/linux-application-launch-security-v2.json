@@ -1,0 +1,46 @@
+{
+  "contractVersion": "act/linux-application-launch-security/v2",
+  "capability": "application.open@2",
+  "discoveryCapability": "application.discover@3",
+  "scope": "toolkit-owned-self-executable-fixture-only",
+  "requestOrder": [
+    "confirmation",
+    "foreground-consent",
+    "input",
+    "opaque-target",
+    "desktop-entry-use-time-resolution",
+    "dispatch"
+  ],
+  "publicInput": {
+    "emptyObjectOnly": true,
+    "path": false,
+    "argv": false,
+    "environment": false,
+    "workingDirectory": false,
+    "uri": false,
+    "desktopFileId": false
+  },
+  "dispatch": {
+    "executable": "current-toolkit-image-via-proc-self-exe",
+    "arguments": "single-fixed-private-fixture-argument",
+    "environment": "empty",
+    "workingDirectory": "/",
+    "stdio": "null",
+    "shell": false,
+    "pathSearch": false,
+    "gioFallback": false,
+    "xdgOpenFallback": false,
+    "portalFallback": false
+  },
+  "unsupported": [
+    "ordinary-user-applications",
+    "dbus-activation",
+    "field-code-expansion",
+    "scripts-and-interpreter-wrappers",
+    "caller-controlled-files-or-urls"
+  ],
+  "acceptedFailure": {
+    "automaticRetryProhibited": true,
+    "outcomeUnknownOnMissingFinal": true
+  }
+}

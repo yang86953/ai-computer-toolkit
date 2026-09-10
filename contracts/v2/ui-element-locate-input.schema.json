@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/ui-element-locate-input.schema.json",
+  "title": "Cooperative UIX semantic element location input v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["selector"],
+  "properties": {
+    "selector": { "$ref": "#/$defs/selector" }
+  },
+  "$defs": {
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "automationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "$comment": "Runtime additionally enforces at most 512 UTF-8 bytes."
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "$comment": "Runtime additionally enforces at most 64 UTF-8 bytes."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "$comment": "Runtime additionally enforces at most 256 UTF-8 bytes."
+        },
+        "focused": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "$comment": "Runtime additionally enforces at most 64 UTF-8 bytes."
+        }
+      },
+      "anyOf": [
+        { "required": ["automationId"] },
+        { "required": ["role"] },
+        { "required": ["name"] },
+        { "required": ["focused"] },
+        { "required": ["enabled"] },
+        { "required": ["action"] }
+      ]
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://application/session-discover/v1",
+  "title": "Application session discovery compatibility result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "app",
+    "ok",
+    "surface",
+    "capability",
+    "readOnly",
+    "foregroundUnchanged",
+    "targetIdentity",
+    "count",
+    "total",
+    "truncated",
+    "sessions",
+    "warnings",
+    "data"
+  ],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "app": { "const": "app" },
+    "ok": { "const": true },
+    "surface": { "const": "app" },
+    "capability": { "const": "application.session.discover@1" },
+    "readOnly": { "const": true },
+    "foregroundUnchanged": { "type": "boolean" },
+    "targetIdentity": { "const": "opaque-versioned-session-id" },
+    "count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "total": { "type": "integer", "minimum": 0 },
+    "truncated": { "type": "boolean" },
+    "sessions": { "$ref": "#/$defs/sessions" },
+    "warnings": { "$ref": "#/$defs/warnings" },
+    "data": { "$ref": "#/$defs/data" }
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9.-]+@[1-9][0-9]*$" }
+      }
+    },
+    "session": {
+      "type": "object",
+      "required": ["sessionId", "kind", "capabilities"],
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "window" } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["targetIdentityStrength"] }
+        }
+      ],
+      "properties": {
+        "sessionId": { "type": "string", "pattern": "^s2:[a-z]:[0-9a-f]{16}$" },
+        "kind": { "enum": ["host", "application", "document", "window", "control"] },
+        "targetIdentityStrength": { "$ref": "window-target-identity.schema.json" },
+        "capabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/capability" }
+        }
+      }
+    },
+    "sessions": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/session" }
+    },
+    "warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/warning" }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface",
+        "capability",
+        "readOnly",
+        "foregroundUnchanged",
+        "targetIdentity",
+        "count",
+        "total",
+        "truncated",
+        "sessions",
+        "warnings"
+      ],
+      "properties": {
+        "surface": { "const": "app" },
+        "capability": { "const": "application.session.discover@1" },
+        "readOnly": { "const": true },
+        "foregroundUnchanged": { "type": "boolean" },
+        "targetIdentity": { "const": "opaque-versioned-session-id" },
+        "count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "total": { "type": "integer", "minimum": 0 },
+        "truncated": { "type": "boolean" },
+        "sessions": { "$ref": "#/$defs/sessions" },
+        "warnings": { "$ref": "#/$defs/warnings" }
+      }
+    }
+  }
+}

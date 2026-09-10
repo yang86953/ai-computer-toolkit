@@ -1,0 +1,28 @@
+{
+  "contractVersion": "act/linux-uix-window-activation-transition-capability-golden/v1",
+  "capabilities": [
+    "window.activate.transition@1"
+  ],
+  "platform": "linux",
+  "status": "production-route-protocol-fixture-verified-owner-foreground-acceptance-deferred",
+  "executionRealm": "host-foreground",
+  "coverage": "opt-in-uix-agent-applications",
+  "target": "exact-window-generation",
+  "requiredWindowAction": "activate_window",
+  "requiredNegotiation": [
+    "focused"
+  ],
+  "sameAuthenticatedConnectionUsed": true,
+  "providerPolling": true,
+  "waitProtocolUsed": false,
+  "foregroundConsentRequired": true,
+  "foregroundActivationRequested": true,
+  "requestAcceptedDoesNotGuaranteePersistentFocus": true,
+  "causalityConfirmed": false,
+  "finalFocusStateGuaranteed": false,
+  "desktopInputInjected": false,
+  "nativeIdentityExposed": false,
+  "transportIdentityExposed": false,
+  "x11Used": false,
+  "fallback": "none"
+}

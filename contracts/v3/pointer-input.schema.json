@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v3/pointer-input.schema.json",
+  "title": "Portal desktop-session bounded relative pointer input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["coordinateSpace", "steps"],
+  "properties": {
+    "coordinateSpace": { "const": "relative-logical-px" },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/move" },
+          { "$ref": "#/$defs/buttonStep" },
+          { "$ref": "#/$defs/click" },
+          { "$ref": "#/$defs/scroll" },
+          { "$ref": "#/$defs/drag" }
+        ]
+      }
+    },
+    "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 2000 }
+  },
+  "$defs": {
+    "button": { "enum": ["left", "right", "middle"] },
+    "delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "integer", "minimum": -65535, "maximum": 65535 },
+        "y": { "type": "integer", "minimum": -65535, "maximum": 65535 }
+      },
+      "not": { "properties": { "x": { "const": 0 }, "y": { "const": 0 } } }
+    },
+    "move": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "delta"],
+      "properties": {
+        "type": { "const": "move" },
+        "delta": { "$ref": "#/$defs/delta" }
+      }
+    },
+    "buttonStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "button", "phase"],
+      "properties": {
+        "type": { "const": "button" },
+        "button": { "$ref": "#/$defs/button" },
+        "phase": { "enum": ["down", "up"] }
+      }
+    },
+    "click": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "button"],
+      "properties": {
+        "type": { "const": "click" },
+        "button": { "$ref": "#/$defs/button" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 2, "default": 1 },
+        "intervalMs": { "type": "integer", "minimum": 0, "maximum": 500, "default": 100 }
+      }
+    },
+    "scroll": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "axis", "ticks"],
+      "properties": {
+        "type": { "const": "scroll" },
+        "axis": { "enum": ["vertical", "horizontal"] },
+        "ticks": {
+          "type": "integer",
+          "anyOf": [
+            { "minimum": -120, "maximum": -1 },
+            { "minimum": 1, "maximum": 120 }
+          ]
+        }
+      }
+    },
+    "drag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "button", "delta"],
+      "properties": {
+        "type": { "const": "drag" },
+        "button": { "$ref": "#/$defs/button" },
+        "delta": { "$ref": "#/$defs/delta" },
+        "durationMs": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 250 },
+        "samples": { "type": "integer", "minimum": 1, "maximum": 240, "default": 12 }
+      }
+    }
+  }
+}

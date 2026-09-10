@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/window-target-identity.schema.json",
+  "title": "AT-SPI partial exporter window target identity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "provider",
+    "coverage",
+    "freshness",
+    "mutationAllowed",
+    "sameOwnerObjectPathReuse",
+    "generationOwner",
+    "nativeIdentityExposed"
+  ],
+  "properties": {
+    "contractVersion": { "const": "act/window-target-identity/v2" },
+    "provider": { "const": "at-spi2" },
+    "coverage": { "const": "partial-accessibility-exporters" },
+    "freshness": { "const": "read-only-inspection-snapshot" },
+    "mutationAllowed": { "const": false },
+    "sameOwnerObjectPathReuse": { "const": "not-guaranteed" },
+    "generationOwner": { "const": "none" },
+    "nativeIdentityExposed": { "const": false }
+  }
+}

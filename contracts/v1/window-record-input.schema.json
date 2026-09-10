@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/window-record-input.schema.json",
+  "title": "Bounded exact-window recording input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path"],
+  "properties": {
+    "path": { "type": "string", "pattern": "\\.[mM][pP]4$" },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 300000,
+      "default": 30000
+    },
+    "fps": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 2
+    },
+    "maxWidth": {
+      "type": "integer",
+      "minimum": 320,
+      "maximum": 1920,
+      "default": 960
+    },
+    "quality": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 75
+    },
+    "maxKeyframes": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 20,
+      "default": 8
+    },
+    "changeThreshold": {
+      "type": "number",
+      "minimum": 0.005,
+      "maximum": 0.5,
+      "default": 0.035
+    },
+    "analysisDir": { "type": "string", "minLength": 1 },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 250,
+      "maximum": 30000,
+      "default": 5000
+    },
+    "overwrite": { "type": "boolean", "default": false }
+  }
+}

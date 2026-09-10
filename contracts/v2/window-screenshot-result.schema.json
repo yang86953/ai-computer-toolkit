@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/screenshot-result/v2",
+  "title": "UIX exact-window application-surface screenshot result v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "app", "verb", "capability", "targetId", "executionRealm",
+    "requiredExecutionRealm", "executionRealmCertified", "isolationRequirement",
+    "hostImpactPolicy", "data", "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "screenshot" },
+    "capability": { "const": "window.screenshot@2" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested", "captureSource"],
+          "properties": {
+            "activationRequested": { "const": false },
+            "captureSource": { "const": "application-surface" }
+          }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability", "targetId", "format", "path", "bytes", "width", "height",
+        "pngDigest", "outcome", "captureCompleted", "artifactCommitted",
+        "windowReResolved", "generationRevalidatedAfterCapture", "atomicOutput",
+        "overwriteConfirmed", "replacedExisting",
+        "confirmationEvaluatedBeforeInputAndDiscovery", "foregroundConsentRequired",
+        "foregroundActivationRequested", "desktopInputInjected", "cursorCaptured",
+        "presentedSurfaceRequired", "systemCaptureIndicatorRequested",
+        "automaticRetryProhibited", "retrySafe", "timeoutMs", "executionRealm", "safety"
+      ],
+      "properties": {
+        "capability": { "const": "window.screenshot@2" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "format": { "const": "png" },
+        "path": { "type": "string", "minLength": 5, "maxLength": 32767, "pattern": "\\.png$" },
+        "bytes": { "type": "integer", "minimum": 24, "maximum": 33554432 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 16384 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 16384 },
+        "pngDigest": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+        "outcome": { "const": "completed" },
+        "captureCompleted": { "const": true },
+        "artifactCommitted": { "const": true },
+        "windowReResolved": { "const": true },
+        "generationRevalidatedAfterCapture": { "const": true },
+        "atomicOutput": { "const": true },
+        "overwriteConfirmed": { "type": "boolean" },
+        "replacedExisting": { "type": "boolean" },
+        "confirmationEvaluatedBeforeInputAndDiscovery": { "const": true },
+        "foregroundConsentRequired": { "const": false },
+        "foregroundActivationRequested": { "const": false },
+        "desktopInputInjected": { "const": false },
+        "cursorCaptured": { "const": false },
+        "presentedSurfaceRequired": { "const": true },
+        "systemCaptureIndicatorRequested": { "const": false },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "timeoutMs": { "type": "integer", "minimum": 1000, "maximum": 30000 },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "safety": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sourceScope", "providerCache", "base64Exposed", "nativeIdentityExposed",
+            "transportIdentityExposed", "globalWindowCaptureClaimed",
+            "desktopPixelsCaptured", "x11Used", "fallback"
+          ],
+          "properties": {
+            "sourceScope": { "const": "uix-application-surface" },
+            "providerCache": { "const": "disabled" },
+            "base64Exposed": { "const": false },
+            "nativeIdentityExposed": { "const": false },
+            "transportIdentityExposed": { "const": false },
+            "globalWindowCaptureClaimed": { "const": false },
+            "desktopPixelsCaptured": { "const": false },
+            "x11Used": { "const": false },
+            "fallback": { "const": "none" }
+          }
+        }
+      }
+    }
+  }
+}

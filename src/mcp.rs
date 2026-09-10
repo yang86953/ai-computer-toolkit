@@ -1,0 +1,16 @@
+//! MCP（Model Context Protocol）stdio 控制面。
+//!
+//! 公开控制面只有这一条：标准 MCP JSON-RPC 服务，工具直接操作前台桌面。
+//! 这里不提供后台隔离路线，也不把应用级脚本执行当作键鼠操作的替代品。
+
+mod broker;
+mod desktop;
+mod failure;
+mod server;
+mod tools;
+
+pub use server::run_stdio;
+pub use tools::tool_catalog;
+
+#[cfg(test)]
+mod tests;

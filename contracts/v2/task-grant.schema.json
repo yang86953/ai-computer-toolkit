@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://task/grant/v1",
+  "title": "Trusted startup task authorization grant",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "taskId", "authorizationSource", "totalTimeoutMs", "maxExecutions", "permissions"],
+  "properties": {
+    "contractVersion": { "const": "act/task-grant/v1" },
+    "taskId": { "type": "string", "pattern": "^t2:[0-9a-f]{32}$" },
+    "authorizationSource": { "const": "user-task" },
+    "totalTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 1920000 },
+    "maxExecutions": { "type": "integer", "minimum": 1, "maximum": 64 },
+    "allowDiscovery": { "type": "boolean", "default": false },
+    "permissions": {
+      "type": "array", "maxItems": 64,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["capability", "targetId"],
+        "properties": {
+          "capability": { "type": "string", "minLength": 1 },
+          "targetId": { "type": "string", "maxLength": 128, "pattern": "^s2:[A-Za-z0-9:]*$" },
+          "requiredInput": { "type": "object", "default": {} }
+        }
+      }
+    }
+  }
+}

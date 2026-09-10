@@ -1,0 +1,16 @@
+{
+  "contractVersion": "act/linux-process-capability-golden/v2",
+  "capabilities": [
+    "process.terminate.force@2",
+    "process.terminate.graceful@2"
+  ],
+  "policy": {
+    "windowsV1SemanticsReused": false,
+    "nativeIdentityPublic": false,
+    "forceFallback": false,
+    "processOwnerGenerationRequired": true,
+    "explicitForceSelectionRequired": true,
+    "sameNonRootUidRequired": true,
+    "pidfdRequired": true
+  }
+}

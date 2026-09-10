@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/internal/browser-page-command-worker-v1.schema.json",
+  "title": "Browser Page Command Worker Protocol v1",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/$defs/command" },
+    { "$ref": "#/$defs/cancelCommand" },
+    { "$ref": "#/$defs/commandAccepted" },
+    { "$ref": "#/$defs/commandFinal" }
+  ],
+  "$defs": {
+    "contractVersion": { "const": "act/browser-page-command-worker/v1" },
+    "nonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "sessionId": { "type": "string", "pattern": "^s2:bs:[0-9a-f]{32}$" },
+    "pageRef": { "type": "string", "pattern": "^w1:bp:[0-9a-f]{32}$" },
+    "elementRef": { "type": "string", "pattern": "^w1:be:[0-9a-f]{32}$" },
+    "safeError": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "details": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "selector": {
+      "type": "object",
+      "required": ["role", "name", "text", "exact"],
+      "properties": {
+        "role": { "type": ["string", "null"], "maxLength": 1024 },
+        "name": { "type": ["string", "null"], "maxLength": 1024 },
+        "text": { "type": ["string", "null"], "maxLength": 1024 },
+        "exact": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "waitCondition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": { "kind": { "const": "document-ready" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "selector"],
+          "properties": {
+            "kind": { "const": "element-present" },
+            "selector": { "$ref": "#/$defs/selector" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "text", "exact"],
+          "properties": {
+            "kind": { "const": "text-present" },
+            "text": { "type": "string", "minLength": 1, "maxLength": 1024 },
+            "exact": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "operation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "url"],
+          "properties": {
+            "kind": { "const": "navigate" },
+            "url": { "type": "string", "minLength": 1, "maxLength": 8192, "pattern": "^https?://" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "condition"],
+          "properties": {
+            "kind": { "const": "wait" },
+            "condition": { "$ref": "#/$defs/waitCondition" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "selector", "maxResults"],
+          "properties": {
+            "kind": { "const": "query" },
+            "selector": { "$ref": "#/$defs/selector" },
+            "maxResults": { "type": "integer", "minimum": 1, "maximum": 100 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "confirmed", "elementRef"],
+          "properties": {
+            "kind": { "const": "click" },
+            "confirmed": { "const": true },
+            "elementRef": { "$ref": "#/$defs/elementRef" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "confirmed", "elementRef", "text", "replace"],
+          "properties": {
+            "kind": { "const": "type" },
+            "confirmed": { "const": true },
+            "elementRef": { "$ref": "#/$defs/elementRef" },
+            "text": { "type": "string", "minLength": 1, "maxLength": 16384 },
+            "replace": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": { "kind": { "const": "screenshot" } },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "command": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "sessionId", "requestNonce", "timeoutMs", "pageRef", "navigationGeneration", "operation"],
+      "properties": {
+        "kind": { "const": "command" },
+        "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000 },
+        "pageRef": { "oneOf": [{ "$ref": "#/$defs/pageRef" }, { "type": "null" }] },
+        "navigationGeneration": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "operation": { "$ref": "#/$defs/operation" }
+      },
+      "additionalProperties": false
+    },
+    "cancelCommand": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "sessionId", "requestNonce"],
+      "properties": {
+        "kind": { "const": "cancel-command" },
+        "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "requestNonce": { "$ref": "#/$defs/nonce" }
+      },
+      "additionalProperties": false
+    },
+    "operationKind": { "enum": ["navigate", "wait", "query", "click", "type", "screenshot"] },
+    "commandAccepted": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "requestNonce", "operation", "dispatchAccepted", "completed"],
+      "properties": {
+        "kind": { "const": "command-accepted" },
+        "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "$ref": "#/$defs/operationKind" },
+        "dispatchAccepted": { "const": true },
+        "completed": { "const": false }
+      },
+      "additionalProperties": false
+    },
+    "commandFinal": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "requestNonce", "operation", "outcome", "completed", "retrySafe", "acceptedMayHaveOccurred", "navigationGeneration", "data", "error"],
+      "properties": {
+        "kind": { "const": "command-final" },
+        "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "$ref": "#/$defs/operationKind" },
+        "outcome": { "enum": ["completed", "not-dispatched", "failed", "unknown"] },
+        "completed": { "type": "boolean" },
+        "retrySafe": { "type": "boolean" },
+        "acceptedMayHaveOccurred": { "type": "boolean" },
+        "navigationGeneration": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "data": { "type": ["object", "null"] },
+        "error": { "oneOf": [{ "$ref": "#/$defs/safeError" }, { "type": "null" }] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

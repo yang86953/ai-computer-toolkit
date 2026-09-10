@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/browser-screenshot.schema.json",
+  "title": "Isolated headless browser screenshot result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "app",
+    "operation",
+    "capability",
+    "path",
+    "bytes",
+    "width",
+    "height",
+    "isolatedProfile",
+    "atomicOutput",
+    "overwriteConfirmed",
+    "foreground",
+    "runtimePathExposed",
+    "nativeIdentifiersExposed",
+    "compatibilityShape"
+  ],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "ok": { "const": true },
+    "app": { "const": "browser" },
+    "operation": { "const": "screenshot" },
+    "capability": { "const": "browser.screenshot@1" },
+    "path": { "type": "string", "minLength": 5 },
+    "bytes": { "type": "integer", "minimum": 24, "maximum": 67108864 },
+    "width": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "height": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "isolatedProfile": { "const": true },
+    "atomicOutput": { "const": true },
+    "overwriteConfirmed": { "type": "boolean" },
+    "foreground": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unchanged", "nativeIdentifiersExposed"],
+      "properties": {
+        "unchanged": { "const": true },
+        "nativeIdentifiersExposed": { "const": false }
+      }
+    },
+    "runtimePathExposed": { "const": false },
+    "nativeIdentifiersExposed": { "const": false },
+    "compatibilityShape": {
+      "const": "isolated-headless-browser-v1"
+    }
+  }
+}

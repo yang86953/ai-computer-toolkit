@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/state-read-result/v1",
+  "title": "UIX framework-current window state read result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy",
+    "data",
+    "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "read" },
+    "capability": { "const": "window.state.read@1" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested"],
+          "properties": { "activationRequested": { "const": false } }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "capability",
+        "targetId",
+        "observationSource",
+        "coordinateSpace",
+        "visible",
+        "presentable",
+        "clientSize",
+        "windowState",
+        "compositorFinalStateConfirmed",
+        "targetReResolved",
+        "executionRealm",
+        "readOnly",
+        "mutationAllowed",
+        "safety"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/window-state-read/v1" },
+        "capability": { "const": "window.state.read@1" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "observationSource": { "const": "uix-framework-current" },
+        "coordinateSpace": { "const": "client-logical-px" },
+        "visible": { "type": "boolean" },
+        "presentable": { "type": "boolean" },
+        "clientSize": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height"],
+          "properties": {
+            "width": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+            "height": { "type": "integer", "minimum": 0, "maximum": 2147483647 }
+          }
+        },
+        "windowState": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maximized", "minimized", "fullscreen"],
+          "properties": {
+            "maximized": { "type": "boolean" },
+            "minimized": { "type": "boolean" },
+            "fullscreen": { "type": "boolean" }
+          }
+        },
+        "compositorFinalStateConfirmed": { "const": false },
+        "targetReResolved": { "const": true },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "readOnly": { "const": true },
+        "mutationAllowed": { "const": false },
+        "safety": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "providerCache",
+            "nativeIdentityExposed",
+            "transportIdentityExposed",
+            "foregroundActivationRequested",
+            "desktopInputInjected",
+            "globalWindowStateClaimed",
+            "x11Used",
+            "fallback"
+          ],
+          "properties": {
+            "providerCache": { "const": "disabled" },
+            "nativeIdentityExposed": { "const": false },
+            "transportIdentityExposed": { "const": false },
+            "foregroundActivationRequested": { "const": false },
+            "desktopInputInjected": { "const": false },
+            "globalWindowStateClaimed": { "const": false },
+            "x11Used": { "const": false },
+            "fallback": { "const": "none" }
+          }
+        }
+      }
+    }
+  }
+}

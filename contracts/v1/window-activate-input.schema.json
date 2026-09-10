@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/activate/v1",
+  "title": "UIX exact-window activation input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 30000,
+      "default": 30000
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://ui/input-sequence/v1",
+  "title": "UIX cooperative application-internal key and pointer sequence input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["coordinateSpace", "steps"],
+  "properties": {
+    "coordinateSpace": { "const": "client-logical-px" },
+    "steps": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/step" },
+      "description": "Rust validation additionally requires at least one press and at least one pointer move or click."
+    },
+    "intervalMs": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 500,
+      "default": 0
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 30000,
+      "default": 30000,
+      "description": "Rust validation additionally requires timeoutMs >= (steps.length - 1) * intervalMs + 100."
+    }
+  },
+  "$defs": {
+    "keyName": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-z0-9]$" },
+        { "type": "string", "pattern": "^f([1-9]|1[0-2])$" },
+        {
+          "enum": [
+            "enter", "tab", "escape", "backspace", "delete", "insert", "space",
+            "left", "up", "right", "down", "home", "end", "page-up", "page-down",
+            "control", "alt", "shift", "super"
+          ]
+        }
+      ]
+    },
+    "press": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "key"],
+      "properties": {
+        "type": { "const": "press" },
+        "key": { "$ref": "#/$defs/keyName" },
+        "modifiers": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "enum": ["alt", "control", "shift", "super"] },
+          "default": []
+        }
+      }
+    },
+    "pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "x", "y"],
+      "properties": {
+        "type": { "enum": ["move", "click"] },
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "The coordinate must be finite."
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "The coordinate must be finite."
+        }
+      }
+    },
+    "step": {
+      "oneOf": [
+        { "$ref": "#/$defs/press" },
+        { "$ref": "#/$defs/pointer" }
+      ]
+    }
+  }
+}

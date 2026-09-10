@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/pointer-input.schema.json",
+  "title": "Provider-neutral bounded pointer input",
+  "oneOf": [
+    { "$ref": "#/$defs/sequence" },
+    { "$ref": "#/$defs/legacyClick" }
+  ],
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "y": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 }
+      }
+    },
+    "button": { "enum": ["left", "right", "middle"] },
+    "move": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "point"],
+      "properties": {
+        "type": { "const": "move" },
+        "point": { "$ref": "#/$defs/point" }
+      }
+    },
+    "buttonStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "button", "phase", "point"],
+      "properties": {
+        "type": { "const": "button" },
+        "button": { "$ref": "#/$defs/button" },
+        "phase": { "enum": ["down", "up"] },
+        "point": { "$ref": "#/$defs/point" }
+      }
+    },
+    "click": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "button", "point"],
+      "properties": {
+        "type": { "const": "click" },
+        "button": { "$ref": "#/$defs/button" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 2, "default": 1 },
+        "intervalMs": { "type": "integer", "minimum": 0, "maximum": 500, "default": 100 },
+        "point": { "$ref": "#/$defs/point" }
+      }
+    },
+    "scroll": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "axis", "ticks", "point"],
+      "properties": {
+        "type": { "const": "scroll" },
+        "axis": { "enum": ["vertical", "horizontal"] },
+        "ticks": {
+          "type": "integer",
+          "oneOf": [
+            { "minimum": -120, "maximum": -1 },
+            { "minimum": 1, "maximum": 120 }
+          ]
+        },
+        "point": { "$ref": "#/$defs/point" }
+      }
+    },
+    "drag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "button", "start", "end"],
+      "properties": {
+        "type": { "const": "drag" },
+        "button": { "$ref": "#/$defs/button" },
+        "start": { "$ref": "#/$defs/point" },
+        "end": { "$ref": "#/$defs/point" },
+        "durationMs": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 250 },
+        "samples": { "type": "integer", "minimum": 1, "maximum": 240, "default": 12 }
+      }
+    },
+    "step": {
+      "oneOf": [
+        { "$ref": "#/$defs/move" },
+        { "$ref": "#/$defs/buttonStep" },
+        { "$ref": "#/$defs/click" },
+        { "$ref": "#/$defs/scroll" },
+        { "$ref": "#/$defs/drag" }
+      ]
+    },
+    "sequence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coordinateSpace", "steps"],
+      "properties": {
+        "coordinateSpace": { "enum": ["screen-physical-px", "window-client-physical-px"] },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 2000 }
+      }
+    },
+    "legacyClick": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "y": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 2000 }
+      }
+    }
+  }
+}

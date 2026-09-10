@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v3/application-inventory.schema.json",
+  "title": "Linux XDG inventory with authenticated fixture launch status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "implementation", "capability", "data"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/control/v1" },
+    "implementation": { "const": "rust" },
+    "capability": { "const": "application.discover@3" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hostTargetId", "readOnly", "foregroundUnchanged", "productPromise", "coverage", "complete", "counts", "applicationsReturned", "applicationsTruncated", "totalEligibleApplications", "warnings", "applications", "processes", "windows"],
+      "properties": {
+        "hostTargetId": { "$ref": "#/$defs/targetId" },
+        "readOnly": { "const": true },
+        "foregroundUnchanged": { "const": true },
+        "productPromise": { "const": "broad-general-control-with-capability-degradation" },
+        "coverage": { "$ref": "#/$defs/coverage" },
+        "complete": { "$ref": "#/$defs/complete" },
+        "counts": { "$ref": "#/$defs/counts" },
+        "applicationsReturned": { "type": "integer", "minimum": 0 },
+        "applicationsTruncated": { "type": "boolean" },
+        "totalEligibleApplications": { "type": ["integer", "null"], "minimum": 0 },
+        "warnings": {
+          "type": "array",
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "desktop-entry-invalid-skipped",
+              "desktop-entry-read-incomplete",
+              "desktop-file-id-conflict",
+              "desktop-entry-scan-limit-reached",
+              "unsafe-filesystem-entry-skipped",
+              "xdg-application-root-unreadable",
+              "xdg-application-roots-missing"
+            ]
+          }
+        },
+        "applications": { "type": "array", "items": { "$ref": "#/$defs/application" } },
+        "processes": { "type": "array", "items": { "$ref": "#/$defs/process" } },
+        "windows": { "type": "array", "maxItems": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "targetId": { "type": "string", "pattern": "^s2:[hapw]:[0-9a-f]{16}$" },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runningProcesses", "visibleTitledWindows", "desktopEntryApplications", "traditionalInstalledApplications", "shellApplications", "startMenuApplications", "storeAndUwpPackages", "noWindowProcessesIncluded", "relationshipPolicy"],
+      "properties": {
+        "runningProcesses": { "const": "available-linux-procfs" },
+        "visibleTitledWindows": { "const": "unavailable-no-linux-desktop-provider" },
+        "desktopEntryApplications": { "enum": ["available-xdg-desktop-entry", "unavailable-no-xdg-data-roots"] },
+        "traditionalInstalledApplications": { "const": "not-applicable-on-linux" },
+        "shellApplications": { "const": "unavailable-no-linux-provider" },
+        "startMenuApplications": { "const": "unavailable-no-linux-provider" },
+        "storeAndUwpPackages": { "const": "not-applicable-on-linux" },
+        "noWindowProcessesIncluded": { "const": true },
+        "relationshipPolicy": { "const": "none-linux-independent-inventories" }
+      }
+    },
+    "complete": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applications", "processes", "windows"],
+      "properties": {
+        "applications": { "type": "boolean" },
+        "processes": { "type": "boolean" },
+        "windows": { "const": false }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["installedApplications", "runningInstalledApplications", "runningProcesses", "noWindowProcesses", "unassociatedProcesses", "permissionBlockedProcesses", "higherIntegrityProcesses", "visibleWindows"],
+      "properties": {
+        "installedApplications": { "type": "integer", "minimum": 0 },
+        "runningInstalledApplications": { "const": 0 },
+        "runningProcesses": { "type": "integer", "minimum": 0 },
+        "noWindowProcesses": { "type": "integer", "minimum": 0 },
+        "unassociatedProcesses": { "type": "integer", "minimum": 0 },
+        "permissionBlockedProcesses": { "const": 0 },
+        "higherIntegrityProcesses": { "const": 0 },
+        "visibleWindows": { "const": 0 }
+      }
+    },
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "targetKind", "displayName", "version", "publisher", "state", "runningProcessSessionIds", "discoverySources", "launchCapability", "relationshipEvidence", "targetIdentity"],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/targetId" },
+        "targetKind": { "const": "installed-application" },
+        "displayName": { "type": "string", "minLength": 1 },
+        "version": { "const": "" },
+        "publisher": { "const": "" },
+        "state": { "const": "installed" },
+        "runningProcessSessionIds": { "type": "array", "maxItems": 0 },
+        "discoverySources": { "const": ["xdg-desktop-entry"] },
+        "launchCapability": { "enum": ["unavailable", "available-confirmed"] },
+        "relationshipEvidence": { "const": "none" },
+        "targetIdentity": { "$ref": "#/$defs/targetIdentity" }
+      }
+    },
+    "targetIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "providerDomain", "generationBound", "freshness", "desktopFileIdExposed", "nativePathExposed", "contentDigestExposed"],
+      "properties": {
+        "contractVersion": { "const": "act/application-target-identity/v1" },
+        "providerDomain": { "const": "linux-xdg-desktop-entry" },
+        "generationBound": { "const": true },
+        "freshness": { "const": "discovery-snapshot" },
+        "desktopFileIdExposed": { "const": false },
+        "nativePathExposed": { "const": false },
+        "contentDigestExposed": { "const": false }
+      }
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "targetKind", "processName", "state", "identityFreshness", "metadataAccess", "integrityRelation", "hasVisibleWindow", "windowVisibility", "foregroundRequiredForObservation", "windowSessionIds", "relatedApplicationIds", "relationshipStatus"],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/targetId" },
+        "targetKind": { "const": "running-process" },
+        "processName": { "type": "string", "minLength": 1 },
+        "state": { "const": "running" },
+        "identityFreshness": { "enum": ["process-lifetime", "best-effort-current-snapshot"] },
+        "metadataAccess": { "enum": ["available", "permission-blocked", "unavailable"] },
+        "integrityRelation": { "const": "unknown" },
+        "hasVisibleWindow": { "const": false },
+        "windowVisibility": { "const": "no-visible-titled-window" },
+        "foregroundRequiredForObservation": { "const": false },
+        "windowSessionIds": { "type": "array", "maxItems": 0 },
+        "relatedApplicationIds": { "type": "array", "maxItems": 0 },
+        "relationshipStatus": { "const": "unassociated" }
+      }
+    }
+  }
+}

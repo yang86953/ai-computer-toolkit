@@ -1,0 +1,34 @@
+{
+  "contractVersion": "act/media-control-migration-policy/v1",
+  "cppExecutionStatus": "candidate-not-certified",
+  "cppExecutionEnabled": false,
+  "rustExecutionStatus": "candidate-not-certified",
+  "rustPublicRouteEnabled": false,
+  "formalOperations": [
+    "media-session.toggle-play-pause",
+    "media-session.play",
+    "media-session.pause",
+    "media-session.skip-next",
+    "media-session.skip-previous"
+  ],
+  "publicTargetPrefix": "s2:m:",
+  "legacyTargetPolicy": "rejected",
+  "requiresConfirmation": true,
+  "executionDomain": "isolated-worker",
+  "readWorkerContainsWriteMethods": false,
+  "sessionObservation": "before-control",
+  "postDispatchFailure": {
+    "outcome": "unknown",
+    "retrySafe": false,
+    "acceptedMayHaveOccurred": true
+  },
+  "nativeIdentifiersExposed": false,
+  "fixturePolicy": {
+    "ownedSilentSession": true,
+    "userApplicationsControlled": 0
+  },
+  "historicalRustCppFiveOperationEquivalenceVerified": true,
+  "productionAdapterRegistered": false,
+  "launcherRoute": "rust-policy-fail-closed",
+  "publicRouteEnabled": false
+}

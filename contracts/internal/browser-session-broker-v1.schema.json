@@ -1,0 +1,372 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/internal/browser-session-broker-v1.schema.json",
+  "title": "Browser Session Broker Protocol v1",
+  "oneOf": [
+    { "$ref": "#/$defs/brokerReady" },
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/cancel" },
+    { "$ref": "#/$defs/cancelReceipt" },
+    { "$ref": "#/$defs/cancelRejected" },
+    { "$ref": "#/$defs/accepted" },
+    { "$ref": "#/$defs/finalRejected" },
+    { "$ref": "#/$defs/finalExpiredBeforeAcceptance" },
+    { "$ref": "#/$defs/finalCancelledBeforeAcceptance" },
+    { "$ref": "#/$defs/finalCompleted" },
+    { "$ref": "#/$defs/finalFailed" },
+    { "$ref": "#/$defs/finalCancelled" },
+    { "$ref": "#/$defs/finalUnknown" }
+  ],
+  "$defs": {
+    "contractVersion": { "const": "act/browser-session-broker/v1" },
+    "requestNonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "semanticFingerprint": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+    "brokerEpoch": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "requestRevision": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+    "remainingTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000 },
+    "sessionId": { "type": "string", "pattern": "^s2:bs:[0-9a-f]{32}$" },
+    "pageId": { "type": "string", "pattern": "^s2:bp:[0-9a-f]{32}$" },
+    "elementId": { "type": "string", "pattern": "^s2:be:[0-9a-f]{32}$" },
+    "url": { "type": "string", "minLength": 1, "maxLength": 8192, "pattern": "^https?://(?:\\[[0-9A-Fa-f:.]+\\]|[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?)(?::[0-9]{1,5})?(?:[/?#][^\\s\\u0000-\\u001f\\u007f@\\\\]*)?$" },
+    "safeError": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 }
+      },
+      "additionalProperties": false
+    },
+    "rejectionError": {
+      "oneOf": [
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "INVALID_ARGUMENT" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "CONFIRMATION_REQUIRED" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "STALE_BROKER_EPOCH" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "NONCE_SEMANTIC_CONFLICT" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "BROKER_REQUEST_LEDGER_FULL" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "BROWSER_SESSION_REGISTRY_FULL" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "STALE_SESSION" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "STALE_PAGE" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "STALE_ELEMENT" } } }] }
+      ]
+    },
+    "expiredBeforeAcceptanceError": {
+      "allOf": [
+        { "$ref": "#/$defs/safeError" },
+        { "properties": { "code": { "const": "REQUEST_EXPIRED" } } }
+      ]
+    },
+    "selector": {
+      "type": "object",
+      "required": ["role", "name", "text", "exact"],
+      "properties": {
+        "role": { "type": ["string", "null"], "maxLength": 1024 },
+        "name": { "type": ["string", "null"], "maxLength": 1024 },
+        "text": { "type": ["string", "null"], "maxLength": 1024 },
+        "exact": { "type": "boolean" }
+      },
+      "allOf": [{ "anyOf": [
+        { "properties": { "role": { "type": "string", "minLength": 1 } }, "required": ["role"] },
+        { "properties": { "name": { "type": "string", "minLength": 1 } }, "required": ["name"] },
+        { "properties": { "text": { "type": "string", "minLength": 1 } }, "required": ["text"] }
+      ] }],
+      "additionalProperties": false
+    },
+    "waitCondition": {
+      "oneOf": [
+        { "type": "object", "required": ["kind"], "properties": { "kind": { "const": "document-ready" } }, "additionalProperties": false },
+        { "type": "object", "required": ["kind", "selector"], "properties": { "kind": { "const": "element-present" }, "selector": { "$ref": "#/$defs/selector" } }, "additionalProperties": false },
+        { "type": "object", "required": ["kind", "text", "exact"], "properties": { "kind": { "const": "text-present" }, "text": { "type": "string", "minLength": 1, "maxLength": 1024 }, "exact": { "type": "boolean" } }, "additionalProperties": false }
+      ]
+    },
+    "brokerReady": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "brokerEpoch"],
+      "properties": {
+        "kind": { "const": "broker-ready" },
+        "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "brokerEpoch": { "$ref": "#/$defs/brokerEpoch" }
+      },
+      "additionalProperties": false
+    },
+    "requestCommon": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "requestNonce", "semanticFingerprint", "expectedBrokerEpoch", "remainingTimeoutMs", "operation"],
+      "properties": {
+        "kind": { "const": "request" },
+        "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" },
+        "semanticFingerprint": { "$ref": "#/$defs/semanticFingerprint" },
+        "expectedBrokerEpoch": { "$ref": "#/$defs/brokerEpoch" },
+        "remainingTimeoutMs": { "$ref": "#/$defs/remainingTimeoutMs" },
+        "operation": { "type": "string" }
+      }
+    },
+    "request": {
+      "oneOf": [
+        { "$ref": "#/$defs/openRequest" }, { "$ref": "#/$defs/closeRequest" },
+        { "$ref": "#/$defs/sessionInspectRequest" },
+        { "$ref": "#/$defs/navigateRequest" }, { "$ref": "#/$defs/waitRequest" },
+        { "$ref": "#/$defs/queryRequest" }, { "$ref": "#/$defs/clickRequest" },
+        { "$ref": "#/$defs/typeRequest" }, { "$ref": "#/$defs/screenshotRequest" }
+      ]
+    },
+    "cancel": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "cancelRequestNonce", "requestNonce", "expectedBrokerEpoch"],
+      "properties": {
+        "kind": { "const": "cancel" },
+        "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "cancelRequestNonce": { "$ref": "#/$defs/requestNonce" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" },
+        "expectedBrokerEpoch": { "$ref": "#/$defs/brokerEpoch" }
+      },
+      "additionalProperties": false
+    },
+    "cancelReceipt": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "cancelRequestNonce", "requestNonce", "brokerEpoch", "cancelRevision", "status"],
+      "properties": {
+        "kind": { "const": "cancel-receipt" },
+        "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "cancelRequestNonce": { "$ref": "#/$defs/requestNonce" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" },
+        "brokerEpoch": { "$ref": "#/$defs/brokerEpoch" },
+        "cancelRevision": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "status": { "enum": ["unknown-request", "cancellation-requested", "too-late", "cancelled"] }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "cancelRevision": { "const": 0 },
+            "status": { "enum": ["unknown-request", "cancellation-requested"] }
+          }
+        },
+        {
+          "properties": {
+            "cancelRevision": { "enum": [0, 1] },
+            "status": { "enum": ["too-late", "cancelled"] }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "cancelRejectionError": {
+      "oneOf": [
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "STALE_BROKER_EPOCH" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "NONCE_SEMANTIC_CONFLICT" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/safeError" }, { "properties": { "code": { "const": "BROKER_REQUEST_LEDGER_FULL" } } }] }
+      ]
+    },
+    "cancelRejected": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "cancelRequestNonce", "requestNonce", "brokerEpoch", "transportAccepted", "businessAccepted", "completed", "error"],
+      "properties": {
+        "kind": { "const": "cancel-rejected" },
+        "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "cancelRequestNonce": { "$ref": "#/$defs/requestNonce" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" },
+        "brokerEpoch": { "$ref": "#/$defs/brokerEpoch" },
+        "transportAccepted": { "const": true },
+        "businessAccepted": { "const": false },
+        "completed": { "const": true },
+        "error": { "$ref": "#/$defs/cancelRejectionError" }
+      },
+      "additionalProperties": false
+    },
+    "openRequest": {
+      "allOf": [{ "$ref": "#/$defs/requestCommon" }, {
+        "required": ["confirmed"],
+        "properties": { "operation": { "const": "open" }, "confirmed": { "const": true } }
+      }],
+      "unevaluatedProperties": false
+    },
+    "closeRequest": {
+      "allOf": [{ "$ref": "#/$defs/requestCommon" }, {
+        "required": ["sessionId", "confirmed"],
+        "properties": { "operation": { "const": "close" }, "sessionId": { "$ref": "#/$defs/sessionId" }, "confirmed": { "const": true } }
+      }],
+      "unevaluatedProperties": false
+    },
+    "sessionInspectRequest": {
+      "allOf": [{ "$ref": "#/$defs/requestCommon" }, {
+        "required": ["sessionId"],
+        "properties": { "operation": { "const": "session.inspect" }, "sessionId": { "$ref": "#/$defs/sessionId" } }
+      }],
+      "unevaluatedProperties": false
+    },
+    "navigateRequest": {
+      "allOf": [{ "$ref": "#/$defs/requestCommon" }, {
+        "required": ["sessionId", "url", "confirmed"],
+        "properties": { "operation": { "const": "navigate" }, "sessionId": { "$ref": "#/$defs/sessionId" }, "url": { "$ref": "#/$defs/url" }, "confirmed": { "const": true } }
+      }],
+      "unevaluatedProperties": false
+    },
+    "waitRequest": {
+      "allOf": [{ "$ref": "#/$defs/requestCommon" }, {
+        "required": ["sessionId", "pageId", "condition"],
+        "properties": { "operation": { "const": "wait" }, "sessionId": { "$ref": "#/$defs/sessionId" }, "pageId": { "$ref": "#/$defs/pageId" }, "condition": { "$ref": "#/$defs/waitCondition" } }
+      }],
+      "unevaluatedProperties": false
+    },
+    "queryRequest": {
+      "allOf": [{ "$ref": "#/$defs/requestCommon" }, {
+        "required": ["sessionId", "pageId", "selector", "maxResults"],
+        "properties": { "operation": { "const": "query" }, "sessionId": { "$ref": "#/$defs/sessionId" }, "pageId": { "$ref": "#/$defs/pageId" }, "selector": { "$ref": "#/$defs/selector" }, "maxResults": { "type": "integer", "minimum": 1, "maximum": 100 } }
+      }],
+      "unevaluatedProperties": false
+    },
+    "clickRequest": {
+      "allOf": [{ "$ref": "#/$defs/requestCommon" }, {
+        "required": ["sessionId", "pageId", "elementId", "confirmed"],
+        "properties": { "operation": { "const": "click" }, "sessionId": { "$ref": "#/$defs/sessionId" }, "pageId": { "$ref": "#/$defs/pageId" }, "elementId": { "$ref": "#/$defs/elementId" }, "confirmed": { "const": true } }
+      }],
+      "unevaluatedProperties": false
+    },
+    "typeRequest": {
+      "allOf": [{ "$ref": "#/$defs/requestCommon" }, {
+        "required": ["sessionId", "pageId", "elementId", "confirmed", "text", "replace"],
+        "properties": { "operation": { "const": "type" }, "sessionId": { "$ref": "#/$defs/sessionId" }, "pageId": { "$ref": "#/$defs/pageId" }, "elementId": { "$ref": "#/$defs/elementId" }, "confirmed": { "const": true }, "text": { "type": "string", "minLength": 1, "maxLength": 16384 }, "replace": { "type": "boolean" } }
+      }],
+      "unevaluatedProperties": false
+    },
+    "screenshotRequest": {
+      "allOf": [{ "$ref": "#/$defs/requestCommon" }, {
+        "required": ["sessionId", "pageId"],
+        "properties": { "operation": { "const": "screenshot" }, "sessionId": { "$ref": "#/$defs/sessionId" }, "pageId": { "$ref": "#/$defs/pageId" } }
+      }],
+      "unevaluatedProperties": false
+    },
+    "operation": { "enum": ["open", "close", "session.inspect", "navigate", "wait", "query", "click", "type", "screenshot"] },
+    "commandOperation": { "enum": ["open", "close", "navigate", "click", "type"] },
+    "queryOperation": { "enum": ["session.inspect", "wait", "query", "screenshot"] },
+    "accepted": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "requestNonce", "brokerEpoch", "requestRevision", "operation", "transportAccepted", "businessAccepted", "completed", "targetMayHaveMutated"],
+      "properties": {
+        "kind": { "const": "accepted" }, "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" }, "brokerEpoch": { "$ref": "#/$defs/brokerEpoch" }, "requestRevision": { "const": 0 }, "operation": { "$ref": "#/$defs/operation" },
+        "transportAccepted": { "const": true }, "businessAccepted": { "const": true }, "completed": { "const": false }, "targetMayHaveMutated": { "type": "boolean" }
+      },
+      "oneOf": [
+        { "properties": { "operation": { "$ref": "#/$defs/commandOperation" }, "targetMayHaveMutated": { "const": true } } },
+        { "properties": { "operation": { "$ref": "#/$defs/queryOperation" }, "targetMayHaveMutated": { "const": false } } }
+      ],
+      "additionalProperties": false
+    },
+    "finalCommon": {
+      "type": "object",
+      "required": ["kind", "contractVersion", "requestNonce", "brokerEpoch", "requestRevision", "operation", "outcome", "transportAccepted", "businessAccepted", "completed", "retrySafe", "outcomeUnknown", "targetMayHaveMutated", "data", "error"],
+      "properties": {
+        "kind": { "const": "final" }, "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" }, "brokerEpoch": { "$ref": "#/$defs/brokerEpoch" }, "requestRevision": { "$ref": "#/$defs/requestRevision" }, "operation": { "$ref": "#/$defs/operation" },
+        "outcome": { "enum": ["rejected", "expired-before-acceptance", "cancelled-before-acceptance", "completed", "failed", "cancelled", "unknown"] },
+        "transportAccepted": { "type": "boolean" }, "businessAccepted": { "type": "boolean" },
+        "completed": { "type": "boolean" }, "retrySafe": { "type": "boolean" }, "outcomeUnknown": { "type": "boolean" }, "targetMayHaveMutated": { "type": "boolean" },
+        "data": {}, "error": {}
+      }
+    },
+    "finalNotDispatched": {
+      "description": "Client-local projection only; never emitted on broker wire.",
+      "type": "object",
+      "required": ["kind", "contractVersion", "requestNonce", "operation", "outcome", "transportAccepted", "businessAccepted", "completed", "retrySafe", "outcomeUnknown", "targetMayHaveMutated", "data", "error"],
+      "properties": {
+        "kind": { "const": "client-local-final" },
+        "contractVersion": { "$ref": "#/$defs/contractVersion" },
+        "requestNonce": { "$ref": "#/$defs/requestNonce" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "outcome": { "const": "not-dispatched" },
+        "transportAccepted": { "const": false },
+        "businessAccepted": { "const": false },
+        "completed": { "const": true },
+        "retrySafe": { "const": true },
+        "outcomeUnknown": { "const": false },
+        "targetMayHaveMutated": { "const": false },
+        "data": { "type": "null" },
+        "error": { "$ref": "#/$defs/safeError" }
+      },
+      "additionalProperties": false
+    },
+    "finalRejected": {
+      "allOf": [{ "$ref": "#/$defs/finalCommon" }, {
+        "properties": { "requestRevision": { "const": 0 }, "outcome": { "const": "rejected" }, "transportAccepted": { "const": true }, "businessAccepted": { "const": false }, "completed": { "const": true }, "retrySafe": { "const": true }, "outcomeUnknown": { "const": false }, "targetMayHaveMutated": { "const": false }, "data": { "type": "null" }, "error": { "$ref": "#/$defs/rejectionError" } }
+      }], "unevaluatedProperties": false
+    },
+    "finalExpiredBeforeAcceptance": {
+      "allOf": [{ "$ref": "#/$defs/finalCommon" }, {
+        "properties": { "requestRevision": { "const": 0 }, "outcome": { "const": "expired-before-acceptance" }, "transportAccepted": { "const": true }, "businessAccepted": { "const": false }, "completed": { "const": true }, "retrySafe": { "const": true }, "outcomeUnknown": { "const": false }, "targetMayHaveMutated": { "const": false }, "data": { "type": "null" }, "error": { "$ref": "#/$defs/expiredBeforeAcceptanceError" } }
+      }], "unevaluatedProperties": false
+    },
+    "cancelledBeforeAcceptanceError": {
+      "allOf": [
+        { "$ref": "#/$defs/safeError" },
+        { "properties": { "code": { "const": "CANCELLED_BEFORE_ACCEPTANCE" } } }
+      ]
+    },
+    "finalCancelledBeforeAcceptance": {
+      "allOf": [{ "$ref": "#/$defs/finalCommon" }, {
+        "properties": { "requestRevision": { "const": 0 }, "outcome": { "const": "cancelled-before-acceptance" }, "transportAccepted": { "const": true }, "businessAccepted": { "const": false }, "completed": { "const": true }, "retrySafe": { "const": false }, "outcomeUnknown": { "const": false }, "targetMayHaveMutated": { "const": false }, "data": { "type": "null" }, "error": { "$ref": "#/$defs/cancelledBeforeAcceptanceError" } }
+      }], "unevaluatedProperties": false
+    },
+    "finalFailed": {
+      "allOf": [{ "$ref": "#/$defs/finalCommon" }, {
+        "properties": { "requestRevision": { "const": 1 }, "outcome": { "const": "failed" }, "transportAccepted": { "const": true }, "businessAccepted": { "const": true }, "completed": { "const": true }, "retrySafe": { "const": false }, "outcomeUnknown": { "const": false }, "data": { "type": "null" }, "error": { "$ref": "#/$defs/safeError" } }
+      }, {
+        "oneOf": [
+          { "properties": { "operation": { "$ref": "#/$defs/commandOperation" }, "targetMayHaveMutated": { "const": true } } },
+          { "properties": { "operation": { "$ref": "#/$defs/queryOperation" }, "targetMayHaveMutated": { "const": false } } }
+        ]
+      }], "unevaluatedProperties": false
+    },
+    "finalCancelled": {
+      "allOf": [{ "$ref": "#/$defs/finalCommon" }, {
+        "properties": { "requestRevision": { "const": 1 }, "outcome": { "const": "cancelled" }, "transportAccepted": { "const": true }, "businessAccepted": { "const": true }, "completed": { "const": true }, "retrySafe": { "const": false }, "outcomeUnknown": { "const": false }, "data": { "type": "null" }, "error": { "$ref": "#/$defs/safeError" } }
+      }, {
+        "oneOf": [
+          { "properties": { "operation": { "$ref": "#/$defs/commandOperation" }, "targetMayHaveMutated": { "const": true } } },
+          { "properties": { "operation": { "$ref": "#/$defs/queryOperation" }, "targetMayHaveMutated": { "const": false } } }
+        ]
+      }], "unevaluatedProperties": false
+    },
+    "outcomeUnknownError": {
+      "allOf": [
+        { "$ref": "#/$defs/safeError" },
+        { "properties": { "code": { "const": "OUTCOME_UNKNOWN" } } }
+      ]
+    },
+    "finalUnknown": {
+      "allOf": [{ "$ref": "#/$defs/finalCommon" }, {
+        "properties": { "requestRevision": { "const": 1 }, "outcome": { "const": "unknown" }, "transportAccepted": { "const": true }, "businessAccepted": { "const": true }, "completed": { "const": false }, "retrySafe": { "const": false }, "outcomeUnknown": { "const": true }, "data": { "type": "null" }, "error": { "$ref": "#/$defs/outcomeUnknownError" } }
+      }, {
+        "oneOf": [
+          { "properties": { "operation": { "$ref": "#/$defs/commandOperation" }, "targetMayHaveMutated": { "const": true } } },
+          { "properties": { "operation": { "$ref": "#/$defs/queryOperation" }, "targetMayHaveMutated": { "const": false } } }
+        ]
+      }], "unevaluatedProperties": false
+    },
+    "finalCompleted": {
+      "oneOf": [
+        { "$ref": "#/$defs/finalOpenCompleted" }, { "$ref": "#/$defs/finalCloseCompleted" },
+        { "$ref": "#/$defs/finalSessionInspectCompleted" },
+        { "$ref": "#/$defs/finalNavigateCompleted" }, { "$ref": "#/$defs/finalWaitCompleted" },
+        { "$ref": "#/$defs/finalQueryCompleted" }, { "$ref": "#/$defs/finalClickCompleted" },
+        { "$ref": "#/$defs/finalTypeCompleted" }, { "$ref": "#/$defs/finalScreenshotCompleted" }
+      ]
+    },
+    "completedCommon": {
+      "allOf": [{ "$ref": "#/$defs/finalCommon" }, {
+        "properties": { "requestRevision": { "const": 1 }, "outcome": { "const": "completed" }, "transportAccepted": { "const": true }, "businessAccepted": { "const": true }, "completed": { "const": true }, "retrySafe": { "const": false }, "outcomeUnknown": { "const": false }, "error": { "type": "null" } }
+      }]
+    },
+    "finalOpenCompleted": { "allOf": [{ "$ref": "#/$defs/completedCommon" }, { "properties": { "operation": { "const": "open" }, "targetMayHaveMutated": { "const": true }, "data": { "type": "object", "required": ["sessionId"], "properties": { "sessionId": { "$ref": "#/$defs/sessionId" } }, "additionalProperties": false } } }], "unevaluatedProperties": false },
+    "finalCloseCompleted": { "allOf": [{ "$ref": "#/$defs/completedCommon" }, { "properties": { "operation": { "const": "close" }, "targetMayHaveMutated": { "const": true }, "data": { "type": "object", "required": ["closed"], "properties": { "closed": { "const": true } }, "additionalProperties": false } } }], "unevaluatedProperties": false },
+    "finalSessionInspectCompleted": { "allOf": [{ "$ref": "#/$defs/completedCommon" }, { "properties": { "operation": { "const": "session.inspect" }, "targetMayHaveMutated": { "const": false }, "data": { "type": "object", "required": ["sessionId", "live"], "properties": { "sessionId": { "$ref": "#/$defs/sessionId" }, "live": { "const": true } }, "additionalProperties": false } } }], "unevaluatedProperties": false },
+    "finalNavigateCompleted": { "allOf": [{ "$ref": "#/$defs/completedCommon" }, { "properties": { "operation": { "const": "navigate" }, "targetMayHaveMutated": { "const": true }, "data": { "type": "object", "required": ["pageId", "navigationGeneration"], "properties": { "pageId": { "$ref": "#/$defs/pageId" }, "navigationGeneration": { "type": "integer", "minimum": 1, "maximum": 4294967295 } }, "additionalProperties": false } } }], "unevaluatedProperties": false },
+    "finalWaitCompleted": { "allOf": [{ "$ref": "#/$defs/completedCommon" }, { "properties": { "operation": { "const": "wait" }, "targetMayHaveMutated": { "const": false }, "data": { "type": "object", "required": ["pageId", "navigationGeneration", "conditionMet"], "properties": { "pageId": { "$ref": "#/$defs/pageId" }, "navigationGeneration": { "type": "integer", "minimum": 1, "maximum": 4294967295 }, "conditionMet": { "const": true } }, "additionalProperties": false } } }], "unevaluatedProperties": false },
+    "elementProjection": { "type": "object", "required": ["elementId", "role", "name", "text", "enabled"], "properties": { "elementId": { "$ref": "#/$defs/elementId" }, "role": { "type": ["string", "null"], "maxLength": 1024 }, "name": { "type": ["string", "null"], "maxLength": 1024 }, "text": { "type": ["string", "null"], "maxLength": 1024 }, "enabled": { "type": "boolean" } }, "additionalProperties": false },
+    "finalQueryCompleted": { "allOf": [{ "$ref": "#/$defs/completedCommon" }, { "properties": { "operation": { "const": "query" }, "targetMayHaveMutated": { "const": false }, "data": { "type": "object", "required": ["pageId", "navigationGeneration", "matches", "matchCount", "truncated"], "properties": { "pageId": { "$ref": "#/$defs/pageId" }, "navigationGeneration": { "type": "integer", "minimum": 1, "maximum": 4294967295 }, "matches": { "type": "array", "items": { "$ref": "#/$defs/elementProjection" }, "maxItems": 100 }, "matchCount": { "type": "integer", "minimum": 0, "maximum": 4294967295 }, "truncated": { "type": "boolean" } }, "additionalProperties": false } } }], "unevaluatedProperties": false },
+    "finalClickCompleted": { "allOf": [{ "$ref": "#/$defs/completedCommon" }, { "properties": { "operation": { "const": "click" }, "targetMayHaveMutated": { "const": true }, "data": { "type": "object", "required": ["pageId", "elementId", "navigationGeneration", "clicked"], "properties": { "pageId": { "$ref": "#/$defs/pageId" }, "elementId": { "$ref": "#/$defs/elementId" }, "navigationGeneration": { "type": "integer", "minimum": 1, "maximum": 4294967295 }, "clicked": { "const": true } }, "additionalProperties": false } } }], "unevaluatedProperties": false },
+    "finalTypeCompleted": { "allOf": [{ "$ref": "#/$defs/completedCommon" }, { "properties": { "operation": { "const": "type" }, "targetMayHaveMutated": { "const": true }, "data": { "type": "object", "required": ["pageId", "elementId", "navigationGeneration", "typed", "utf8Bytes"], "properties": { "pageId": { "$ref": "#/$defs/pageId" }, "elementId": { "$ref": "#/$defs/elementId" }, "navigationGeneration": { "type": "integer", "minimum": 1, "maximum": 4294967295 }, "typed": { "const": true }, "utf8Bytes": { "type": "integer", "minimum": 1, "maximum": 16384 } }, "additionalProperties": false } } }], "unevaluatedProperties": false },
+    "finalScreenshotCompleted": { "allOf": [{ "$ref": "#/$defs/completedCommon" }, { "properties": { "operation": { "const": "screenshot" }, "targetMayHaveMutated": { "const": false }, "data": { "type": "object", "required": ["pageId", "navigationGeneration", "mimeType", "pngBase64", "pngBytes", "width", "height", "digest"], "properties": { "pageId": { "$ref": "#/$defs/pageId" }, "navigationGeneration": { "type": "integer", "minimum": 1, "maximum": 4294967295 }, "mimeType": { "const": "image/png" }, "pngBase64": { "type": "string", "minLength": 1, "maxLength": 16777216, "contentEncoding": "base64" }, "pngBytes": { "type": "integer", "minimum": 1, "maximum": 12582912 }, "width": { "type": "integer", "minimum": 1, "maximum": 10000 }, "height": { "type": "integer", "minimum": 1, "maximum": 10000 }, "digest": { "type": "string", "pattern": "^[0-9a-f]{16}$" } }, "additionalProperties": false } } }], "unevaluatedProperties": false }
+  }
+}

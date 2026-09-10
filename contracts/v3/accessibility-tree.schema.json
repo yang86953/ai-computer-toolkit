@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v3/accessibility-tree.schema.json",
+  "title": "Opt-in UIX Agent bounded neutral accessibility tree",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "capability", "coverage", "executionDomain", "readOnly", "mutationAllowed", "sessionId", "snapshotId", "revision", "presentedRevision", "maximumDepth", "maximumItems", "visited", "truncated", "truncationReasons", "nodes", "safety"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/accessibility-tree/v3" },
+    "capability": { "const": "accessibility.tree.read@3" },
+    "coverage": { "const": "opt-in-uix-agent-applications" },
+    "executionDomain": { "const": "same-session-no-focus" },
+    "readOnly": { "const": true },
+    "mutationAllowed": { "const": false },
+    "sessionId": { "type": "string", "pattern": "^s2:w:[0-9a-f]{16}$" },
+    "snapshotId": { "type": "string", "pattern": "^as3:[0-9a-f]{16}$" },
+    "revision": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+    "presentedRevision": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+    "maximumDepth": { "type": "integer", "minimum": 0, "maximum": 20 },
+    "maximumItems": { "type": "integer", "minimum": 1, "maximum": 4096 },
+    "visited": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "truncated": { "type": "boolean" },
+    "truncationReasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["depth-limit", "item-limit"] }
+    },
+    "nodes": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/node" } },
+    "safety": { "$ref": "#/$defs/safety" }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshotId", "nodeId", "parentNodeId", "automationId", "depth", "role", "name", "focused", "enabled", "actions", "propertyReadComplete"],
+      "properties": {
+        "snapshotId": { "type": "string", "pattern": "^as3:[0-9a-f]{16}$" },
+        "nodeId": { "type": "string", "pattern": "^s2:e:[0-9a-f]{16}$" },
+        "parentNodeId": { "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^s2:e:[0-9a-f]{16}$" }] },
+        "automationId": { "type": ["string", "null"], "maxLength": 512 },
+        "depth": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 256 },
+        "focused": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+        },
+        "propertyReadComplete": { "const": true }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publicationPolicy", "providerCache", "nativeIdentityExposed", "transportIdentityExposed", "protocolSnapshotContainsSensitiveFields", "boundsExposed", "textInterfaceContentExposed", "valueContentExposed", "selectionContentExposed", "mutationInterfacesCalled"],
+      "properties": {
+        "publicationPolicy": { "const": "terminal-only-no-partial-results" },
+        "providerCache": { "const": "disabled" },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "protocolSnapshotContainsSensitiveFields": { "const": true },
+        "boundsExposed": { "const": false },
+        "textInterfaceContentExposed": { "const": false },
+        "valueContentExposed": { "const": false },
+        "selectionContentExposed": { "const": false },
+        "mutationInterfacesCalled": { "const": false }
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "contractVersion": "act/window-close-compatibility/v1",
+  "capability": "window.close@1",
+  "verb": "close",
+  "targetPattern": "^s2:w:[0-9a-f]{16}$",
+  "timeoutMs": {
+    "minimum": 1,
+    "maximum": 30000,
+    "default": 2000
+  },
+  "executionRealm": "same-session-no-focus",
+  "requiresConfirmation": true,
+  "requiresForegroundConsent": false,
+  "foregroundTargetAllowed": false,
+  "readOnly": false,
+  "permissionPreflight": "no-static-integrity-block-observed",
+  "activeWriteProbePerformed": false,
+  "timeout": {
+    "outcome": "unknown",
+    "retrySafe": false,
+    "targetMayCloseLater": true
+  },
+  "compatibilityShape": "provider-neutral-window-close-v1",
+  "nativeIdentifiersExposed": false,
+  "primaryImplementation": "rust",
+  "launcherRoute": "rust",
+  "cppRole": "direct-equivalence-reference",
+  "rustOwnedFixtureGate": "passed",
+  "cppDynamicEquivalenceGate": "compiler-required"
+}

@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/internal/interactive-session-broker-v1.schema.json",
+  "title": "Interactive session broker wire message v1",
+  "oneOf": [
+    { "$ref": "#/$defs/initialRequest" },
+    { "$ref": "#/$defs/observationResponse" },
+    { "$ref": "#/$defs/leaseResponse" },
+    { "$ref": "#/$defs/commandRequest" },
+    { "$ref": "#/$defs/commandResult" },
+    { "$ref": "#/$defs/rejectionBeforeTransport" },
+    { "$ref": "#/$defs/rejectionAfterTransport" }
+  ],
+  "$defs": {
+    "nonce": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interactiveSessionId",
+        "targetKind",
+        "state",
+        "executionRealm",
+        "isolationKind",
+        "capabilities",
+        "identityFreshness",
+        "sessionState",
+        "desktopState",
+        "brokerBuildId",
+        "commandWorkerInstalled",
+        "peerAuthentication"
+      ],
+      "properties": {
+        "interactiveSessionId": {
+          "type": "string",
+          "pattern": "^s2:i:[0-9a-f]{16}$"
+        },
+        "targetKind": { "const": "independent-interactive-session" },
+        "state": { "const": "available" },
+        "executionRealm": { "const": "isolated-worker" },
+        "isolationKind": { "const": "independent-interactive-session" },
+        "capabilities": {
+          "type": "array",
+          "prefixItems": [
+            { "const": "ui.input.key@1" },
+            { "const": "ui.input.pointer@1" },
+            { "const": "window.lifecycle@1" },
+            { "const": "window.close@1" }
+          ],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "identityFreshness": {
+          "const": "authorization-and-session-lifetime"
+        },
+        "sessionState": { "const": "active-interactive" },
+        "desktopState": { "const": "active-default-input" },
+        "brokerBuildId": {
+          "const": "ai-computer-toolkit/0.1.0/interactive-session-broker/v1"
+        },
+        "commandWorkerInstalled": { "const": true },
+        "peerAuthentication": {
+          "const": "os-process-session-principal-integrity-and-fixed-image"
+        }
+      }
+    },
+    "initialRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "requestNonce", "operation"],
+      "properties": {
+        "contractVersion": { "const": "act/interactive-session-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "enum": ["observe", "open-command-lease"] }
+      }
+    },
+    "observationResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "contractVersion", "requestNonce", "operation", "endpoint"],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/interactive-session-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "const": "observation" },
+        "endpoint": { "$ref": "#/$defs/endpoint" }
+      }
+    },
+    "leaseResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "requestNonce",
+        "operation",
+        "endpointLeaseNonce",
+        "endpoint"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/interactive-session-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "const": "command-lease" },
+        "endpointLeaseNonce": { "$ref": "#/$defs/nonce" },
+        "endpoint": { "$ref": "#/$defs/endpoint" }
+      }
+    },
+    "commandRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestNonce",
+        "operation",
+        "endpointLeaseNonce",
+        "interactiveSessionId",
+        "command"
+      ],
+      "properties": {
+        "contractVersion": { "const": "act/interactive-session-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "const": "execute" },
+        "endpointLeaseNonce": { "$ref": "#/$defs/nonce" },
+        "interactiveSessionId": {
+          "type": "string",
+          "pattern": "^s2:i:[0-9a-f]{16}$"
+        },
+        "command": {
+          "$ref": "interactive-command-worker-request-v1.schema.json"
+        }
+      }
+    },
+    "commandResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "requestNonce",
+        "operation",
+        "endpointLeaseNonce",
+        "result"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/interactive-session-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "const": "command-result" },
+        "endpointLeaseNonce": { "$ref": "#/$defs/nonce" },
+        "result": {
+          "$ref": "interactive-command-worker-response-v1.schema.json"
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "enum": [
+            "INVALID_ARGUMENT",
+            "ENDPOINT_AUTHENTICATION_FAILED",
+            "STALE_SESSION",
+            "WORKER_PROTOCOL_FAILED"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 }
+      }
+    },
+    "rejectionEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "peerAuthenticated",
+        "sessionCertified",
+        "leaseIssued",
+        "commandWorkerStarted",
+        "foregroundFallbackUsed"
+      ],
+      "properties": {
+        "peerAuthenticated": { "type": "boolean" },
+        "sessionCertified": { "type": "boolean" },
+        "leaseIssued": { "type": "boolean" },
+        "commandWorkerStarted": { "const": false },
+        "foregroundFallbackUsed": { "const": false }
+      }
+    },
+    "rejectionBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "operation",
+        "transportAccepted",
+        "businessAccepted",
+        "completed",
+        "outcome",
+        "retrySafe",
+        "targetMayHaveMutated",
+        "error",
+        "evidence"
+      ],
+      "properties": {
+        "ok": { "const": false },
+        "contractVersion": { "const": "act/interactive-session-broker/v1" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "const": "rejected" },
+        "transportAccepted": { "type": "boolean" },
+        "businessAccepted": { "const": false },
+        "completed": { "const": false },
+        "outcome": { "const": "not-dispatched" },
+        "retrySafe": { "const": true },
+        "targetMayHaveMutated": { "const": false },
+        "error": { "$ref": "#/$defs/error" },
+        "evidence": { "$ref": "#/$defs/rejectionEvidence" }
+      }
+    },
+    "rejectionBeforeTransport": {
+      "allOf": [
+        { "$ref": "#/$defs/rejectionBase" },
+        {
+          "properties": {
+            "requestNonce": false,
+            "transportAccepted": { "const": false }
+          }
+        }
+      ]
+    },
+    "rejectionAfterTransport": {
+      "allOf": [
+        { "$ref": "#/$defs/rejectionBase" },
+        {
+          "required": ["requestNonce"],
+          "properties": {
+            "transportAccepted": { "const": true }
+          }
+        }
+      ]
+    }
+  }
+}

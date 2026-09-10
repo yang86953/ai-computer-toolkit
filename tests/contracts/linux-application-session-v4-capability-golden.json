@@ -1,0 +1,10 @@
+{
+  "contractVersion": "act/linux-application-session-capability-golden/v4",
+  "capabilities": [
+    "application.session.discover@4"
+  ],
+  "applicationContract": "application.discover@3",
+  "windowContract": "window.discover@3",
+  "launchStatusPublished": true,
+  "applicationRelationshipInferred": false
+}

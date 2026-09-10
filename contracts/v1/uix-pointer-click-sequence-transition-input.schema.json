@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://ui/pointer-click-sequence-transition/v1",
+  "title": "UIX cooperative application-internal pointer click sequence transition input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["coordinateSpace", "clicks", "postcondition"],
+  "properties": {
+    "coordinateSpace": { "const": "client-logical-px" },
+    "clicks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/point" }
+    },
+    "intervalMs": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 500,
+      "default": 0
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 30000,
+      "default": 30000,
+      "description": "Rust validation additionally requires timeoutMs >= (clicks.length - 1) * intervalMs + 100."
+    },
+    "postcondition": { "$ref": "#/$defs/postcondition" }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "The coordinate must be finite."
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "The coordinate must be finite."
+        }
+      }
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "automationId": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "focused": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "action": { "type": "string", "minLength": 1, "maxLength": 64 }
+      },
+      "anyOf": [
+        { "required": ["automationId"] },
+        { "required": ["role"] },
+        { "required": ["name"] },
+        { "required": ["focused"] },
+        { "required": ["enabled"] },
+        { "required": ["action"] }
+      ]
+    },
+    "postcondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selector", "condition"],
+      "properties": {
+        "selector": { "$ref": "#/$defs/selector" },
+        "condition": { "enum": ["unique", "missing"] }
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "contractVersion": "act/error-semantics/v1",
+  "requiredCodes": [
+    "CAPABILITY_GAP",
+    "BACKGROUND_OPERATION_UNAVAILABLE",
+    "STALE_SESSION",
+    "TARGET_HUNG_OR_UNAVAILABLE"
+  ],
+  "unknownOutcome": {
+    "code": "TARGET_HUNG_OR_UNAVAILABLE",
+    "providerErrorCode": "TIMEOUT",
+    "outcome": "unknown",
+    "retrySafe": false,
+    "targetMayHaveMutated": true
+  }
+}

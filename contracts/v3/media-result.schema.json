@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://media/result/v3",
+  "title": "MPRIS App v3 successful public result",
+  "type": "object", "additionalProperties": false,
+  "required": ["ok", "contractVersion", "capability", "executionRealm", "requiredExecutionRealm", "executionRealmCertified", "isolationRequirement", "hostImpactPolicy", "windowIndependent", "imageDependency", "fallback", "data"],
+  "properties": {
+    "ok": {"const": true},
+    "contractVersion": {"const": "act/control/v2"},
+    "capability": {"enum": ["media.session.discover@3", "media.playback.state.read@3", "media.playback.control@3"]},
+    "executionRealm": {"const": "isolated-worker"},
+    "requiredExecutionRealm": {"const": "isolated-worker"},
+    "executionRealmCertified": {"const": true},
+    "isolationRequirement": {"enum": ["standard", "strict"]},
+    "hostImpactPolicy": {"enum": ["background-preferred", "strict-no-interference"]},
+    "windowIndependent": {"const": true},
+    "imageDependency": {"const": "none"},
+    "fallback": {"const": "none"},
+    "data": {"type": "object"}
+  },
+  "allOf": [
+    {"if": {"properties": {"capability": {"const": "media.session.discover@3"}}}, "then": {"properties": {"data": {"$ref": "#/$defs/discovery"}}}},
+    {"if": {"properties": {"capability": {"const": "media.playback.state.read@3"}}}, "then": {"properties": {"data": {"$ref": "#/$defs/state"}}}},
+    {"if": {"properties": {"capability": {"const": "media.playback.control@3"}}}, "then": {"properties": {"data": {"$ref": "#/$defs/control"}}}}
+  ],
+  "$defs": {
+    "sessionId": {"type": "string", "pattern": "^s2:m:[0-9a-f]{16}$"},
+    "session": {
+      "type": "object", "additionalProperties": false, "required": ["sessionId", "targetKind"],
+      "properties": {"sessionId": {"$ref": "#/$defs/sessionId"}, "targetKind": {"const": "media-session"}}
+    },
+    "discovery": {
+      "type": "object", "additionalProperties": false,
+      "required": ["count", "total", "truncated", "coverage", "complete", "warnings", "sessions"],
+      "properties": {
+        "count": {"type": "integer", "minimum": 0, "maximum": 128},
+        "total": {"type": ["integer", "null"], "minimum": 0, "maximum": 4096},
+        "truncated": {"type": "boolean"},
+        "coverage": {"const": "current-user-mpris-owned-names"},
+        "complete": {"type": "boolean"},
+        "warnings": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 256}},
+        "sessions": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/session"}}
+      }
+    },
+    "state": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sessionId", "targetKind", "playbackStatus", "availableControls"],
+      "properties": {
+        "sessionId": {"$ref": "#/$defs/sessionId"}, "targetKind": {"const": "media-session"},
+        "playbackStatus": {"enum": ["playing", "paused", "stopped", "unknown"]},
+        "availableControls": {
+          "type": "object", "additionalProperties": false, "required": ["play", "pause", "stop"],
+          "properties": {"play": {"type": "boolean"}, "pause": {"type": "boolean"}, "stop": {"type": "boolean"}}
+        }
+      }
+    },
+    "control": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sessionId", "targetKind", "operation", "accepted", "finalStateReached", "dispatchOutcome", "effectConfirmed", "retrySafe", "targetMayHaveMutated", "automaticRetryProhibited", "verification"],
+      "properties": {
+        "sessionId": {"$ref": "#/$defs/sessionId"}, "targetKind": {"const": "media-session"},
+        "operation": {"enum": ["play", "pause", "stop"]},
+        "accepted": {"const": true}, "finalStateReached": {"const": true},
+        "dispatchOutcome": {"const": "replied"}, "effectConfirmed": {"const": false},
+        "retrySafe": {"const": false}, "targetMayHaveMutated": {"const": true},
+        "automaticRetryProhibited": {"const": true},
+        "verification": {
+          "type": "object", "additionalProperties": false,
+          "required": ["level", "expectedPlaybackStatus", "observedPlaybackStatus", "conditionObserved", "causalityConfirmed", "domainCommitVerified"],
+          "properties": {
+            "level": {"const": "observed-provider-state"},
+            "expectedPlaybackStatus": {"enum": ["playing", "paused", "stopped"]},
+            "observedPlaybackStatus": {"enum": ["playing", "paused", "stopped"]},
+            "conditionObserved": {"const": true}, "causalityConfirmed": {"const": false}, "domainCommitVerified": {"const": false}
+          }
+        }
+      },
+      "allOf": [
+        {"if": {"properties": {"operation": {"const": "play"}}}, "then": {"properties": {"verification": {"properties": {"expectedPlaybackStatus": {"const": "playing"}, "observedPlaybackStatus": {"const": "playing"}}}}}},
+        {"if": {"properties": {"operation": {"const": "pause"}}}, "then": {"properties": {"verification": {"properties": {"expectedPlaybackStatus": {"const": "paused"}, "observedPlaybackStatus": {"const": "paused"}}}}}},
+        {"if": {"properties": {"operation": {"const": "stop"}}}, "then": {"properties": {"verification": {"properties": {"expectedPlaybackStatus": {"const": "stopped"}, "observedPlaybackStatus": {"const": "stopped"}}}}}}
+      ]
+    }
+  }
+}

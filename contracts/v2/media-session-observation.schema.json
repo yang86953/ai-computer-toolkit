@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/media-session-observation.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["ok", "contractVersion", "capability", "data"],
+  "properties": {
+    "ok": {"const": true}, "contractVersion": {"const": "act/control/v2"},
+    "capability": {"const": "media.session.discover@2"},
+    "executionRealm": {"const": "isolated-worker"},
+    "requiredExecutionRealm": {"const": "isolated-worker"},
+    "executionRealmCertified": {"const": true},
+    "isolationRequirement": {"enum": ["standard", "strict"]},
+    "hostImpactPolicy": {"enum": ["background-preferred", "strict-no-interference"]},
+    "data": {"type":"object", "additionalProperties":false,
+      "required":["count","total","truncated","coverage","complete","warnings","sessions"],
+      "properties": {
+        "count":{"type":"integer","minimum":0}, "total":{"type":["integer","null"],"minimum":0},
+        "truncated":{"type":"boolean"}, "coverage":{"const":"mpris-owned-names-private-broker-generation"},
+        "complete":{"type":"boolean"}, "warnings":{"type":"array","items":{"type":"string","enum":["ambiguous-owner-alias","ambiguous-public-id","owner-changed"]},"uniqueItems":true},
+        "sessions":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["sessionId","targetKind"],"properties":{"sessionId":{"type":"string","pattern":"^s2:m:[0-9a-f]{16}$"},"targetKind":{"const":"media-session"}}}}
+      }
+    }
+  }
+}

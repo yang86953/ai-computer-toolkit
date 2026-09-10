@@ -1,0 +1,15 @@
+{
+  "contractVersion": "act/linux-uix-window-lifecycle-transition-capability-golden/v1",
+  "capabilities": [
+    "window.lifecycle.transition@1"
+  ],
+  "safety": {
+    "provider": "uix-agent-v1",
+    "scope": "opt-in-uix-agent-window-generation",
+    "sameAuthenticatedConnectionUsed": true,
+    "providerPolling": true,
+    "compositorFinalStateConfirmed": false,
+    "arbitraryWindowMoveSupported": false,
+    "fallback": "none"
+  }
+}

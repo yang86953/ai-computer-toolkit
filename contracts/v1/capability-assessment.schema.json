@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/capability-assessment.schema.json",
+  "title": "Capability assessment result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "contractVersion",
+    "capability",
+    "targetId",
+    "decision",
+    "executionRealm",
+    "requiresConfirmation",
+    "requiresForegroundConsent",
+    "reasons"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "contractVersion": { "const": "act/control/v1" },
+    "capability": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9.-]+@[1-9][0-9]*$"
+    },
+    "targetId": { "type": "string", "minLength": 1 },
+    "decision": {
+      "enum": [
+        "executable-background",
+        "confirmation-required",
+        "foreground-consent-required",
+        "isolation-required",
+        "permission-blocked",
+        "unavailable",
+        "unsupported",
+        "capability-gap"
+      ]
+    },
+    "executionRealm": {
+      "enum": [
+        "host-headless",
+        "host-background",
+        "same-session-no-focus",
+        "isolated-worker",
+        "host-foreground",
+        "none"
+      ]
+    },
+    "requiresConfirmation": { "type": "boolean" },
+    "requiresForegroundConsent": { "type": "boolean" },
+    "reasons": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "constraints": { "type": "object" },
+    "evidence": { "type": "object" }
+  }
+}

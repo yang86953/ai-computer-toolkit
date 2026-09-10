@@ -1,0 +1,23 @@
+{
+  "contractVersion": "act/linux-uix-agent-capability-golden/v3",
+  "capabilities": [
+    "accessibility.tree.read@3",
+    "application.session.discover@3",
+    "ui.element.action@2",
+    "ui.element.locate@2",
+    "ui.input.key@2",
+    "ui.input.pointer@2",
+    "window.close@2",
+    "window.closed.wait@2",
+    "window.discover@3",
+    "window.lifecycle@2",
+    "window.metadata.read@3",
+    "window.revision.wait@1",
+    "window.state.read@1"
+  ],
+  "platform": "linux",
+  "status": "production-route-wayland-live-verified",
+  "executionRealm": "same-session-no-focus",
+  "coverage": "opt-in-uix-agent-applications",
+  "fallback": "none"
+}

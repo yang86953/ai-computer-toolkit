@@ -1,0 +1,38 @@
+{
+  "contractVersion": "act/execution-policy/v1",
+  "requestFlag": "--strict-isolation",
+  "requestField": "isolationRequirement",
+  "requirements": ["standard", "strict"],
+  "hostImpactPolicies": ["background-preferred", "strict-no-interference"],
+  "executionRealms": [
+    "host-headless",
+    "host-background",
+    "same-session-no-focus",
+    "isolated-worker",
+    "host-foreground",
+    "none"
+  ],
+  "strictAllowedRealms": ["host-headless", "isolated-worker"],
+  "strictErrors": {
+    "realmRejected": "ISOLATION_REQUIRED",
+    "workerUnavailable": "ISOLATED_WORKER_UNAVAILABLE",
+    "interferenceDetected": "HOST_INTERFERENCE_DETECTED"
+  },
+  "certifiedRustWorkerRoutes": [
+    "uia.inspect",
+    "accessibility.tree.read@1",
+    "ui.element.locate@1",
+    "ui.element.wait@1",
+    "browser.screenshot",
+    "desktop.screenshot",
+    "desktop.record",
+    "window.screenshot@1",
+    "window.record@1"
+  ],
+  "uncertifiedRustCompatibilityRoutes": [
+    "media.playback.control@1"
+  ],
+  "foregroundConsentCannotDowngradeStrict": true,
+  "policyRunsBeforeProviderResolution": true,
+  "launcherGate": "tools/Test-RustIsolationPolicy.ps1"
+}

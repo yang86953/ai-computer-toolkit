@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/security-boundary-error.schema.json",
+  "title": "Predispatch protected-context security boundary error",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "error"],
+  "properties": {
+    "ok": { "const": false },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "details"],
+      "properties": {
+        "code": {
+          "enum": ["PERMISSION_DENIED", "CAPABILITY_ASSESSMENT_UNAVAILABLE"]
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "details": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "decision",
+            "reason",
+            "accessKind",
+            "evaluatedBeforeTargetAccess",
+            "targetReadAttempted",
+            "targetWriteAttempted",
+            "elevationAttempted",
+            "injectionAttempted",
+            "fallbackAttempted",
+            "retrySafe",
+            "automaticRetryProhibited"
+          ],
+          "properties": {
+            "decision": { "enum": ["blocked", "indeterminate"] },
+            "reason": {
+              "enum": [
+                "session-zero",
+                "session-not-active",
+                "protected-or-non-input-desktop",
+                "session-state-indeterminate",
+                "desktop-state-indeterminate"
+              ]
+            },
+            "accessKind": { "enum": ["target-read", "target-mutation"] },
+            "evaluatedBeforeTargetAccess": { "const": true },
+            "targetReadAttempted": { "const": false },
+            "targetWriteAttempted": { "const": false },
+            "elevationAttempted": { "const": false },
+            "injectionAttempted": { "const": false },
+            "fallbackAttempted": { "const": false },
+            "retrySafe": { "const": true },
+            "automaticRetryProhibited": { "const": true }
+          }
+        }
+      }
+    }
+  }
+}

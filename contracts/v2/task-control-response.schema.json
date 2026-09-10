@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://task/control-response/v2",
+  "title": "Task control response and preserved execution truth",
+  "type": "object", "additionalProperties": false,
+  "required": ["contractVersion", "ok"],
+  "properties": {
+    "contractVersion": { "const": "act/control/v2" },
+    "requestId": { "type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[A-Za-z0-9_.:-]+$" },
+    "taskId": { "type": "string", "pattern": "^t2:[0-9a-f]{32}$" },
+    "ok": { "type": "boolean" },
+    "data": { "type": "object" },
+    "error": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "message", "details"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+        "message": { "type": "string" },
+        "details": { "type": "object" }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "required": ["requestId", "taskId", "data"],
+      "properties": { "ok": { "const": true } },
+      "not": { "required": ["error"] }
+    },
+    {
+      "required": ["error"],
+      "properties": { "ok": { "const": false } },
+      "not": { "required": ["data"] }
+    }
+  ]
+}

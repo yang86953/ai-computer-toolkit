@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/process-termination-result.schema.json",
+  "title": "Provider-neutral exact process termination success result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "app", "verb", "capability", "targetId", "data", "meta"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "capability": { "const": "process.terminate.graceful@1" }
+        },
+        "required": ["capability"]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "capability": { "const": "process.terminate.graceful@1" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "capability": { "const": "process.terminate.force@1" }
+        },
+        "required": ["capability"]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "capability": { "const": "process.terminate.force@1" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "close" },
+    "capability": {
+      "enum": ["process.terminate.graceful@1", "process.terminate.force@1"]
+    },
+    "targetId": { "type": "string", "pattern": "^s2:p:[0-9a-f]{16}$" },
+    "data": {
+      "allOf": [
+        { "$ref": "#/$defs/baseData" },
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "capability": { "const": "process.terminate.graceful@1" },
+                "action": { "const": "terminate-graceful" },
+                "riskLevel": { "const": "high" },
+                "mechanism": { "const": "top-level-window-close-request" }
+              }
+            },
+            {
+              "properties": {
+                "capability": { "const": "process.terminate.force@1" },
+                "action": { "const": "terminate-force" },
+                "riskLevel": { "const": "critical" },
+                "mechanism": { "const": "kernel-process-termination" }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unchanged"],
+          "properties": { "unchanged": { "const": true } }
+        },
+        "targeting": { "const": "opaque exact session" }
+      }
+    }
+  },
+  "$defs": {
+    "baseData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "action",
+        "riskLevel",
+        "mechanism",
+        "outcome",
+        "dispatchState",
+        "accepted",
+        "finalStateReached",
+        "state",
+        "targetReresolvedBeforeDispatch",
+        "sameProcessGenerationVerified",
+        "protectedTargetCheck",
+        "criticalProcessCheck",
+        "permissionPreflight",
+        "activeWriteProbePerformed",
+        "confirmationEvaluatedBeforeDispatch",
+        "gracefulFallbackToForce",
+        "reobserveWith",
+        "expectedObservation",
+        "foregroundUnchanged",
+        "retrySafe",
+        "automaticRetryProhibited"
+      ],
+      "properties": {
+        "capability": {
+          "enum": ["process.terminate.graceful@1", "process.terminate.force@1"]
+        },
+        "action": { "enum": ["terminate-graceful", "terminate-force"] },
+        "riskLevel": { "enum": ["high", "critical"] },
+        "mechanism": {
+          "enum": ["top-level-window-close-request", "kernel-process-termination"]
+        },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "finalStateReached": { "const": true },
+        "state": { "const": "exited" },
+        "targetReresolvedBeforeDispatch": { "const": true },
+        "sameProcessGenerationVerified": { "const": true },
+        "protectedTargetCheck": { "const": true },
+        "criticalProcessCheck": { "const": true },
+        "permissionPreflight": { "const": "no-static-integrity-block-observed" },
+        "activeWriteProbePerformed": { "const": false },
+        "confirmationEvaluatedBeforeDispatch": { "const": true },
+        "gracefulFallbackToForce": { "const": false },
+        "reobserveWith": { "const": "process.discover@1" },
+        "expectedObservation": { "const": "target-absent" },
+        "foregroundUnchanged": { "const": true },
+        "retrySafe": { "const": false },
+        "automaticRetryProhibited": { "const": true }
+      }
+    }
+  }
+}

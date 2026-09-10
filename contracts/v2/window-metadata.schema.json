@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/window-metadata.schema.json",
+  "title": "AT-SPI exact partial exporter window metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "capability", "coverage", "readOnly", "mutationAllowed", "window", "safety"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/window-metadata/v2" },
+    "capability": { "const": "window.metadata.read@2" },
+    "coverage": { "const": "partial-accessibility-exporters" },
+    "readOnly": { "const": true },
+    "mutationAllowed": { "const": false },
+    "window": { "$ref": "window-observation.schema.json#/$defs/window" },
+    "safety": { "$ref": "window-observation.schema.json#/$defs/safety" }
+  }
+}

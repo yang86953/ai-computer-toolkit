@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://browser/page-wait/v1",
+  "title": "Provider-neutral browser page wait input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pageId", "condition"],
+  "properties": {
+    "pageId": { "$ref": "#/$defs/browserPageId" },
+    "condition": { "$ref": "#/$defs/waitCondition" },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000,
+      "default": 5000
+    }
+  },
+  "$defs": {
+    "browserPageId": {
+      "type": "string",
+      "pattern": "^s2:bp:[0-9a-f]{32}$"
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "role": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "exact": { "type": "boolean", "default": false }
+      },
+      "anyOf": [
+        { "required": ["role"] },
+        { "required": ["name"] },
+        { "required": ["text"] }
+      ]
+    },
+    "waitCondition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "document-ready" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "selector"],
+          "properties": {
+            "kind": { "const": "element-present" },
+            "selector": { "$ref": "#/$defs/selector" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "text"],
+          "properties": {
+            "kind": { "const": "text-present" },
+            "text": { "type": "string", "minLength": 1, "maxLength": 1024 },
+            "exact": { "type": "boolean", "default": false }
+          }
+        }
+      ]
+    }
+  }
+}

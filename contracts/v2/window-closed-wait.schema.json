@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/closed-wait-result/v2",
+  "title": "Exact cooperative window closed wait result v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy",
+    "data",
+    "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "read" },
+    "capability": { "const": "window.closed.wait@2" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested"],
+          "properties": { "activationRequested": { "const": false } }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "capability",
+        "targetId",
+        "outcome",
+        "revision",
+        "presentedRevision",
+        "closed",
+        "exactGenerationConfirmed",
+        "targetReResolved",
+        "timeoutMs",
+        "executionRealm",
+        "readOnly",
+        "mutationAllowed",
+        "safety"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/window-closed-wait/v2" },
+        "capability": { "const": "window.closed.wait@2" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "outcome": { "const": "closed" },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "closed": { "const": true },
+        "exactGenerationConfirmed": { "const": true },
+        "targetReResolved": { "const": true },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "readOnly": { "const": true },
+        "mutationAllowed": { "const": false },
+        "safety": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "providerCache",
+            "nativeIdentityExposed",
+            "transportIdentityExposed",
+            "foregroundActivationRequested",
+            "desktopInputInjected",
+            "windowInventoryPolled",
+            "x11Used",
+            "fallback"
+          ],
+          "properties": {
+            "providerCache": { "const": "disabled" },
+            "nativeIdentityExposed": { "const": false },
+            "transportIdentityExposed": { "const": false },
+            "foregroundActivationRequested": { "const": false },
+            "desktopInputInjected": { "const": false },
+            "windowInventoryPolled": { "const": false },
+            "x11Used": { "const": false },
+            "fallback": { "const": "none" }
+          }
+        }
+      }
+    }
+  }
+}

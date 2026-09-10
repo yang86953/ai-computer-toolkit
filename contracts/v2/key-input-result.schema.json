@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://ui/key-input-result/v2",
+  "title": "UIX cooperative application-internal key result v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "app", "verb", "capability", "targetId", "executionRealm",
+    "requiredExecutionRealm", "executionRealmCertified", "isolationRequirement",
+    "hostImpactPolicy", "data", "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "ui.input.key@2" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested"],
+          "properties": { "activationRequested": { "const": false } }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "keyName": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-z0-9]$" },
+        { "type": "string", "pattern": "^f([1-9]|1[0-2])$" },
+        {
+          "enum": [
+            "enter", "tab", "escape", "backspace", "delete", "insert", "space",
+            "left", "up", "right", "down", "home", "end", "page-up", "page-down",
+            "control", "alt", "shift", "super"
+          ]
+        }
+      ]
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability", "targetId", "key", "modifiers", "phase", "outcome",
+        "dispatchState", "accepted", "keyDownHandled", "keyUpHandled",
+        "effectConfirmed", "finalStateReached", "effectObservation", "revision",
+        "presentedRevision", "settled", "windowReResolved",
+        "applicationPolicyEvaluated", "confirmationEvaluatedBeforeDiscovery",
+        "foregroundConsentRequired", "hostForegroundActivationRequested",
+        "automaticRetryProhibited", "retrySafe", "timeoutMs", "executionRealm", "safety"
+      ],
+      "properties": {
+        "capability": { "const": "ui.input.key@2" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "key": { "$ref": "#/$defs/keyName" },
+        "modifiers": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "enum": ["control", "alt", "shift", "super"] }
+        },
+        "phase": { "const": "press" },
+        "outcome": { "enum": ["completed", "completed-unsettled"] },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "keyDownHandled": { "const": true },
+        "keyUpHandled": { "const": true },
+        "effectConfirmed": { "const": false },
+        "finalStateReached": { "const": false },
+        "effectObservation": { "const": "not-exposed-by-uix-agent-v1" },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "settled": { "type": "boolean" },
+        "windowReResolved": { "const": true },
+        "applicationPolicyEvaluated": { "const": true },
+        "confirmationEvaluatedBeforeDiscovery": { "const": true },
+        "foregroundConsentRequired": { "const": false },
+        "hostForegroundActivationRequested": { "const": false },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "safety": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nativeIdentityExposed", "transportIdentityExposed", "desktopInputInjected",
+            "applicationInternalEventsDispatched", "requestScopedBalancedPress",
+            "textInputSupported", "keyHoldSupported", "x11Used", "fallback"
+          ],
+          "properties": {
+            "nativeIdentityExposed": { "const": false },
+            "transportIdentityExposed": { "const": false },
+            "desktopInputInjected": { "const": false },
+            "applicationInternalEventsDispatched": { "const": true },
+            "requestScopedBalancedPress": { "const": true },
+            "textInputSupported": { "const": false },
+            "keyHoldSupported": { "const": false },
+            "x11Used": { "const": false },
+            "fallback": { "const": "none" }
+          }
+        }
+      }
+    }
+  }
+}

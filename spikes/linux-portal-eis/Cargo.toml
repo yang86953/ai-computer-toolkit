@@ -1,0 +1,22 @@
+[package]
+name = "ai-computer-toolkit-linux-portal-eis-spike"
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.96"
+publish = false
+
+[dependencies]
+async-io = "2.6.0"
+futures-lite = "2.6.1"
+reis = { version = "0.7.1", default-features = false, features = ["async-io"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+zbus = { version = "5.19.0", default-features = false, features = ["async-io"] }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_unsafe = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

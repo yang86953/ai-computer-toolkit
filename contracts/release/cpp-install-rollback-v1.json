@@ -1,0 +1,29 @@
+{
+  "contractVersion": "act/cpp-install-rollback/v1",
+  "bundleContractVersion": "act/installable-cpp-bundle/v1",
+  "integrity": {
+    "algorithm": "SHA-256",
+    "exactArtifactSetRequired": true,
+    "unexpectedEntriesRejected": true,
+    "authenticityGuaranteed": false
+  },
+  "installation": {
+    "confirmationFlag": "-ConfirmInstall",
+    "destinationParentMustExist": true,
+    "sourceDestinationOverlapRejected": true,
+    "stagingUsesDestinationSibling": true,
+    "previousVersionSuffix": ".rollback",
+    "existingRollbackBlocksUpgrade": true
+  },
+  "rollback": {
+    "confirmationFlag": "-ConfirmRollback",
+    "activeAndRetainedBundlesVerifiedBeforeSwap": true,
+    "directorySwapWithoutDeletion": true,
+    "reversibleToggle": true
+  },
+  "migrationBoundary": {
+    "systemInstallationAuthorized": false,
+    "skillEntrypointSwitchAuthorized": false,
+    "rustCompatibilityDeletionAuthorized": false
+  }
+}

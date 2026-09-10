@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/browser-session-lifecycle-result.schema.json",
+  "title": "Provider-neutral browser session lifecycle success result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy",
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "data",
+    "meta"
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "verb": { "const": "create" },
+        "capability": { "const": "browser.session.open@1" },
+        "targetId": { "$ref": "#/$defs/hostSessionId" },
+        "data": { "$ref": "#/$defs/openData" }
+      }
+    },
+    {
+      "properties": {
+        "verb": { "const": "close" },
+        "capability": { "const": "browser.session.close@1" },
+        "targetId": { "$ref": "#/$defs/browserSessionId" },
+        "data": { "$ref": "#/$defs/closeData" }
+      }
+    }
+  ],
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "isolationRequirement": { "const": "standard" },
+            "hostImpactPolicy": { "const": "background-preferred" }
+          }
+        },
+        {
+          "properties": {
+            "isolationRequirement": { "const": "strict" },
+            "hostImpactPolicy": { "const": "strict-no-interference" }
+          }
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "executionRealm": { "const": "isolated-worker" },
+    "requiredExecutionRealm": { "const": "isolated-worker" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "enum": ["create", "close"] },
+    "capability": { "enum": ["browser.session.open@1", "browser.session.close@1"] },
+    "targetId": {
+      "oneOf": [
+        { "$ref": "#/$defs/hostSessionId" },
+        { "$ref": "#/$defs/browserSessionId" }
+      ]
+    },
+    "data": {
+      "oneOf": [
+        { "$ref": "#/$defs/openData" },
+        { "$ref": "#/$defs/closeData" }
+      ]
+    },
+    "meta": { "$ref": "#/$defs/meta" }
+  },
+  "$defs": {
+    "hostSessionId": {
+      "type": "string",
+      "pattern": "^s2:h:[0-9a-f]{16}$"
+    },
+    "browserSessionId": {
+      "type": "string",
+      "pattern": "^s2:bs:[0-9a-f]{32}$"
+    },
+    "openData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "action",
+        "outcome",
+        "dispatchState",
+        "accepted",
+        "finalStateReached",
+        "targetMayHaveMutated",
+        "state",
+        "sessionId",
+        "foregroundUnchanged",
+        "confirmationEvaluatedBeforeDispatch",
+        "foregroundConsentEvaluatedBeforeDispatch",
+        "retrySafe",
+        "automaticRetryProhibited"
+      ],
+      "properties": {
+        "capability": { "const": "browser.session.open@1" },
+        "action": { "const": "open" },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "finalStateReached": { "const": true },
+        "targetMayHaveMutated": { "const": true },
+        "state": { "const": "live" },
+        "sessionId": { "$ref": "#/$defs/browserSessionId" },
+        "foregroundUnchanged": { "const": true },
+        "confirmationEvaluatedBeforeDispatch": { "const": true },
+        "foregroundConsentEvaluatedBeforeDispatch": { "const": true },
+        "retrySafe": { "const": false },
+        "automaticRetryProhibited": { "const": true }
+      }
+    },
+    "closeData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "action",
+        "outcome",
+        "dispatchState",
+        "accepted",
+        "finalStateReached",
+        "targetMayHaveMutated",
+        "state",
+        "closed",
+        "foregroundUnchanged",
+        "confirmationEvaluatedBeforeDispatch",
+        "foregroundConsentEvaluatedBeforeDispatch",
+        "retrySafe",
+        "automaticRetryProhibited"
+      ],
+      "properties": {
+        "capability": { "const": "browser.session.close@1" },
+        "action": { "const": "close" },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "finalStateReached": { "const": true },
+        "targetMayHaveMutated": { "const": true },
+        "state": { "const": "closed" },
+        "closed": { "const": true },
+        "foregroundUnchanged": { "const": true },
+        "confirmationEvaluatedBeforeDispatch": { "const": true },
+        "foregroundConsentEvaluatedBeforeDispatch": { "const": true },
+        "retrySafe": { "const": false },
+        "automaticRetryProhibited": { "const": true }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unchanged"],
+          "properties": {
+            "unchanged": { "const": true }
+          }
+        },
+        "targeting": { "const": "opaque exact session" }
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/internal/linux-mpris-control-v1.schema.json",
+  "title": "Private Linux MPRIS control worker request v1",
+  "$comment": "This schema describes input only. The feature-gated fixture worker publishes accepted and final JSONL frames under the separate worker contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "sessionBusAddress",
+    "brokerEpoch",
+    "targetId",
+    "operation",
+    "confirmed"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "const": "act/internal/linux-mpris-control/v1"
+    },
+    "sessionBusAddress": {
+      "type": "string",
+      "minLength": 11,
+      "maxLength": 4096,
+      "pattern": "^unix:path=[^\\u0000\\r\\n;]+$"
+    },
+    "brokerEpoch": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "expectedBusGuid": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 32,
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "targetId": {
+      "type": "string",
+      "pattern": "^s2:m:[0-9a-f]{16}$"
+    },
+    "operation": {
+      "enum": [
+        "play",
+        "pause",
+        "toggle-play-pause",
+        "stop",
+        "skip-next",
+        "skip-previous"
+      ]
+    },
+    "confirmed": {
+      "type": "boolean"
+    },
+    "maximumItems": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 128,
+      "default": 128
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000,
+      "default": 30000
+    }
+  }
+}

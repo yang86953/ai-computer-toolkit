@@ -1,0 +1,11 @@
+{
+  "contractVersion": "act/linux-uix-pointer-drag-capability-golden/v1",
+  "capabilities": [
+    "ui.input.pointer.drag@1"
+  ],
+  "platform": "linux",
+  "status": "production-route-protocol-fixture-verified-owner-interaction-acceptance-deferred",
+  "executionRealm": "same-session-no-focus",
+  "coverage": "opt-in-uix-agent-windows",
+  "fallback": "none"
+}

@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://ui/element-transition/v1",
+  "title": "UIX semantic element action with postcondition input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshotId", "elementId", "action", "postcondition"],
+  "properties": {
+    "snapshotId": {
+      "type": "string",
+      "pattern": "^as3:[0-9a-f]{16}$"
+    },
+    "elementId": {
+      "type": "string",
+      "pattern": "^s2:e:[0-9a-f]{16}$"
+    },
+    "action": { "$ref": "#/$defs/action" },
+    "postcondition": { "$ref": "#/$defs/postcondition" },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 30000,
+      "default": 30000
+    }
+  },
+  "$defs": {
+    "action": {
+      "oneOf": [
+        { "$ref": "#/$defs/emptyInvoke" },
+        { "$ref": "#/$defs/emptyFocus" },
+        { "$ref": "#/$defs/setValue" },
+        { "$ref": "#/$defs/insertText" },
+        { "$ref": "#/$defs/select" },
+        { "$ref": "#/$defs/emptyToggle" },
+        { "$ref": "#/$defs/emptyIncrement" },
+        { "$ref": "#/$defs/emptyDecrement" },
+        { "$ref": "#/$defs/scroll" }
+      ]
+    },
+    "emptyInvoke": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "invoke" } }
+    },
+    "emptyFocus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "focus" } }
+    },
+    "setValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "const": "set-value" },
+        "value": { "type": "string", "maxLength": 65536 }
+      }
+    },
+    "insertText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "const": "insert-text" },
+        "text": { "type": "string", "maxLength": 65536 }
+      }
+    },
+    "select": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "const": "select" },
+        "value": { "type": "string", "minLength": 1, "maxLength": 65536 }
+      }
+    },
+    "emptyToggle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "toggle" } }
+    },
+    "emptyIncrement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "increment" } }
+    },
+    "emptyDecrement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "decrement" } }
+    },
+    "scroll": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "deltaX", "deltaY"],
+      "properties": {
+        "type": { "const": "scroll" },
+        "deltaX": { "type": "number", "minimum": -10000, "maximum": 10000 },
+        "deltaY": { "type": "number", "minimum": -10000, "maximum": 10000 }
+      },
+      "not": {
+        "properties": {
+          "deltaX": { "const": 0 },
+          "deltaY": { "const": 0 }
+        },
+        "required": ["deltaX", "deltaY"]
+      }
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "automationId": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "focused": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "action": { "type": "string", "minLength": 1, "maxLength": 64 }
+      },
+      "anyOf": [
+        { "required": ["automationId"] },
+        { "required": ["role"] },
+        { "required": ["name"] },
+        { "required": ["focused"] },
+        { "required": ["enabled"] },
+        { "required": ["action"] }
+      ]
+    },
+    "postcondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selector", "condition"],
+      "properties": {
+        "selector": { "$ref": "#/$defs/selector" },
+        "condition": { "enum": ["unique", "missing"] }
+      }
+    }
+  }
+}

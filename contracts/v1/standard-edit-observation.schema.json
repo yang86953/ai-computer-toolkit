@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/standard-edit-observation.schema.json",
+  "title": "Read-only Standard Edit control observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capability",
+    "readOnly",
+    "candidateOnly",
+    "foregroundUnchanged",
+    "nativeIdentifiersExposed",
+    "count",
+    "total",
+    "truncated",
+    "sessions"
+  ],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "capability": { "const": "ui.text.input@1" },
+    "readOnly": { "const": true },
+    "candidateOnly": { "const": false },
+    "foregroundUnchanged": { "const": true },
+    "nativeIdentifiersExposed": { "const": false },
+    "count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "total": { "type": "integer", "minimum": 0, "maximum": 16384 },
+    "truncated": { "type": "boolean" },
+    "sessions": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionId",
+          "kind",
+          "targetKind",
+          "applicationName",
+          "visible",
+          "capability",
+          "capabilities",
+          "assessment"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "pattern": "^s2:c:[0-9a-f]{16}$"
+          },
+          "kind": { "const": "control" },
+          "targetKind": { "const": "standard-edit-control" },
+          "applicationName": { "type": "string", "minLength": 1 },
+          "visible": { "type": "boolean" },
+          "capability": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "risk",
+              "executionDomain",
+              "requiresConfirmation",
+              "availability"
+            ],
+            "properties": {
+              "id": { "const": "ui.text.input@1" },
+              "risk": { "const": "mutation" },
+              "executionDomain": { "const": "same-session-no-focus" },
+              "requiresConfirmation": { "const": true },
+              "availability": { "const": "available" }
+            }
+          },
+          "capabilities": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "version",
+                "verb",
+                "availability",
+                "execution",
+                "requiresConfirmation",
+                "requiresForegroundConsent",
+                "inputSchema"
+              ],
+              "properties": {
+                "id": { "const": "ui.text.input@1" },
+                "version": { "const": 1 },
+                "verb": { "const": "apply" },
+                "availability": { "const": "available" },
+                "execution": { "const": "same-session-no-focus" },
+                "requiresConfirmation": { "const": true },
+                "requiresForegroundConsent": { "const": false },
+                "inputSchema": { "const": "schema://ui/text-input/v1" }
+              }
+            }
+          },
+          "assessment": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "decision",
+              "safeToExecuteNow",
+              "requiresConfirmation",
+              "foregroundRequired",
+              "permissionRelation",
+              "activeWriteProbePerformed"
+            ],
+            "properties": {
+              "decision": {
+                "enum": [
+                  "requires-confirmation",
+                  "permission-blocked",
+                  "indeterminate"
+                ]
+              },
+              "safeToExecuteNow": { "const": false },
+              "requiresConfirmation": { "const": true },
+              "foregroundRequired": { "const": false },
+              "permissionRelation": {
+                "enum": [
+                  "no-static-integrity-block-observed",
+                  "target-higher-integrity",
+                  "target-metadata-permission-blocked",
+                  "unknown"
+                ]
+              },
+              "activeWriteProbePerformed": { "const": false }
+            }
+          }
+        }
+      }
+    }
+  }
+}

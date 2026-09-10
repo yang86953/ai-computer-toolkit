@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/internal/interactive-command-worker-response-v1.schema.json",
+  "title": "Interactive command worker response v1",
+  "oneOf": [
+    { "$ref": "#/$defs/preDispatchRejection" },
+    { "$ref": "#/$defs/completedSuccess" },
+    { "$ref": "#/$defs/outcomeUnknown" }
+  ],
+  "$defs": {
+    "baseEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "localProviderInvoked",
+        "targetResolved",
+        "mutationDispatched",
+        "foregroundFallbackUsed"
+      ],
+      "properties": {
+        "localProviderInvoked": { "type": "boolean" },
+        "targetResolved": { "type": "boolean" },
+        "mutationDispatched": { "type": "boolean" },
+        "foregroundFallbackUsed": { "const": false }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "enum": [
+            "INVALID_ARGUMENT",
+            "CONFIRMATION_REQUIRED",
+            "FOREGROUND_CONSENT_REQUIRED",
+            "ISOLATION_REQUIRED",
+            "CAPABILITY_GAP",
+            "CAPABILITY_UNSUPPORTED",
+            "BACKGROUND_OPERATION_UNAVAILABLE",
+            "ISOLATED_WORKER_UNAVAILABLE",
+            "ENDPOINT_AUTHENTICATION_FAILED",
+            "STALE_SESSION",
+            "AMBIGUOUS_TARGET",
+            "PERMISSION_DENIED",
+            "CAPABILITY_ASSESSMENT_UNAVAILABLE",
+            "CANCELLED",
+            "FOREGROUND_ACTIVATION_FAILED",
+            "HOST_INTERFERENCE_DETECTED",
+            "TIMEOUT",
+            "POINTER_TARGET_NOT_HIT",
+            "COORDINATE_CONTEXT_UNAVAILABLE",
+            "OPERATION_FAILED",
+            "OUTCOME_UNKNOWN",
+            "WORKER_PROTOCOL_ERROR"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 }
+      }
+    },
+    "preDispatchRejection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "transportAccepted",
+        "businessAccepted",
+        "completed",
+        "outcome",
+        "retrySafe",
+        "targetMayHaveMutated",
+        "error",
+        "evidence"
+      ],
+      "properties": {
+        "ok": { "const": false },
+        "contractVersion": { "const": "act/interactive-command-worker/v1" },
+        "requestNonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+        "transportAccepted": { "type": "boolean" },
+        "businessAccepted": { "const": false },
+        "completed": { "const": false },
+        "outcome": { "const": "not-dispatched" },
+        "retrySafe": { "const": true },
+        "targetMayHaveMutated": { "const": false },
+        "error": { "$ref": "#/$defs/error" },
+        "evidence": {
+          "allOf": [
+            { "$ref": "#/$defs/baseEvidence" },
+            {
+              "properties": {
+                "mutationDispatched": { "const": false }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "completedSuccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "requestNonce",
+        "transportAccepted",
+        "businessAccepted",
+        "completed",
+        "outcome",
+        "retrySafe",
+        "targetMayHaveMutated",
+        "data",
+        "evidence"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/interactive-command-worker/v1" },
+        "requestNonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+        "transportAccepted": { "const": true },
+        "businessAccepted": { "const": true },
+        "completed": { "const": true },
+        "outcome": { "const": "completed" },
+        "retrySafe": { "const": false },
+        "targetMayHaveMutated": { "const": true },
+        "data": { "type": "object" },
+        "evidence": { "$ref": "#/$defs/baseEvidence" }
+      }
+    },
+    "outcomeUnknown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "requestNonce",
+        "transportAccepted",
+        "businessAccepted",
+        "completed",
+        "outcome",
+        "retrySafe",
+        "targetMayHaveMutated",
+        "error",
+        "evidence"
+      ],
+      "properties": {
+        "ok": { "const": false },
+        "contractVersion": { "const": "act/interactive-command-worker/v1" },
+        "requestNonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+        "transportAccepted": { "const": true },
+        "businessAccepted": { "const": true },
+        "completed": { "const": false },
+        "outcome": { "const": "unknown" },
+        "retrySafe": { "const": false },
+        "targetMayHaveMutated": { "const": true },
+        "error": {
+          "allOf": [
+            { "$ref": "#/$defs/error" },
+            { "properties": { "code": { "const": "OUTCOME_UNKNOWN" } } }
+          ]
+        },
+        "evidence": { "$ref": "#/$defs/baseEvidence" }
+      }
+    }
+  }
+}

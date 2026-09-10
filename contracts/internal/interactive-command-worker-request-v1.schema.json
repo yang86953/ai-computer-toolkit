@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/internal/interactive-command-worker-request-v1.schema.json",
+  "title": "Interactive command worker request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "requestNonce",
+    "endpointLeaseNonce",
+    "capability",
+    "operation",
+    "sessionId",
+    "input",
+    "confirmed",
+    "foregroundConsent",
+    "isolationRequirement",
+    "requiredExecutionRealm",
+    "hostImpactPolicy",
+    "timeoutMs"
+  ],
+  "properties": {
+    "contractVersion": { "const": "act/interactive-command-worker/v1" },
+    "requestNonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "endpointLeaseNonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "capability": {
+      "enum": [
+        "ui.input.key@1",
+        "ui.input.pointer@1",
+        "window.lifecycle@1",
+        "window.close@1"
+      ]
+    },
+    "operation": { "enum": ["apply", "close"] },
+    "sessionId": { "type": "string", "pattern": "^s2:w:[0-9a-f]{16}$" },
+    "input": {
+      "type": "object",
+      "propertyNames": {
+        "not": { "enum": ["interactiveSessionId", "timeoutMs"] }
+      }
+    },
+    "confirmed": { "type": "boolean" },
+    "foregroundConsent": { "type": "boolean" },
+    "isolationRequirement": { "const": "strict" },
+    "requiredExecutionRealm": { "const": "isolated-worker" },
+    "hostImpactPolicy": { "const": "strict-no-interference" },
+    "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000 }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "capability": { "const": "window.close@1" } },
+        "required": ["capability"]
+      },
+      "then": { "properties": { "operation": { "const": "close" } } },
+      "else": {
+        "properties": {
+          "operation": { "const": "apply" },
+          "foregroundConsent": { "const": true }
+        }
+      }
+    }
+  ]
+}

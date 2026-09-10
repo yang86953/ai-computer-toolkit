@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://media/playback-control/v3",
+  "title": "MPRIS App v3 control with independent playback state verification",
+  "type": "object", "additionalProperties": false,
+  "required": ["operation"],
+  "properties": {
+    "operation": {"enum": ["play", "pause", "stop"]},
+    "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 5000}
+  }
+}

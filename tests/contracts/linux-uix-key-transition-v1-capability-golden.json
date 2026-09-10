@@ -1,0 +1,24 @@
+{
+  "contractVersion": "act/linux-uix-key-transition-capability-golden/v1",
+  "capabilities": [
+    "ui.input.key.transition@1"
+  ],
+  "platform": "linux",
+  "status": "production-route-protocol-fixture-verified-owner-interaction-and-observation-acceptance-deferred",
+  "executionRealm": "same-session-no-focus",
+  "coverage": "opt-in-uix-agent-applications",
+  "action": "press_key",
+  "sourceScope": "single-complete-key-press",
+  "selectorSemantics": "exact-and",
+  "conditionKinds": ["unique", "missing"],
+  "sameAuthenticatedConnectionUsed": true,
+  "semanticRevisionWaitUsed": true,
+  "providerPolling": false,
+  "causalityConfirmed": false,
+  "finalStateReached": false,
+  "foregroundActivationRequested": false,
+  "desktopInputInjected": false,
+  "automaticRetryProhibited": true,
+  "retrySafe": false,
+  "fallback": "none"
+}

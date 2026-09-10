@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/accessibility-tree.schema.json",
+  "title": "AT-SPI bounded neutral accessibility tree",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "capability", "coverage", "readOnly", "mutationAllowed", "sessionId", "snapshotId", "maximumDepth", "maximumItems", "visited", "truncated", "truncationReasons", "nodes", "safety"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/accessibility-tree/v2" },
+    "capability": { "const": "accessibility.tree.read@2" },
+    "coverage": { "const": "partial-accessibility-exporters" },
+    "readOnly": { "const": true },
+    "mutationAllowed": { "const": false },
+    "sessionId": { "type": "string", "pattern": "^s2:w:[0-9a-f]{16}$" },
+    "snapshotId": { "type": "string", "pattern": "^as2:[0-9a-f]{16}$" },
+    "maximumDepth": { "type": "integer", "minimum": 0, "maximum": 20 },
+    "maximumItems": { "type": "integer", "minimum": 1, "maximum": 4096 },
+    "visited": { "type": "integer", "minimum": 1, "maximum": 4096 },
+    "truncated": { "type": "boolean" },
+    "truncationReasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["depth-limit", "item-limit", "cycle-detected", "stale-descendant", "property-error", "name-limit"] }
+    },
+    "nodes": { "type": "array", "minItems": 1, "maxItems": 4096, "items": { "$ref": "#/$defs/node" } },
+    "safety": { "$ref": "#/$defs/safety" }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshotId", "nodeId", "parentNodeId", "depth", "role", "name", "enabled", "childCount", "propertyReadComplete"],
+      "properties": {
+        "snapshotId": { "type": "string", "pattern": "^as2:[0-9a-f]{16}$" },
+        "nodeId": { "type": "string", "pattern": "^s2:e:[0-9a-f]{16}$" },
+        "parentNodeId": { "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^s2:e:[0-9a-f]{16}$" }] },
+        "depth": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 256 },
+        "enabled": { "type": ["boolean", "null"] },
+        "childCount": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "propertyReadComplete": { "type": "boolean" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publicationPolicy", "providerCache", "nativeIdentityExposed", "textContentRead", "valueContentRead", "boundsExposed", "mutationInterfacesCalled", "forbiddenApiCalls"],
+      "properties": {
+        "publicationPolicy": { "const": "terminal-only-no-partial-results" },
+        "providerCache": { "const": "disabled" },
+        "nativeIdentityExposed": { "const": false },
+        "textContentRead": { "const": false },
+        "valueContentRead": { "const": false },
+        "boundsExposed": { "const": false },
+        "mutationInterfacesCalled": { "const": false },
+        "forbiddenApiCalls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["getAll", "getChildren", "cacheGetItems", "action", "editableText", "selection", "value", "componentGrabFocus", "getApplicationBusAddress"],
+          "properties": {
+            "getAll": { "const": 0 },
+            "getChildren": { "const": 0 },
+            "cacheGetItems": { "const": 0 },
+            "action": { "const": 0 },
+            "editableText": { "const": 0 },
+            "selection": { "const": 0 },
+            "value": { "const": 0 },
+            "componentGrabFocus": { "const": 0 },
+            "getApplicationBusAddress": { "const": 0 }
+          }
+        }
+      }
+    }
+  }
+}

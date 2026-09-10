@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/browser-page-read-result.schema.json",
+  "title": "Provider-neutral browser page navigation and read success result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy",
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "data",
+    "meta"
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "verb": { "const": "apply" },
+        "capability": { "const": "browser.page.navigate@1" },
+        "isolationRequirement": { "const": "strict" },
+        "hostImpactPolicy": { "const": "strict-no-interference" },
+        "data": { "$ref": "#/$defs/navigateData" }
+      }
+    },
+    {
+      "properties": {
+        "verb": { "const": "read" },
+        "capability": { "const": "browser.page.wait@1" },
+        "isolationRequirement": { "const": "standard" },
+        "hostImpactPolicy": { "const": "background-preferred" },
+        "data": { "$ref": "#/$defs/waitData" }
+      }
+    },
+    {
+      "properties": {
+        "verb": { "const": "read" },
+        "capability": { "const": "browser.page.query@1" },
+        "isolationRequirement": { "const": "standard" },
+        "hostImpactPolicy": { "const": "background-preferred" },
+        "data": { "$ref": "#/$defs/queryData" }
+      }
+    }
+  ],
+  "properties": {
+    "executionRealm": { "const": "isolated-worker" },
+    "requiredExecutionRealm": { "const": "isolated-worker" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "enum": ["apply", "read"] },
+    "capability": {
+      "enum": ["browser.page.navigate@1", "browser.page.wait@1", "browser.page.query@1"]
+    },
+    "targetId": { "$ref": "#/$defs/browserSessionId" },
+    "data": {
+      "oneOf": [
+        { "$ref": "#/$defs/navigateData" },
+        { "$ref": "#/$defs/waitData" },
+        { "$ref": "#/$defs/queryData" }
+      ]
+    },
+    "meta": { "$ref": "#/$defs/meta" }
+  },
+  "$defs": {
+    "browserSessionId": {
+      "type": "string",
+      "pattern": "^s2:bs:[0-9a-f]{32}$"
+    },
+    "browserPageId": {
+      "type": "string",
+      "pattern": "^s2:bp:[0-9a-f]{32}$"
+    },
+    "browserElementId": {
+      "type": "string",
+      "pattern": "^s2:be:[0-9a-f]{32}$"
+    },
+    "commandCommon": {
+      "type": "object",
+      "required": [
+        "outcome",
+        "dispatchState",
+        "accepted",
+        "finalStateReached",
+        "targetMayHaveMutated",
+        "foregroundUnchanged",
+        "confirmationEvaluatedBeforeDispatch",
+        "foregroundConsentEvaluatedBeforeDispatch",
+        "retrySafe",
+        "automaticRetryProhibited"
+      ],
+      "properties": {
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "finalStateReached": { "const": true },
+        "targetMayHaveMutated": { "const": true },
+        "foregroundUnchanged": { "const": true },
+        "confirmationEvaluatedBeforeDispatch": { "const": true },
+        "foregroundConsentEvaluatedBeforeDispatch": { "const": true },
+        "retrySafe": { "const": false },
+        "automaticRetryProhibited": { "const": true }
+      }
+    },
+    "queryCommon": {
+      "type": "object",
+      "required": [
+        "outcome",
+        "dispatchState",
+        "accepted",
+        "finalStateReached",
+        "targetMayHaveMutated",
+        "readOnly",
+        "foregroundUnchanged",
+        "confirmationEvaluatedBeforeDispatch",
+        "foregroundConsentEvaluatedBeforeDispatch",
+        "retrySafe",
+        "automaticRetryProhibited"
+      ],
+      "properties": {
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "finalStateReached": { "const": true },
+        "targetMayHaveMutated": { "const": false },
+        "readOnly": { "const": true },
+        "foregroundUnchanged": { "const": true },
+        "confirmationEvaluatedBeforeDispatch": { "const": true },
+        "foregroundConsentEvaluatedBeforeDispatch": { "const": true },
+        "retrySafe": { "const": false },
+        "automaticRetryProhibited": { "const": true }
+      }
+    },
+    "navigateData": {
+      "allOf": [
+        { "$ref": "#/$defs/commandCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "action",
+            "outcome",
+            "dispatchState",
+            "accepted",
+            "finalStateReached",
+            "targetMayHaveMutated",
+            "navigated",
+            "pageId",
+            "navigationGeneration",
+            "foregroundUnchanged",
+            "confirmationEvaluatedBeforeDispatch",
+            "foregroundConsentEvaluatedBeforeDispatch",
+            "retrySafe",
+            "automaticRetryProhibited"
+          ],
+          "properties": {
+            "capability": { "const": "browser.page.navigate@1" },
+            "action": { "const": "navigate" },
+            "outcome": { "const": "completed" },
+            "dispatchState": { "const": "completed" },
+            "accepted": { "const": true },
+            "finalStateReached": { "const": true },
+            "targetMayHaveMutated": { "const": true },
+            "navigated": { "const": true },
+            "pageId": { "$ref": "#/$defs/browserPageId" },
+            "navigationGeneration": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+            "foregroundUnchanged": { "const": true },
+            "confirmationEvaluatedBeforeDispatch": { "const": true },
+            "foregroundConsentEvaluatedBeforeDispatch": { "const": true },
+            "retrySafe": { "const": false },
+            "automaticRetryProhibited": { "const": true }
+          }
+        }
+      ]
+    },
+    "waitData": {
+      "allOf": [
+        { "$ref": "#/$defs/queryCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "action",
+            "outcome",
+            "dispatchState",
+            "accepted",
+            "finalStateReached",
+            "targetMayHaveMutated",
+            "readOnly",
+            "pageId",
+            "navigationGeneration",
+            "conditionMet",
+            "foregroundUnchanged",
+            "confirmationEvaluatedBeforeDispatch",
+            "foregroundConsentEvaluatedBeforeDispatch",
+            "retrySafe",
+            "automaticRetryProhibited"
+          ],
+          "properties": {
+            "capability": { "const": "browser.page.wait@1" },
+            "action": { "const": "wait" },
+            "outcome": { "const": "completed" },
+            "dispatchState": { "const": "completed" },
+            "accepted": { "const": true },
+            "finalStateReached": { "const": true },
+            "targetMayHaveMutated": { "const": false },
+            "readOnly": { "const": true },
+            "pageId": { "$ref": "#/$defs/browserPageId" },
+            "navigationGeneration": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+            "conditionMet": { "const": true },
+            "foregroundUnchanged": { "const": true },
+            "confirmationEvaluatedBeforeDispatch": { "const": true },
+            "foregroundConsentEvaluatedBeforeDispatch": { "const": true },
+            "retrySafe": { "const": false },
+            "automaticRetryProhibited": { "const": true }
+          }
+        }
+      ]
+    },
+    "elementMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elementId", "enabled"],
+      "properties": {
+        "elementId": { "$ref": "#/$defs/browserElementId" },
+        "role": { "type": "string", "maxLength": 1024 },
+        "name": { "type": "string", "maxLength": 1024 },
+        "text": { "type": "string", "maxLength": 1024 },
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "queryData": {
+      "allOf": [
+        { "$ref": "#/$defs/queryCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "action",
+            "outcome",
+            "dispatchState",
+            "accepted",
+            "finalStateReached",
+            "targetMayHaveMutated",
+            "readOnly",
+            "pageId",
+            "navigationGeneration",
+            "matches",
+            "matchCount",
+            "truncated",
+            "foregroundUnchanged",
+            "confirmationEvaluatedBeforeDispatch",
+            "foregroundConsentEvaluatedBeforeDispatch",
+            "retrySafe",
+            "automaticRetryProhibited"
+          ],
+          "properties": {
+            "capability": { "const": "browser.page.query@1" },
+            "action": { "const": "query" },
+            "outcome": { "const": "completed" },
+            "dispatchState": { "const": "completed" },
+            "accepted": { "const": true },
+            "finalStateReached": { "const": true },
+            "targetMayHaveMutated": { "const": false },
+            "readOnly": { "const": true },
+            "pageId": { "$ref": "#/$defs/browserPageId" },
+            "navigationGeneration": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+            "matches": {
+              "type": "array",
+              "maxItems": 100,
+              "items": { "$ref": "#/$defs/elementMatch" }
+            },
+            "matchCount": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+            "truncated": { "type": "boolean" },
+            "foregroundUnchanged": { "const": true },
+            "confirmationEvaluatedBeforeDispatch": { "const": true },
+            "foregroundConsentEvaluatedBeforeDispatch": { "const": true },
+            "retrySafe": { "const": false },
+            "automaticRetryProhibited": { "const": true }
+          }
+        }
+      ]
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unchanged"],
+          "properties": { "unchanged": { "const": true } }
+        },
+        "targeting": { "const": "opaque exact browser session" }
+      }
+    }
+  }
+}

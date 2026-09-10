@@ -1,0 +1,6 @@
+{
+  "contractVersion": "act/linux-uix-window-lifecycle-sequence-transition-capability-golden/v1",
+  "capabilities": [
+    "window.lifecycle.sequence.transition@1"
+  ]
+}

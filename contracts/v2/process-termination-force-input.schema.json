@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://process/termination-force/v2",
+  "title": "Exact Linux process forced termination input v2",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000,
+      "default": 5000
+    }
+  }
+}

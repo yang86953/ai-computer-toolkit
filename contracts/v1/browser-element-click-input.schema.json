@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://browser/element-click/v1",
+  "title": "Provider-neutral browser element click input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pageId", "elementId"],
+  "properties": {
+    "pageId": { "$ref": "#/$defs/browserPageId" },
+    "elementId": { "$ref": "#/$defs/browserElementId" },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000,
+      "default": 5000
+    }
+  },
+  "$defs": {
+    "browserPageId": {
+      "type": "string",
+      "pattern": "^s2:bp:[0-9a-f]{32}$"
+    },
+    "browserElementId": {
+      "type": "string",
+      "pattern": "^s2:be:[0-9a-f]{32}$"
+    }
+  }
+}

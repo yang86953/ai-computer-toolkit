@@ -1,0 +1,15 @@
+{
+  "contractVersion": "act/linux-uix-element-wait-capability-golden/v2",
+  "capabilities": [
+    "ui.element.wait@2"
+  ],
+  "status": "production-route-protocol-fixture-verified-owner-observation-acceptance-deferred",
+  "executionRealm": "same-session-no-focus",
+  "selectorSemantics": "exact-and",
+  "conditionKinds": ["unique", "missing"],
+  "sameAuthenticatedConnectionUsed": true,
+  "semanticRevisionWaitUsed": true,
+  "providerPolling": false,
+  "stabilitySemantics": false,
+  "fallback": "none"
+}

@@ -1,0 +1,24 @@
+{
+  "capability": "window.capture.frame.probe@1",
+  "requiresConfirmation": true,
+  "executionDomain": "isolated-worker",
+  "missingConfirmationError": "CONFIRMATION_REQUIRED",
+  "confirmedStaleTargetError": "STALE_SESSION",
+  "frameSurfaceAccessed": false,
+  "pixelsPersisted": false,
+  "filesWritten": 0,
+  "requiresForegroundUnchanged": true,
+  "forbiddenPublicFields": [
+    "hwnd",
+    "pid",
+    "nativeWindow",
+    "nativeProcessId",
+    "path"
+  ],
+  "forbiddenWorkerOperations": [
+    "SetForegroundWindow",
+    "SendInput",
+    "CreateFile",
+    "WriteFile"
+  ]
+}

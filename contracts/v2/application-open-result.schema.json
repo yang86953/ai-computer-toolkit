@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/application-open-result.schema.json",
+  "title": "Linux authenticated toolkit fixture launch result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "contractVersion", "capability", "targetId", "targetKind",
+    "launchDispatched", "processObserved", "processExitObserved", "fixtureExitVerified",
+    "foregroundConsentObserved", "foregroundMayChange", "foregroundActivationRequested",
+    "foregroundStateObserved", "shellUsed", "argumentsCallerControlled",
+    "nativeIdentifiersExposed", "runtimePathExposed", "fixtureScope", "retrySafe",
+    "automaticRetryProhibited", "executionRealm", "requiredExecutionRealm",
+    "isolationRequirement", "hostImpactPolicy", "executionRealmCertified"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/control/v2" },
+    "capability": { "const": "application.open@2" },
+    "targetId": { "type": "string", "pattern": "^s2:a:[0-9a-f]{16}$" },
+    "targetKind": { "const": "installed-application" },
+    "launchDispatched": { "const": true },
+    "processObserved": { "const": true },
+    "processExitObserved": { "const": true },
+    "fixtureExitVerified": { "const": true },
+    "foregroundConsentObserved": { "const": true },
+    "foregroundMayChange": { "const": true },
+    "foregroundActivationRequested": { "const": false },
+    "foregroundStateObserved": { "const": false },
+    "shellUsed": { "const": false },
+    "argumentsCallerControlled": { "const": false },
+    "nativeIdentifiersExposed": { "const": false },
+    "runtimePathExposed": { "const": false },
+    "fixtureScope": { "const": "toolkit-owned-self-executable-v1" },
+    "retrySafe": { "const": false },
+    "automaticRetryProhibited": { "const": true },
+    "executionRealm": { "const": "host-foreground" },
+    "requiredExecutionRealm": { "const": "host-foreground" },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "executionRealmCertified": { "const": true }
+  }
+}

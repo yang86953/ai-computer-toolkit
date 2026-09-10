@@ -1,0 +1,6 @@
+{
+  "contractVersion": "act/linux-uix-key-sequence-transition-capability-golden/v1",
+  "capabilities": [
+    "ui.input.key.sequence.transition@1"
+  ]
+}

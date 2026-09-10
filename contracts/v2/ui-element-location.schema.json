@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/ui-element-location.schema.json",
+  "title": "Cooperative UIX semantic element location result v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "app", "verb", "capability", "targetId", "executionRealm",
+    "requiredExecutionRealm", "executionRealmCertified", "isolationRequirement",
+    "hostImpactPolicy", "data", "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "read" },
+    "capability": { "const": "ui.element.locate@2" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested"],
+          "properties": { "activationRequested": { "const": false } }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "snapshotId": {
+      "type": "string",
+      "pattern": "^as3:[0-9a-f]{16}$"
+    },
+    "elementId": {
+      "type": "string",
+      "pattern": "^s2:e:[0-9a-f]{16}$"
+    },
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number", "minimum": -1000000000, "maximum": 1000000000 },
+        "y": { "type": "number", "minimum": -1000000000, "maximum": 1000000000 },
+        "width": { "type": "number", "minimum": 0, "maximum": 1000000000 },
+        "height": { "type": "number", "minimum": 0, "maximum": 1000000000 }
+      }
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coordinateSpace", "unit", "frame", "visibleBounds"],
+      "properties": {
+        "coordinateSpace": { "const": "application-client" },
+        "unit": { "const": "logical-px" },
+        "frame": { "$ref": "#/$defs/rect" },
+        "visibleBounds": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/rect" }
+          ]
+        }
+      }
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elementId", "identityFreshness", "automationId", "role", "name",
+        "focused", "enabled", "actions", "geometry"
+      ],
+      "properties": {
+        "elementId": { "$ref": "#/$defs/elementId" },
+        "identityFreshness": { "const": "snapshot-revision" },
+        "automationId": {
+          "type": ["string", "null"],
+          "maxLength": 512
+        },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 256 },
+        "focused": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+        },
+        "geometry": { "$ref": "#/$defs/geometry" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "providerCache", "nativeIdentityExposed", "transportIdentityExposed",
+        "sensitiveSnapshotPublished", "hostCoordinateMappingPublished",
+        "clickPointInferred", "foregroundActivationRequested", "desktopInputInjected",
+        "x11Used", "fallback"
+      ],
+      "properties": {
+        "providerCache": { "const": "disabled" },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "sensitiveSnapshotPublished": { "const": false },
+        "hostCoordinateMappingPublished": { "const": false },
+        "clickPointInferred": { "const": false },
+        "foregroundActivationRequested": { "const": false },
+        "desktopInputInjected": { "const": false },
+        "x11Used": { "const": false },
+        "fallback": { "const": "none" }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok", "contractVersion", "capability", "targetId", "snapshotId", "revision",
+        "presentedRevision", "selectorSemantics", "matchState", "matchCount", "visited",
+        "complete", "element", "targetReResolved", "executionRealm", "readOnly",
+        "mutationAllowed", "safety"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/ui-element-location/v2" },
+        "capability": { "const": "ui.element.locate@2" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "snapshotId": { "$ref": "#/$defs/snapshotId" },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "selectorSemantics": { "const": "exact-and" },
+        "matchState": { "enum": ["missing", "unique"] },
+        "matchCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "visited": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "complete": { "const": true },
+        "element": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/element" }
+          ]
+        },
+        "targetReResolved": { "const": true },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "readOnly": { "const": true },
+        "mutationAllowed": { "const": false },
+        "safety": { "$ref": "#/$defs/safety" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "matchState": { "const": "missing" } },
+            "required": ["matchState"]
+          },
+          "then": {
+            "properties": {
+              "matchCount": { "const": 0 },
+              "element": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "matchState": { "const": "unique" } },
+            "required": ["matchState"]
+          },
+          "then": {
+            "properties": {
+              "matchCount": { "const": 1 },
+              "element": { "$ref": "#/$defs/element" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

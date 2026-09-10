@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/control-method-directory.schema.json",
+  "title": "C++ migration status for provider-neutral control methods",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["readOnly", "policy", "methods"],
+  "properties": {
+    "readOnly": { "const": true },
+    "policy": { "const": "capability-first-no-silent-fallback" },
+    "methods": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "executionScope",
+          "availability",
+          "summary",
+          "cppStatus",
+          "safetyBoundary"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "executionScope": {
+            "enum": ["background", "foreground", "provider-dependent"]
+          },
+          "availability": { "type": "string", "minLength": 1 },
+          "summary": { "type": "string", "minLength": 1 },
+          "cppStatus": {
+            "enum": [
+              "extension-point",
+              "available-read-only",
+                "available-read-only-control-rust-compatibility",
+                "available-confirmed",
+                "candidate-not-certified",
+              "rust-compatibility-only"
+            ]
+          },
+          "safetyBoundary": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

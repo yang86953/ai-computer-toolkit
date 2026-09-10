@@ -1,0 +1,29 @@
+{
+  "contractVersion": "act/standard-edit-compatibility/v1",
+  "capability": "ui.text.input@1",
+  "legacyOperation": "win32-control.set-text",
+  "targetPattern": "^s2:c:[0-9a-f]{16}$",
+  "maximumUtf8Bytes": 65536,
+  "timeoutMs": {
+    "minimum": 1,
+    "maximum": 30000,
+    "default": 2000
+  },
+  "executionRealm": "same-session-no-focus",
+  "requiresConfirmation": true,
+  "requiresForegroundConsent": false,
+  "readOnly": false,
+  "verifiedByReadback": true,
+  "timeout": {
+    "outcome": "unknown",
+    "retrySafe": false,
+    "targetMayHaveMutated": true
+  },
+  "compatibilityShape": "provider-neutral-standard-edit-v1",
+  "nativeIdentifiersExposed": false,
+  "primaryImplementation": "rust",
+  "launcherRoute": "rust",
+  "cppRole": "direct-equivalence-reference",
+  "rustOwnedFixtureGate": "passed",
+  "cppDynamicEquivalenceGate": "compiler-required"
+}

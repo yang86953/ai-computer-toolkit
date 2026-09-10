@@ -1,0 +1,13 @@
+{
+  "contractVersion": "act/linux-uix-window-lifecycle-sequence-capability-golden/v1",
+  "capabilities": [
+    "window.lifecycle.sequence@1"
+  ],
+  "status": "production-route-protocol-fixture-verified-owner-interaction-acceptance-deferred",
+  "executionRealm": "host-foreground",
+  "coverage": "opt-in-uix-agent-applications",
+  "requiredDistinctActionKinds": 2,
+  "transactionSemantics": false,
+  "compositorFinalStateConfirmed": false,
+  "fallback": "none"
+}

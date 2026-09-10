@@ -1,0 +1,314 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/ui-element-location.schema.json",
+  "title": "Provider-neutral UI element location result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capability",
+    "session",
+    "matchState",
+    "readOnly",
+    "foregroundUnchanged",
+    "windowState",
+    "search",
+    "element",
+    "geometry",
+    "coordinateSnapshot",
+    "safety"
+  ],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "capability": { "const": "ui.element.locate@1" },
+    "session": { "$ref": "#/$defs/windowSession" },
+    "matchState": { "enum": ["missing", "unique"] },
+    "readOnly": { "const": true },
+    "foregroundUnchanged": { "const": true },
+    "windowState": { "enum": ["minimized", "not-minimized"] },
+    "search": { "$ref": "#/$defs/search" },
+    "element": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/element" }
+      ]
+    },
+    "geometry": { "$ref": "#/$defs/geometry" },
+    "coordinateSnapshot": { "$ref": "#/$defs/coordinateSnapshot" },
+    "safety": { "$ref": "#/$defs/safety" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "matchState": { "const": "missing" } },
+        "required": ["matchState"]
+      },
+      "then": {
+        "properties": { "element": { "type": "null" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "matchState": { "const": "unique" } },
+        "required": ["matchState"]
+      },
+      "then": {
+        "properties": { "element": { "$ref": "#/$defs/element" } }
+      }
+    }
+  ],
+  "$defs": {
+    "windowSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "kind",
+        "targetKind",
+        "applicationName",
+        "title",
+        "visible",
+        "capabilities"
+      ],
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "pattern": "^s2:w:[0-9a-f]{16}$"
+        },
+        "kind": { "const": "window" },
+        "targetKind": { "const": "application-window" },
+        "applicationName": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "visible": { "const": true },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "propertyNames": {
+              "not": {
+                "enum": [
+                  "hwnd",
+                  "processId",
+                  "nativeHandle",
+                  "bounds",
+                  "path",
+                  "providerId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "search": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selectorSemantics",
+        "view",
+        "maximumDepth",
+        "maximumItems",
+        "visited",
+        "complete"
+      ],
+      "properties": {
+        "selectorSemantics": { "const": "exact-and" },
+        "view": { "enum": ["control", "raw"] },
+        "maximumDepth": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "maximumItems": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "visited": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "complete": { "const": true }
+      }
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodeId",
+        "identityFreshness",
+        "depth",
+        "name",
+        "automationId",
+        "className",
+        "frameworkId",
+        "controlType",
+        "enabled",
+        "offscreen",
+        "propertyReadComplete"
+      ],
+      "properties": {
+        "nodeId": {
+          "type": "string",
+          "pattern": "^s2:e:[0-9a-f]{16}$"
+        },
+        "identityFreshness": { "const": "location-snapshot" },
+        "depth": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "name": { "type": "string" },
+        "automationId": { "type": "string" },
+        "className": { "type": "string" },
+        "frameworkId": { "type": "string" },
+        "controlType": { "type": "integer" },
+        "enabled": { "type": "boolean" },
+        "offscreen": { "type": "boolean" },
+        "propertyReadComplete": { "const": true }
+      }
+    },
+    "unavailableBounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "reason"],
+      "properties": {
+        "state": { "const": "unavailable" },
+        "reason": {
+          "enum": [
+            "provider-did-not-return-bounds",
+            "empty-bounds",
+            "element-not-located",
+            "window-minimized"
+          ]
+        }
+      }
+    },
+    "availableBounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "coordinateSpace",
+        "unit",
+        "left",
+        "top",
+        "right",
+        "bottom",
+        "width",
+        "height"
+      ],
+      "properties": {
+        "state": { "const": "available" },
+        "coordinateSpace": { "const": "virtual-desktop" },
+        "unit": { "const": "physical-screen-px" },
+        "left": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "top": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "right": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "bottom": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 4294967295 }
+      }
+    },
+    "bounds": {
+      "oneOf": [
+        { "$ref": "#/$defs/unavailableBounds" },
+        { "$ref": "#/$defs/availableBounds" }
+      ]
+    },
+    "unavailableHitRegion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "reason", "occlusion"],
+      "properties": {
+        "state": { "const": "unavailable" },
+        "reason": {
+          "enum": [
+            "window-minimized",
+            "element-offscreen",
+            "bounds-unavailable",
+            "no-clickable-point",
+            "provider-point-outside-bounds",
+            "provider-did-not-return-clickable-point",
+            "element-not-located"
+          ]
+        },
+        "occlusion": { "const": "unknown" }
+      }
+    },
+    "availableHitRegion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "source",
+        "coordinateSpace",
+        "unit",
+        "x",
+        "y",
+        "occlusion"
+      ],
+      "properties": {
+        "state": { "const": "available" },
+        "source": { "const": "uia-clickable-point" },
+        "coordinateSpace": { "const": "virtual-desktop" },
+        "unit": { "const": "physical-screen-px" },
+        "x": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "y": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "occlusion": { "const": "provider-clickable-point-available" }
+      }
+    },
+    "hitRegion": {
+      "oneOf": [
+        { "$ref": "#/$defs/unavailableHitRegion" },
+        { "$ref": "#/$defs/availableHitRegion" }
+      ]
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bounds", "hitRegion"],
+      "properties": {
+        "bounds": { "$ref": "#/$defs/bounds" },
+        "hitRegion": { "$ref": "#/$defs/hitRegion" }
+      }
+    },
+    "coordinateSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "windowSessionId",
+        "windowReResolved",
+        "coordinateSpace",
+        "unit",
+        "dpiAwareness",
+        "multiMonitor",
+        "validity"
+      ],
+      "properties": {
+        "windowSessionId": {
+          "type": "string",
+          "pattern": "^s2:w:[0-9a-f]{16}$"
+        },
+        "windowReResolved": { "const": true },
+        "coordinateSpace": { "const": "virtual-desktop" },
+        "unit": { "const": "physical-screen-px" },
+        "dpiAwareness": { "const": "per-monitor-v2-thread" },
+        "multiMonitor": { "const": "virtual-desktop-signed-coordinates" },
+        "validity": { "const": "snapshot-only-re-resolve-before-action" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valueContentRead",
+        "textContentRead",
+        "writePatternsQueried",
+        "writePerformed",
+        "providerTimeoutIsolation",
+        "workerTimeoutMs",
+        "elementIdentityUse"
+      ],
+      "properties": {
+        "valueContentRead": { "const": false },
+        "textContentRead": { "const": false },
+        "writePatternsQueried": { "const": false },
+        "writePerformed": { "const": false },
+        "providerTimeoutIsolation": { "const": "job-bounded-worker" },
+        "workerTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000 },
+        "elementIdentityUse": { "const": "observation-only" }
+      }
+    }
+  }
+}

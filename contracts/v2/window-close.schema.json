@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/close-result/v2",
+  "title": "Exact cooperative window close result v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy",
+    "data",
+    "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "close" },
+    "capability": { "const": "window.close@2" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested"],
+          "properties": { "activationRequested": { "const": false } }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "capability",
+        "targetId",
+        "outcome",
+        "dispatchState",
+        "accepted",
+        "closeConfirmed",
+        "finalStateReached",
+        "effectObservation",
+        "followUpCapability",
+        "revision",
+        "presentedRevision",
+        "settled",
+        "windowReResolved",
+        "applicationPolicyEvaluated",
+        "confirmationEvaluatedBeforeDiscovery",
+        "automaticRetryProhibited",
+        "retrySafe",
+        "timeoutMs",
+        "executionRealm",
+        "safety"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/window-close/v2" },
+        "capability": { "const": "window.close@2" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "outcome": { "const": "accepted" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "closeConfirmed": { "const": false },
+        "finalStateReached": { "const": false },
+        "effectObservation": { "const": "separate-window.closed.wait@2" },
+        "followUpCapability": { "const": "window.closed.wait@2" },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "settled": { "type": "boolean" },
+        "windowReResolved": { "const": true },
+        "applicationPolicyEvaluated": { "const": true },
+        "confirmationEvaluatedBeforeDiscovery": { "const": true },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "safety": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nativeIdentityExposed",
+            "transportIdentityExposed",
+            "hostForegroundActivationRequested",
+            "desktopInputInjected",
+            "windowInventoryPolled",
+            "x11Used",
+            "fallback"
+          ],
+          "properties": {
+            "nativeIdentityExposed": { "const": false },
+            "transportIdentityExposed": { "const": false },
+            "hostForegroundActivationRequested": { "const": false },
+            "desktopInputInjected": { "const": false },
+            "windowInventoryPolled": { "const": false },
+            "x11Used": { "const": false },
+            "fallback": { "const": "none" }
+          }
+        }
+      }
+    }
+  }
+}

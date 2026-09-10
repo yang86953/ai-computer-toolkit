@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/capture-preflight.schema.json",
+  "title": "Read-only exact-window capture preflight",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capability",
+    "targetId",
+    "targetKind",
+    "readOnly",
+    "foregroundUnchanged",
+    "foregroundRequired",
+    "confirmationRequired",
+    "captureExecutionMigrated",
+    "captureCompatibilityEntrypoint",
+    "privacyIndicatorMayAppearOnCapture",
+    "evidence",
+    "safety"
+  ],
+  "properties": {
+    "capability": { "const": "window.capture.preflight@1" },
+    "targetId": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "targetKind": { "const": "application-window" },
+    "readOnly": { "const": true },
+    "foregroundUnchanged": { "const": true },
+    "foregroundRequired": { "const": false },
+    "confirmationRequired": { "const": false },
+    "captureExecutionMigrated": { "const": true },
+    "captureCompatibilityEntrypoint": { "const": "rust-isolated-worker" },
+    "privacyIndicatorMayAppearOnCapture": { "const": true },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visible",
+        "minimized",
+        "cloaked",
+        "nonzeroExtent",
+        "desktopCompositionEnabled",
+        "contentProtection",
+        "wgcRuntime",
+        "wgcItemInterop",
+        "captureItemNonzeroSize",
+        "eligibility"
+      ],
+      "properties": {
+        "visible": { "type": "boolean" },
+        "minimized": { "type": "boolean" },
+        "cloaked": { "type": "boolean" },
+        "nonzeroExtent": { "type": "boolean" },
+        "desktopCompositionEnabled": { "type": "boolean" },
+        "contentProtection": {
+          "enum": [
+            "none",
+            "monitor-only",
+            "excluded-from-capture",
+            "unknown"
+          ]
+        },
+        "wgcRuntime": {
+          "enum": ["supported", "unsupported", "unavailable"]
+        },
+        "wgcItemInterop": {
+          "enum": [
+            "available",
+            "permission-blocked",
+            "unsupported",
+            "unavailable"
+          ]
+        },
+        "captureItemNonzeroSize": { "type": "boolean" },
+        "eligibility": {
+          "enum": [
+            "eligible-for-certified-capture-route",
+            "window-not-visible",
+            "window-minimized",
+            "window-cloaked",
+            "window-has-no-visible-extent",
+            "capture-excluded-by-window",
+            "desktop-composition-unavailable",
+            "capture-protection-unknown",
+            "wgc-runtime-unsupported",
+            "wgc-runtime-unavailable",
+            "wgc-item-permission-blocked",
+            "wgc-item-unavailable"
+          ]
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pixelsRead",
+        "captureSessionStarted",
+        "framePoolCreated",
+        "fileWritten",
+        "windowActivated",
+        "inputSent",
+        "nativeTargetExposed"
+      ],
+      "properties": {
+        "pixelsRead": { "const": false },
+        "captureSessionStarted": { "const": false },
+        "framePoolCreated": { "const": false },
+        "fileWritten": { "const": false },
+        "windowActivated": { "const": false },
+        "inputSent": { "const": false },
+        "nativeTargetExposed": { "const": false }
+      }
+    }
+  }
+}

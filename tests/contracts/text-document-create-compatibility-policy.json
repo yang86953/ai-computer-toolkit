@@ -1,0 +1,25 @@
+{
+  "capability": "text.document.create@1",
+  "cppStatus": "available-confirmed",
+  "rustStatus": "available-confirmed",
+  "launcherAuthority": "rust",
+  "cppRole": "direct-compatibility-evidence",
+  "facadeTargetPrefix": "s2:a:",
+  "decision": "confirmation-required",
+  "executionRealm": "host-background",
+  "requiresForegroundConsent": false,
+  "readOnly": false,
+  "maximumUtf8Bytes": 1048576,
+  "existingApplicationPolicy": "refuse-before-artifact",
+  "legacyRoute": "notepad.open-and-write-text",
+  "compatibilityShape": "provider-neutral-text-artifact-v1",
+  "forbiddenMechanisms": [
+    "keyboard",
+    "mouse",
+    "clipboard",
+    "uia-write",
+    "injection",
+    "elevation",
+    "arbitrary-executable"
+  ]
+}

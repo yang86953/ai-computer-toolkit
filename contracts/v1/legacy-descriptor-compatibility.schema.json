@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/legacy-descriptor-compatibility.schema.json",
+  "title": "Legacy app and operation descriptor compatibility result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["readOnly", "descriptor"],
+  "properties": {
+    "readOnly": { "const": true },
+    "descriptor": { "type": "object" }
+  }
+}

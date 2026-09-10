@@ -1,0 +1,6 @@
+interface:
+  display_name: 控制电脑
+  short_description: 使用电脑控制工具包的真实目标与快照，处理异步动作、恢复和接口故障
+  default_prompt: 使用 $computer-control 完成这项工具包操作或排查其控制问题。
+policy:
+  allow_implicit_invocation: true

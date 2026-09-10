@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://browser/page-query/v1",
+  "title": "Provider-neutral browser page query input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pageId", "selector"],
+  "properties": {
+    "pageId": { "$ref": "#/$defs/browserPageId" },
+    "selector": { "$ref": "#/$defs/selector" },
+    "maxResults": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 100
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000,
+      "default": 5000
+    }
+  },
+  "$defs": {
+    "browserPageId": {
+      "type": "string",
+      "pattern": "^s2:bp:[0-9a-f]{32}$"
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "role": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "exact": { "type": "boolean", "default": false }
+      },
+      "anyOf": [
+        { "required": ["role"] },
+        { "required": ["name"] },
+        { "required": ["text"] }
+      ]
+    }
+  }
+}

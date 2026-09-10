@@ -1,0 +1,424 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://ui/input-sequence-transition/v1/result",
+  "title": "UIX cooperative application-internal key and pointer sequence transition result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy",
+    "data",
+    "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "ui.input.sequence.transition@1" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "activationRequested",
+            "semanticPostconditionObservationRequested"
+          ],
+          "properties": {
+            "activationRequested": { "const": false },
+            "semanticPostconditionObservationRequested": { "const": true }
+          }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "snapshotId": {
+      "type": "string",
+      "pattern": "^as3:[0-9a-f]{16}$"
+    },
+    "elementId": {
+      "type": "string",
+      "pattern": "^s2:e:[0-9a-f]{16}$"
+    },
+    "keyName": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-z0-9]$" },
+        { "type": "string", "pattern": "^f([1-9]|1[0-2])$" },
+        {
+          "enum": [
+            "enter", "tab", "escape", "backspace", "delete", "insert", "space",
+            "left", "up", "right", "down", "home", "end", "page-up", "page-down",
+            "control", "alt", "shift", "super"
+          ]
+        }
+      ]
+    },
+    "press": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "key", "modifiers"],
+      "properties": {
+        "type": { "const": "press" },
+        "key": { "$ref": "#/$defs/keyName" },
+        "modifiers": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "enum": ["alt", "control", "shift", "super"] }
+        }
+      }
+    },
+    "pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "x", "y"],
+      "properties": {
+        "type": { "enum": ["move", "click"] },
+        "x": { "type": "number", "minimum": 0, "maximum": 65535 },
+        "y": { "type": "number", "minimum": 0, "maximum": 65535 }
+      }
+    },
+    "step": {
+      "oneOf": [
+        { "$ref": "#/$defs/press" },
+        { "$ref": "#/$defs/pointer" }
+      ]
+    },
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number", "minimum": -1000000000, "maximum": 1000000000 },
+        "y": { "type": "number", "minimum": -1000000000, "maximum": 1000000000 },
+        "width": { "type": "number", "minimum": 0, "maximum": 1000000000 },
+        "height": { "type": "number", "minimum": 0, "maximum": 1000000000 }
+      }
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coordinateSpace", "unit", "frame", "visibleBounds"],
+      "properties": {
+        "coordinateSpace": { "const": "application-client" },
+        "unit": { "const": "logical-px" },
+        "frame": { "$ref": "#/$defs/rect" },
+        "visibleBounds": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/rect" }
+          ]
+        }
+      }
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elementId",
+        "identityFreshness",
+        "automationId",
+        "role",
+        "name",
+        "focused",
+        "enabled",
+        "actions",
+        "geometry"
+      ],
+      "properties": {
+        "elementId": { "$ref": "#/$defs/elementId" },
+        "identityFreshness": { "const": "snapshot-revision" },
+        "automationId": { "type": ["string", "null"], "maxLength": 512 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 256 },
+        "focused": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 32,
+          "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+        },
+        "geometry": { "$ref": "#/$defs/geometry" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "providerCache",
+        "sameAuthenticatedConnectionUsed",
+        "windowGenerationFixed",
+        "revisionChainUsed",
+        "semanticRevisionWaitUsed",
+        "providerPolling",
+        "stabilitySemantics",
+        "nativeIdentityExposed",
+        "transportIdentityExposed",
+        "sensitiveSnapshotPublished",
+        "hostCoordinateMappingPublished",
+        "foregroundActivationRequested",
+        "desktopInputInjected",
+        "desktopPointerMoved",
+        "requestScopedBalancedPresses",
+        "requestScopedBalancedClicks",
+        "independentKeyOwnership",
+        "independentButtonOwnership",
+        "textInputSupported",
+        "keyHoldSupported",
+        "keyRepeatSupported",
+        "dragSupported",
+        "doubleClickSupported",
+        "clickCountSupported",
+        "scrollSupported",
+        "x11Used",
+        "fallback"
+      ],
+      "properties": {
+        "provider": { "const": "uix-agent-v1" },
+        "providerCache": { "const": "disabled" },
+        "sameAuthenticatedConnectionUsed": { "const": true },
+        "windowGenerationFixed": { "const": true },
+        "revisionChainUsed": { "const": true },
+        "semanticRevisionWaitUsed": { "type": "boolean" },
+        "providerPolling": { "const": false },
+        "stabilitySemantics": { "const": false },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "sensitiveSnapshotPublished": { "const": false },
+        "hostCoordinateMappingPublished": { "const": false },
+        "foregroundActivationRequested": { "const": false },
+        "desktopInputInjected": { "const": false },
+        "desktopPointerMoved": { "const": false },
+        "requestScopedBalancedPresses": { "const": true },
+        "requestScopedBalancedClicks": { "const": true },
+        "independentKeyOwnership": { "const": false },
+        "independentButtonOwnership": { "const": false },
+        "textInputSupported": { "const": false },
+        "keyHoldSupported": { "const": false },
+        "keyRepeatSupported": { "const": false },
+        "dragSupported": { "const": false },
+        "doubleClickSupported": { "const": false },
+        "clickCountSupported": { "const": false },
+        "scrollSupported": { "const": false },
+        "x11Used": { "const": false },
+        "fallback": { "const": "none" }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "capability",
+        "targetId",
+        "action",
+        "coordinateSpace",
+        "steps",
+        "stepsRequested",
+        "stepsAccepted",
+        "pressesAccepted",
+        "movesAccepted",
+        "clicksAccepted",
+        "intervalMs",
+        "plannedDurationMs",
+        "allPressesBalanced",
+        "allClicksBalanced",
+        "transactionSemantics",
+        "rollbackSemantics",
+        "sequenceRevision",
+        "sequencePresentedRevision",
+        "sequenceSettled",
+        "postcondition",
+        "selectorSemantics",
+        "postconditionMatchedAfterDispatch",
+        "snapshotId",
+        "matchState",
+        "matchCount",
+        "sampleCount",
+        "waitCount",
+        "revision",
+        "presentedRevision",
+        "revisionWaitUsed",
+        "element",
+        "outcome",
+        "dispatchState",
+        "accepted",
+        "sameAuthenticatedConnectionUsed",
+        "effectConfirmed",
+        "applicationConsumptionConfirmed",
+        "causalityConfirmed",
+        "finalStateReached",
+        "applicationPolicyEvaluated",
+        "confirmationEvaluatedBeforeDiscovery",
+        "hostForegroundActivationRequested",
+        "effectObservation",
+        "automaticRetryProhibited",
+        "retrySafe",
+        "timeoutMs",
+        "executionRealm",
+        "readOnly",
+        "mutationAllowed",
+        "safety"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/ui-input-sequence-transition/v1" },
+        "capability": { "const": "ui.input.sequence.transition@1" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "action": { "const": "input-sequence" },
+        "coordinateSpace": { "const": "client-logical-px" },
+        "steps": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "stepsRequested": { "type": "integer", "minimum": 2, "maximum": 64 },
+        "stepsAccepted": { "type": "integer", "minimum": 2, "maximum": 64 },
+        "pressesAccepted": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "movesAccepted": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "clicksAccepted": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "intervalMs": { "type": "integer", "minimum": 0, "maximum": 500 },
+        "plannedDurationMs": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "allPressesBalanced": { "const": true },
+        "allClicksBalanced": { "const": true },
+        "transactionSemantics": { "const": false },
+        "rollbackSemantics": { "const": false },
+        "sequenceRevision": { "type": "integer", "minimum": 0 },
+        "sequencePresentedRevision": { "type": "integer", "minimum": 0 },
+        "sequenceSettled": { "type": "boolean" },
+        "postcondition": { "enum": ["unique", "missing"] },
+        "selectorSemantics": { "const": "exact-and" },
+        "postconditionMatchedAfterDispatch": { "const": true },
+        "snapshotId": { "$ref": "#/$defs/snapshotId" },
+        "matchState": { "enum": ["missing", "unique"] },
+        "matchCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "sampleCount": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+        "waitCount": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "revisionWaitUsed": { "type": "boolean" },
+        "element": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/element" }
+          ]
+        },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "sameAuthenticatedConnectionUsed": { "const": true },
+        "effectConfirmed": { "const": false },
+        "applicationConsumptionConfirmed": { "const": false },
+        "causalityConfirmed": { "const": false },
+        "finalStateReached": { "const": false },
+        "applicationPolicyEvaluated": { "const": true },
+        "confirmationEvaluatedBeforeDiscovery": { "const": true },
+        "hostForegroundActivationRequested": { "const": false },
+        "effectObservation": {
+          "const": "semantic-postcondition-after-complete-input-sequence-no-causal-claim"
+        },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "readOnly": { "const": false },
+        "mutationAllowed": { "const": true },
+        "safety": { "$ref": "#/$defs/safety" }
+      },
+      "allOf": [
+        {
+          "properties": {
+            "steps": {
+              "contains": { "$ref": "#/$defs/press" }
+            }
+          },
+          "required": ["steps"]
+        },
+        {
+          "properties": {
+            "steps": {
+              "contains": { "$ref": "#/$defs/pointer" }
+            }
+          },
+          "required": ["steps"]
+        },
+        {
+          "if": {
+            "properties": { "postcondition": { "const": "missing" } },
+            "required": ["postcondition"]
+          },
+          "then": {
+            "properties": {
+              "matchState": { "const": "missing" },
+              "matchCount": { "const": 0 },
+              "element": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "postcondition": { "const": "unique" } },
+            "required": ["postcondition"]
+          },
+          "then": {
+            "properties": {
+              "matchState": { "const": "unique" },
+              "matchCount": { "const": 1 },
+              "element": { "$ref": "#/$defs/element" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "waitCount": { "const": 0 } },
+            "required": ["waitCount"]
+          },
+          "then": {
+            "properties": {
+              "revisionWaitUsed": { "const": false },
+              "safety": {
+                "properties": { "semanticRevisionWaitUsed": { "const": false } }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "revisionWaitUsed": { "const": true },
+              "safety": {
+                "properties": { "semanticRevisionWaitUsed": { "const": true } }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

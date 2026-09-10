@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/state-wait-result/v1",
+  "title": "UIX framework-current window state wait result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy",
+    "data",
+    "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "read" },
+    "capability": { "const": "window.state.wait@1" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested"],
+          "properties": { "activationRequested": { "const": false } }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "visibilityCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "visibility" },
+        "visible": { "type": "boolean" },
+        "presentable": { "type": "boolean" }
+      },
+      "anyOf": [
+        { "required": ["visible"] },
+        { "required": ["presentable"] }
+      ]
+    },
+    "focusCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "focused"],
+      "properties": {
+        "type": { "const": "focus" },
+        "focused": { "type": "boolean" }
+      }
+    },
+    "clientSizeCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "width", "height"],
+      "properties": {
+        "type": { "const": "client-size" },
+        "width": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "windowFlagsCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "window-flags" },
+        "maximized": { "type": "boolean" },
+        "minimized": { "type": "boolean" },
+        "fullscreen": { "type": "boolean" }
+      },
+      "anyOf": [
+        { "required": ["maximized"] },
+        { "required": ["minimized"] },
+        { "required": ["fullscreen"] }
+      ]
+    },
+    "condition": {
+      "oneOf": [
+        { "$ref": "#/$defs/visibilityCondition" },
+        { "$ref": "#/$defs/focusCondition" },
+        { "$ref": "#/$defs/clientSizeCondition" },
+        { "$ref": "#/$defs/windowFlagsCondition" }
+      ]
+    },
+    "clientSize": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "height": { "type": "integer", "minimum": 0, "maximum": 2147483647 }
+      }
+    },
+    "windowState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maximized", "minimized", "fullscreen"],
+      "properties": {
+        "maximized": { "type": "boolean" },
+        "minimized": { "type": "boolean" },
+        "fullscreen": { "type": "boolean" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "providerCache",
+        "nativeIdentityExposed",
+        "transportIdentityExposed",
+        "foregroundActivationRequested",
+        "desktopInputInjected",
+        "desktopPointerMoved",
+        "globalWindowStateClaimed",
+        "sameAuthenticatedConnectionUsed",
+        "providerPolling",
+        "waitProtocolUsed",
+        "x11Used",
+        "fallback"
+      ],
+      "properties": {
+        "provider": { "const": "uix-agent-v1" },
+        "providerCache": { "const": "disabled" },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "foregroundActivationRequested": { "const": false },
+        "desktopInputInjected": { "const": false },
+        "desktopPointerMoved": { "const": false },
+        "globalWindowStateClaimed": { "const": false },
+        "sameAuthenticatedConnectionUsed": { "const": true },
+        "providerPolling": { "const": true },
+        "waitProtocolUsed": { "const": false },
+        "x11Used": { "const": false },
+        "fallback": { "const": "none" }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "contractVersion",
+        "capability",
+        "targetId",
+        "observationSource",
+        "condition",
+        "coordinateSpace",
+        "visible",
+        "presentable",
+        "focused",
+        "clientSize",
+        "windowState",
+        "revision",
+        "presentedRevision",
+        "pollCount",
+        "frameworkConditionMatched",
+        "compositorFinalStateConfirmed",
+        "targetReResolved",
+        "sameAuthenticatedConnectionUsed",
+        "providerPolling",
+        "waitProtocolUsed",
+        "pollIntervalMs",
+        "timeoutMs",
+        "executionRealm",
+        "readOnly",
+        "mutationAllowed",
+        "retrySafe",
+        "safety"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "contractVersion": { "const": "act/window-state-wait/v1" },
+        "capability": { "const": "window.state.wait@1" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "observationSource": { "const": "uix-framework-current" },
+        "condition": { "$ref": "#/$defs/condition" },
+        "coordinateSpace": { "const": "client-logical-px" },
+        "visible": { "type": "boolean" },
+        "presentable": { "type": "boolean" },
+        "focused": { "type": "boolean" },
+        "clientSize": { "$ref": "#/$defs/clientSize" },
+        "windowState": { "$ref": "#/$defs/windowState" },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "pollCount": { "type": "integer", "minimum": 1, "maximum": 1501 },
+        "frameworkConditionMatched": { "const": true },
+        "compositorFinalStateConfirmed": { "const": false },
+        "targetReResolved": { "const": true },
+        "sameAuthenticatedConnectionUsed": { "const": true },
+        "providerPolling": { "const": true },
+        "waitProtocolUsed": { "const": false },
+        "pollIntervalMs": { "type": "integer", "minimum": 20, "maximum": 500 },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "readOnly": { "const": true },
+        "mutationAllowed": { "const": false },
+        "retrySafe": { "const": true },
+        "safety": { "$ref": "#/$defs/safety" }
+      }
+    }
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/ui-element-action.schema.json",
+  "title": "Exact cooperative semantic element action result v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "app", "verb", "capability", "targetId", "executionRealm",
+    "requiredExecutionRealm", "executionRealmCertified", "isolationRequirement",
+    "hostImpactPolicy", "data", "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "ui.element.action@2" },
+    "targetId": { "type": "string", "pattern": "^s2:w:[0-9a-f]{16}$" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action", "outcome", "dispatchState", "acceptedMayHaveOccurred",
+        "automaticRetryProhibited", "retrySafe", "windowReResolved",
+        "snapshotReResolved", "elementReResolved", "snapshotId", "elementId",
+        "revision", "presentedRevision", "settled", "applicationConfirmation",
+        "confirmationEvaluatedBeforeDiscovery", "pointerFallbackUsed", "writePerformed",
+        "executionRealm", "readOnly", "timeoutMs", "safety"
+      ],
+      "properties": {
+        "action": {
+          "enum": ["invoke", "focus", "set-value", "insert-text", "select", "toggle", "increment", "decrement", "scroll"]
+        },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "acceptedMayHaveOccurred": { "const": true },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "windowReResolved": { "const": true },
+        "snapshotReResolved": { "const": true },
+        "elementReResolved": { "const": true },
+        "snapshotId": { "type": "string", "pattern": "^as3:[0-9a-f]{16}$" },
+        "elementId": { "type": "string", "pattern": "^s2:e:[0-9a-f]{16}$" },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "settled": { "type": "boolean" },
+        "applicationConfirmation": { "enum": ["not-required", "approved"] },
+        "confirmationEvaluatedBeforeDiscovery": { "const": true },
+        "pointerFallbackUsed": { "const": false },
+        "writePerformed": { "const": true },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "readOnly": { "const": false },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000 },
+        "safety": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nativeIdentityExposed", "transportIdentityExposed", "confirmIdentityExposed",
+            "sensitiveSnapshotPublished", "hostForegroundActivationRequested",
+            "desktopInputInjected", "fallback"
+          ],
+          "properties": {
+            "nativeIdentityExposed": { "const": false },
+            "transportIdentityExposed": { "const": false },
+            "confirmIdentityExposed": { "const": false },
+            "sensitiveSnapshotPublished": { "const": false },
+            "hostForegroundActivationRequested": { "const": false },
+            "desktopInputInjected": { "const": false },
+            "fallback": { "const": "none" }
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested"],
+          "properties": { "activationRequested": { "const": false } }
+        },
+        "targeting": { "const": "opaque exact snapshot element" }
+      }
+    }
+  }
+}

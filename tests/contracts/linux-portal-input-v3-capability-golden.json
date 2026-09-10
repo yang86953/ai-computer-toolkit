@@ -1,0 +1,8 @@
+{
+  "contractVersion": 1,
+  "scope": "linux-portal-eis-session-input-candidate",
+  "capabilities": [
+    "ui.input.key@3",
+    "ui.input.pointer@3"
+  ]
+}

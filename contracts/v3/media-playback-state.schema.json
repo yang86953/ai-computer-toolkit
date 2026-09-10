@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://media/playback-state/v3",
+  "title": "MPRIS App v3 exact media state input",
+  "type": "object", "additionalProperties": false,
+  "properties": {
+    "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 5000}
+  }
+}

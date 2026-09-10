@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/ui-element-action-input.schema.json",
+  "title": "Exact cooperative semantic element action input v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshotId", "elementId", "action"],
+  "properties": {
+    "snapshotId": { "type": "string", "pattern": "^as3:[0-9a-f]{16}$" },
+    "elementId": { "type": "string", "pattern": "^s2:e:[0-9a-f]{16}$" },
+    "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 30000 },
+    "action": {
+      "oneOf": [
+        { "$ref": "#/$defs/emptyInvoke" },
+        { "$ref": "#/$defs/emptyFocus" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "set-value" },
+            "value": { "type": "string", "maxLength": 65536 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "text"],
+          "properties": {
+            "type": { "const": "insert-text" },
+            "text": { "type": "string", "maxLength": 65536 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "select" },
+            "value": { "type": "string", "minLength": 1, "maxLength": 65536 }
+          }
+        },
+        { "$ref": "#/$defs/emptyToggle" },
+        { "$ref": "#/$defs/emptyIncrement" },
+        { "$ref": "#/$defs/emptyDecrement" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "deltaX", "deltaY"],
+          "properties": {
+            "type": { "const": "scroll" },
+            "deltaX": { "type": "number", "minimum": -10000, "maximum": 10000 },
+            "deltaY": { "type": "number", "minimum": -10000, "maximum": 10000 }
+          },
+          "not": {
+            "properties": {
+              "deltaX": { "const": 0 },
+              "deltaY": { "const": 0 }
+            },
+            "required": ["deltaX", "deltaY"]
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "emptyInvoke": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "invoke" } }
+    },
+    "emptyFocus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "focus" } }
+    },
+    "emptyToggle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "toggle" } }
+    },
+    "emptyIncrement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "increment" } }
+    },
+    "emptyDecrement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "const": "decrement" } }
+    }
+  }
+}

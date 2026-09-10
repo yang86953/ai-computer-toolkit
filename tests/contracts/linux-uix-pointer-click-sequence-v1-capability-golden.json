@@ -1,0 +1,11 @@
+{
+  "contractVersion": "act/linux-uix-pointer-click-sequence-capability-golden/v1",
+  "capabilities": [
+    "ui.input.pointer.click.sequence@1"
+  ],
+  "status": "production-route-protocol-fixture-verified-owner-interaction-acceptance-deferred",
+  "executionRealm": "same-session-no-focus",
+  "coverage": "opt-in-uix-agent-applications",
+  "doubleClickSemantics": false,
+  "fallback": "none"
+}

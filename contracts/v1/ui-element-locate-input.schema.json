@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/ui-element-locate-input.schema.json",
+  "title": "Provider-neutral UI element location input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["selector"],
+  "properties": {
+    "selector": { "$ref": "#/$defs/selector" },
+    "maximumDepth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20,
+      "default": 8
+    },
+    "maximumItems": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4096,
+      "default": 1024
+    },
+    "view": {
+      "enum": ["control", "raw"],
+      "default": "control"
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000,
+      "default": 2000
+    }
+  },
+  "$defs": {
+    "boundedSemanticText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "$comment": "Runtime additionally enforces at most 512 UTF-8 bytes."
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "name": { "$ref": "#/$defs/boundedSemanticText" },
+        "automationId": { "$ref": "#/$defs/boundedSemanticText" },
+        "className": { "$ref": "#/$defs/boundedSemanticText" },
+        "frameworkId": { "$ref": "#/$defs/boundedSemanticText" },
+        "controlType": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      },
+      "anyOf": [
+        { "required": ["name"] },
+        { "required": ["automationId"] },
+        { "required": ["className"] },
+        { "required": ["frameworkId"] },
+        { "required": ["controlType"] }
+      ]
+    }
+  }
+}

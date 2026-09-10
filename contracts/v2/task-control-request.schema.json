@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://task/control-request/v2",
+  "title": "Task-scoped image-independent background request",
+  "type": "object", "additionalProperties": false,
+  "required": ["contractVersion", "requestId", "taskId", "operation"],
+  "properties": {
+    "contractVersion": { "const": "act/control/v2" },
+    "requestId": { "type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[A-Za-z0-9_.:-]+$" },
+    "taskId": { "type": "string", "pattern": "^t2:[0-9a-f]{32}$" },
+    "operation": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["type"],
+          "properties": { "type": { "enum": ["task.open", "task.status", "task.cancel", "task.close", "catalog"] } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type"],
+          "properties": { "type": { "const": "discover" }, "scope": { "enum": ["applications", "media"], "default": "applications" } }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "capability", "targetId"],
+          "properties": {
+            "type": { "const": "assess" },
+            "capability": { "type": "string" },
+            "targetId": { "type": "string" }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "capability", "targetId", "input"],
+          "properties": {
+            "type": { "const": "execute" },
+            "capability": { "type": "string" },
+            "targetId": { "type": "string" },
+            "input": { "type": "object" },
+            "postconditions": { "type": "array", "maxItems": 16, "items": { "$ref": "#/$defs/postcondition" }, "default": [] }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "postcondition": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["operator", "pointer"],
+          "properties": { "operator": { "const": "exists" }, "pointer": { "type": "string" } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["operator", "pointer", "expected"],
+          "properties": { "operator": { "const": "equals" }, "pointer": { "type": "string" }, "expected": {} }
+        }
+      ]
+    }
+  }
+}

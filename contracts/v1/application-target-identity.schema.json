@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/application-target-identity.schema.json",
+  "title": "Opaque installed-application target identity disclosure",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "providerDomain",
+    "generationBound",
+    "freshness",
+    "desktopFileIdExposed",
+    "nativePathExposed",
+    "contentDigestExposed"
+  ],
+  "properties": {
+    "contractVersion": { "const": "act/application-target-identity/v1" },
+    "providerDomain": { "const": "linux-xdg-desktop-entry" },
+    "generationBound": { "const": true },
+    "freshness": { "const": "discovery-snapshot" },
+    "desktopFileIdExposed": { "const": false },
+    "nativePathExposed": { "const": false },
+    "contentDigestExposed": { "const": false }
+  }
+}

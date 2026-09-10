@@ -1,0 +1,273 @@
+{
+  "contractVersion": "act/special-window-input-compatibility/v1",
+  "scope": "provider-neutral-special-window-input",
+  "evidenceDate": "2026-08-16",
+  "humanGates": ["#2006"],
+  "entries": [
+    {
+      "state": "custom-drawn",
+      "capabilityIds": ["window.discover@1", "window.screenshot@1", "ui.element.action@1", "ui.input.pointer@1", "ui.input.key@1"],
+      "capabilities": {
+        "discoverable": "supported",
+        "observable": "supported",
+        "semanticAction": "unavailable",
+        "pointerInput": "human-gate",
+        "keyboardInput": "human-gate"
+      },
+      "foregroundRequirement": "consent-required",
+      "structuredFailure": { "conclusion": "supported", "codes": ["ELEMENT_NOT_FOUND"] },
+      "evidence": [
+        {
+          "kind": "rust-contract",
+          "reference": "contracts/v1/control-contract.md",
+          "claim": "Window discovery is provider-neutral, while semantic availability remains dependent on exposed accessibility facts."
+        },
+        {
+          "kind": "production-launcher-fixture",
+          "reference": "tests/custom_drawn_window_dynamic_compatibility.rs::custom_drawn_window_is_observable_and_semantic_action_fails_closed",
+          "claim": "A no-activate window with painted pixels and no standard child control is discovered and captured through the production launcher; its absent semantic action target returns ELEMENT_NOT_FOUND without pointer fallback or foreground change."
+        },
+        {
+          "kind": "human-gate",
+          "reference": "#2006",
+          "claim": "Real foreground pointer or keyboard effects on custom-drawn content still require named human validation."
+        }
+      ]
+    },
+    {
+      "state": "raw-input",
+      "capabilityIds": ["window.discover@1", "ui.input.pointer@1", "ui.input.key@1"],
+      "capabilities": {
+        "discoverable": "supported",
+        "observable": "gap",
+        "semanticAction": "unsupported",
+        "pointerInput": "human-gate",
+        "keyboardInput": "human-gate"
+      },
+      "foregroundRequirement": "consent-required",
+      "structuredFailure": { "conclusion": "unsupported", "codes": [] },
+      "evidence": [
+        {
+          "kind": "rust-contract",
+          "reference": "contracts/v1/pointer-input.md",
+          "claim": "Completed pointer input certifies bounded SendInput dispatch and balanced tool ownership, not target-side consumption or physical device origin."
+        },
+        {
+          "kind": "rust-contract",
+          "reference": "contracts/v1/key-input.md",
+          "claim": "Completed keyboard input certifies bounded SendInput dispatch and balanced tool ownership, not target-side consumption or physical device origin."
+        },
+        {
+          "kind": "production-launcher-fixture",
+          "reference": "tests/raw_input_dynamic_compatibility.rs::production_send_input_is_not_raw_device_delivery",
+          "claim": "Mouse and keyboard NOLEGACY fixtures are discovered and receive WM_INPUT after production launcher dispatch, while both message headers have no device source; the original foreground and cursor are restored."
+        },
+        {
+          "kind": "human-gate",
+          "reference": "#2006",
+          "claim": "Real target behavior for synthetic raw-input messages still requires named human validation, especially when an application requires physical device origin."
+        }
+      ]
+    },
+    {
+      "state": "exclusive-fullscreen",
+      "capabilityIds": ["window.discover@1", "window.screenshot@1", "ui.input.pointer@1", "ui.input.key@1"],
+      "capabilities": {
+        "discoverable": "gap",
+        "observable": "gap",
+        "semanticAction": "unsupported",
+        "pointerInput": "human-gate",
+        "keyboardInput": "human-gate"
+      },
+      "foregroundRequirement": "isolated-session-required",
+      "structuredFailure": { "conclusion": "gap", "codes": [] },
+      "evidence": [
+        {
+          "kind": "production-launcher-fixture",
+          "reference": "tests/exclusive_fullscreen_dynamic_compatibility.rs::production_discovery_and_capture_respect_exclusive_fullscreen_boundary",
+          "claim": "A tool-owned D3D11 swap chain attempts true DXGI exclusive fullscreen, restores windowed state before release, and the current session reports the official environment-unavailable outcome; actual exclusive discovery and capture remain gaps until the exclusive branch runs."
+        },
+        {
+          "kind": "human-gate",
+          "reference": "#2006",
+          "claim": "Exclusive fullscreen visibility, capture, focus, and input remain unverified and cannot be inferred from ordinary windows."
+        }
+      ]
+    },
+    {
+      "state": "minimized",
+      "capabilityIds": ["window.discover@1", "window.capture.preflight@1", "ui.element.locate@1", "window.lifecycle@1", "ui.input.pointer@1", "ui.input.key@1"],
+      "capabilities": {
+        "discoverable": "supported",
+        "observable": "unavailable",
+        "semanticAction": "unavailable",
+        "pointerInput": "human-gate",
+        "keyboardInput": "human-gate"
+      },
+      "foregroundRequirement": "consent-required",
+      "structuredFailure": {
+        "conclusion": "supported",
+        "codes": ["CAPTURE_TARGET_MINIMIZED", "BACKGROUND_OPERATION_UNAVAILABLE"]
+      },
+      "evidence": [
+        {
+          "kind": "production-launcher-fixture",
+          "reference": "tests/special_window_dynamic_compatibility.rs::minimized_window_remains_discoverable_and_observation_fails_closed",
+          "claim": "The unchanged production launcher discovers a minimized toolkit window, reports an unavailable hit region, refuses screenshot capture with CAPTURE_TARGET_MINIMIZED, creates no file, and leaves foreground unchanged."
+        },
+        {
+          "kind": "rust-contract",
+          "reference": "tests/element_location.rs::minimized_fixture_reports_explicit_unavailable_hit_region",
+          "claim": "A minimized toolkit window remains classified and does not publish a guessed current-desktop hit region."
+        },
+        {
+          "kind": "rust-contract",
+          "reference": "contracts/v1/window-screenshot-compatibility.md",
+          "claim": "Certified capture refuses minimized targets without restoring, showing, or activating them."
+        },
+        {
+          "kind": "human-gate",
+          "reference": "#2006",
+          "claim": "Real restore followed by pointer or keyboard interaction remains a named visual and interaction gate."
+        }
+      ]
+    },
+    {
+      "state": "hidden",
+      "capabilityIds": ["window.discover@1", "window.screenshot@1", "ui.element.locate@1", "ui.input.pointer@1", "ui.input.key@1"],
+      "capabilities": {
+        "discoverable": "unavailable",
+        "observable": "unavailable",
+        "semanticAction": "unavailable",
+        "pointerInput": "unsupported",
+        "keyboardInput": "unsupported"
+      },
+      "foregroundRequirement": "not-applicable",
+      "structuredFailure": {
+        "conclusion": "supported",
+        "codes": ["CAPTURE_TARGET_HIDDEN", "STALE_SESSION"]
+      },
+      "evidence": [
+        {
+          "kind": "production-launcher-fixture",
+          "reference": "tests/special_window_dynamic_compatibility.rs::hidden_window_is_not_reshown_and_old_target_becomes_stale",
+          "claim": "A toolkit-owned window becomes hidden on one sealed command; production discovery, metadata read, and screenshot routes do not show or activate it, return STALE_SESSION for the old target, create no file, and preserve foreground."
+        },
+        {
+          "kind": "rust-contract",
+          "reference": "contracts/v1/window-screenshot-compatibility.md",
+          "claim": "Certified capture refuses hidden targets and never makes a hidden target visible or foreground."
+        },
+        {
+          "kind": "rust-contract",
+          "reference": "contracts/v1/window-observation-compatibility.md",
+          "claim": "Use-time rediscovery reports stale when an exact public window is no longer discoverable."
+        }
+      ]
+    },
+    {
+      "state": "window-recreated",
+      "capabilityIds": ["window.discover@1", "window.metadata.read@1", "ui.element.locate@1", "window.lifecycle@1"],
+      "capabilities": {
+        "discoverable": "supported",
+        "observable": "gap",
+        "semanticAction": "gap",
+        "pointerInput": "gap",
+        "keyboardInput": "gap"
+      },
+      "foregroundRequirement": "consent-required",
+      "structuredFailure": {
+        "conclusion": "gap",
+        "codes": ["STALE_SESSION", "AMBIGUOUS_TARGET"]
+      },
+      "evidence": [
+        {
+          "kind": "production-launcher-fixture",
+          "reference": "tests/special_window_dynamic_compatibility.rs::recreated_window_gets_new_identity_and_old_target_stays_stale",
+          "claim": "A sealed toolkit replacement uses a different current window token; production discovery returns a different opaque identity, metadata and element location reject the old identity with STALE_SESSION, and no title-based rebinding occurs in this distinct-token scenario."
+        },
+        {
+          "kind": "rust-contract",
+          "reference": "contracts/v1/window-target-identity.md",
+          "claim": "Current identity material cannot distinguish an exactly recycled same-process window token. A persistent asynchronous WinEvent registry can classify history only after event delivery and cannot provide lifetime-bound atomic dispatch, so general no-rebind remains a platform gap."
+        },
+        {
+          "kind": "rust-contract",
+          "reference": "contracts/v1/ui-element-location.md",
+          "claim": "Zero or ambiguous use-time matches fail closed instead of rebinding an old exact window target."
+        }
+      ]
+    },
+    {
+      "state": "mixed-dpi",
+      "capabilityIds": ["ui.element.locate@1", "window.lifecycle@1", "ui.input.pointer@1"],
+      "capabilities": {
+        "discoverable": "supported",
+        "observable": "supported",
+        "semanticAction": "gap",
+        "pointerInput": "human-gate",
+        "keyboardInput": "human-gate"
+      },
+      "foregroundRequirement": "consent-required",
+      "structuredFailure": {
+        "conclusion": "supported",
+        "codes": ["COORDINATE_CONTEXT_UNAVAILABLE", "INVALID_ARGUMENT"]
+      },
+      "evidence": [
+        {
+          "kind": "rust-contract",
+          "reference": "contracts/v1/ui-element-location.md",
+          "claim": "Location and pointer contracts require Per-Monitor-V2 physical coordinates and use-time relocation after DPI changes."
+        },
+        {
+          "kind": "production-launcher-fixture",
+          "reference": "tests/display_topology_dynamic_compatibility.rs::production_window_lifecycle_matches_current_display_topology",
+          "claim": "Production window lifecycle readback matches the current active display topology and post-move window DPI, but this host exposes one 96-DPI monitor so no mixed-DPI transition occurred."
+        },
+        {
+          "kind": "human-gate",
+          "reference": "#2006",
+          "claim": "No available fixture run crosses two active monitors with different DPI values; real mixed-DPI interaction remains a named visual gate."
+        }
+      ]
+    },
+    {
+      "state": "multi-monitor",
+      "capabilityIds": ["ui.element.locate@1", "window.lifecycle@1", "ui.input.pointer@1"],
+      "capabilities": {
+        "discoverable": "supported",
+        "observable": "supported",
+        "semanticAction": "gap",
+        "pointerInput": "human-gate",
+        "keyboardInput": "human-gate"
+      },
+      "foregroundRequirement": "consent-required",
+      "structuredFailure": {
+        "conclusion": "supported",
+        "codes": ["COORDINATE_CONTEXT_UNAVAILABLE", "INVALID_ARGUMENT"]
+      },
+      "evidence": [
+        {
+          "kind": "rust-contract",
+          "reference": "contracts/v1/window-lifecycle.md",
+          "claim": "Window geometry uses signed virtual-desktop physical pixels and validates final bounds against the current virtual desktop."
+        },
+        {
+          "kind": "rust-contract",
+          "reference": "src/adapters/pointer_input_windows.rs::virtual_screen_contains",
+          "claim": "The Windows pointer boundary uses signed half-open virtual-screen bounds without assuming a zero origin."
+        },
+        {
+          "kind": "production-launcher-fixture",
+          "reference": "tests/display_topology_dynamic_compatibility.rs::production_window_lifecycle_matches_current_display_topology",
+          "claim": "The production launcher preserves the canonical window target and foreground while moving a tool-owned window across every active monitor; the current host exposes one monitor with no negative origin, so cross-monitor behavior remains unexercised."
+        },
+        {
+          "kind": "human-gate",
+          "reference": "#2006",
+          "claim": "Real negative-origin and cross-monitor pointer movement remains a named visual and interaction gate."
+        }
+      ]
+    }
+  ]
+}

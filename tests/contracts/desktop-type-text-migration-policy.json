@@ -1,0 +1,27 @@
+{
+  "contractVersion": "act/desktop-type-text-migration-policy/v1",
+  "operation": "desktop.type-text",
+  "rustExecutionStatus": "available-confirmed-opaque-target",
+  "rustExecutionEnabled": true,
+  "cppRole": "direct-equivalence-reference",
+  "targetPrefix": "s2:c:",
+  "executionMode": "background-wm-settext",
+  "requiresConfirmation": true,
+  "requiresForegroundConsent": false,
+  "fixedMessage": "WM_SETTEXT",
+  "boundedReadback": true,
+  "arbitraryMessageAccepted": false,
+  "nativeIdentityExposed": false,
+  "timeoutOutcome": "unknown",
+  "timeoutRetrySafe": false,
+  "opaqueControlRoute": "rust-main",
+  "legacyWindowTargetFallback": "rust-compatibility",
+  "foregroundFallbackCppCertified": false,
+  "candidateEvidence": {
+    "selfOwnedFixtureOnly": true,
+    "utf8ContentMatched": true,
+    "readbackVerified": true,
+    "foregroundUnchanged": true,
+    "userApplicationsWritten": 0
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/language-probe-result.schema.json",
+  "title": "ai-computer-toolkit language feasibility probe result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "contractVersion",
+    "implementationLanguage",
+    "platform",
+    "observations",
+    "safety"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/language-probe/v1" },
+    "implementationLanguage": {
+      "enum": ["cpp", "vlang", "zig"]
+    },
+    "platform": { "const": "windows" },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "processCount",
+        "topLevelWindowCount",
+        "uiaClientInitialized",
+        "foregroundUnchanged"
+      ],
+      "properties": {
+        "processCount": { "type": "integer", "minimum": 1 },
+        "topLevelWindowCount": { "type": "integer", "minimum": 1 },
+        "uiaClientInitialized": { "type": "boolean" },
+        "foregroundUnchanged": { "const": true }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "readOnly",
+        "inputSent",
+        "windowActivated"
+      ],
+      "properties": {
+        "readOnly": { "const": true },
+        "inputSent": { "const": false },
+        "windowActivated": { "const": false }
+      }
+    }
+  }
+}

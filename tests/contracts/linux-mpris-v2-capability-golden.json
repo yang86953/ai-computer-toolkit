@@ -1,0 +1,9 @@
+{
+  "contractVersion": 2,
+  "provider": "linux-mpris-private-bus-candidate",
+  "capabilities": [
+    "media.playback.control@2",
+    "media.playback.state.read@2",
+    "media.session.discover@2"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://screen/capture/v1",
+  "title": "Portal desktop-session one-shot screen capture input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path"],
+  "properties": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32767,
+      "pattern": "\\.png$"
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 30000,
+      "default": 5000
+    },
+    "overwrite": {
+      "type": "boolean",
+      "default": false
+    },
+    "maxDimension": {
+      "type": "integer",
+      "minimum": 256,
+      "maximum": 16384,
+      "description": "Optional nearest-neighbor preview longest edge; omitted keeps original pixels. Never upscales and does not provide desktop input coordinates."
+    }
+  }
+}

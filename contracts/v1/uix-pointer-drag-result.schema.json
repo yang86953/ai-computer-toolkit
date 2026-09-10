@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://ui/pointer-drag-result/v1",
+  "title": "UIX cooperative application-internal pointer drag result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy",
+    "data",
+    "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "ui.input.pointer.drag@1" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested"],
+          "properties": { "activationRequested": { "const": false } }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number", "minimum": 0, "maximum": 65535 },
+        "y": { "type": "number", "minimum": 0, "maximum": 65535 }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "targetId",
+        "action",
+        "button",
+        "coordinateSpace",
+        "start",
+        "end",
+        "outcome",
+        "dispatchState",
+        "accepted",
+        "pointerDownAccepted",
+        "pointerUpAccepted",
+        "buttonReleaseConfirmed",
+        "requestScopedBalancedButtons",
+        "samplesRequested",
+        "moveSamplesAccepted",
+        "durationMs",
+        "revision",
+        "presentedRevision",
+        "settled",
+        "effectConfirmed",
+        "finalStateReached",
+        "windowReResolved",
+        "applicationPolicyEvaluated",
+        "confirmationEvaluatedBeforeDiscovery",
+        "foregroundConsentRequired",
+        "hostForegroundActivationRequested",
+        "automaticRetryProhibited",
+        "retrySafe",
+        "timeoutMs",
+        "executionRealm",
+        "safety"
+      ],
+      "properties": {
+        "capability": { "const": "ui.input.pointer.drag@1" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "action": { "const": "drag" },
+        "button": { "const": "left" },
+        "coordinateSpace": { "const": "client-logical-px" },
+        "start": { "$ref": "#/$defs/point" },
+        "end": { "$ref": "#/$defs/point" },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "pointerDownAccepted": { "const": true },
+        "pointerUpAccepted": { "const": true },
+        "buttonReleaseConfirmed": { "const": true },
+        "requestScopedBalancedButtons": { "const": true },
+        "samplesRequested": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "moveSamplesAccepted": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "settled": { "type": "boolean" },
+        "effectConfirmed": { "const": false },
+        "finalStateReached": { "const": false },
+        "windowReResolved": { "const": true },
+        "applicationPolicyEvaluated": { "const": true },
+        "confirmationEvaluatedBeforeDiscovery": { "const": true },
+        "foregroundConsentRequired": { "const": false },
+        "hostForegroundActivationRequested": { "const": false },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000
+        },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "safety": { "$ref": "#/$defs/safety" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "applicationInternalEventsDispatched",
+        "desktopInputInjected",
+        "desktopPointerMoved",
+        "nativeIdentityExposed",
+        "transportIdentityExposed",
+        "x11Used",
+        "fallback"
+      ],
+      "properties": {
+        "provider": { "const": "uix-agent-v1" },
+        "applicationInternalEventsDispatched": { "const": true },
+        "desktopInputInjected": { "const": false },
+        "desktopPointerMoved": { "const": false },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "x11Used": { "const": false },
+        "fallback": { "const": "none" }
+      }
+    }
+  }
+}

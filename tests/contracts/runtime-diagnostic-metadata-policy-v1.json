@@ -1,0 +1,22 @@
+{
+  "contractVersion": "act/runtime-diagnostic-metadata-policy/v1",
+  "runtimeTopLevelFields": ["ok", "policy", "results"],
+  "forbiddenRuntimeFields": [
+    "cppPolicy",
+    "cppStatus",
+    "cppExecutionEnabled",
+    "allCppExecutionAvailable",
+    "implementationLanguage",
+    "migrationVersion",
+    "buildVersion",
+    "notepadPath",
+    "browserPath",
+    "runtimePath",
+    "executablePath"
+  ],
+  "buildMetadataSurface": "build-info",
+  "buildMetadataState": "rust-candidate-launcher-cpp-pending-parity",
+  "capabilityMigrationSurface": "capabilities",
+  "capabilityMigrationState": "rust-candidate-launcher-cpp-pending-parity",
+  "cppDoctorSchemaRole": "reference-compatibility-baseline"
+}

@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/special-window-input-compatibility.schema.json",
+  "title": "Provider-neutral special window and input compatibility matrix v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "scope", "evidenceDate", "humanGates", "entries"],
+  "properties": {
+    "contractVersion": { "const": "act/special-window-input-compatibility/v1" },
+    "scope": { "const": "provider-neutral-special-window-input" },
+    "evidenceDate": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "humanGates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^#[0-9]+$" }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/entry" },
+      "allOf": [
+        { "contains": { "properties": { "state": { "const": "custom-drawn" } }, "required": ["state"] } },
+        { "contains": { "properties": { "state": { "const": "raw-input" } }, "required": ["state"] } },
+        { "contains": { "properties": { "state": { "const": "exclusive-fullscreen" } }, "required": ["state"] } },
+        { "contains": { "properties": { "state": { "const": "minimized" } }, "required": ["state"] } },
+        { "contains": { "properties": { "state": { "const": "hidden" } }, "required": ["state"] } },
+        { "contains": { "properties": { "state": { "const": "window-recreated" } }, "required": ["state"] } },
+        { "contains": { "properties": { "state": { "const": "mixed-dpi" } }, "required": ["state"] } },
+        { "contains": { "properties": { "state": { "const": "multi-monitor" } }, "required": ["state"] } }
+      ]
+    }
+  },
+  "$defs": {
+    "conclusion": {
+      "type": "string",
+      "enum": ["supported", "blocked", "unavailable", "unsupported", "gap", "human-gate"]
+    },
+    "capabilityId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9.-]*@[1-9][0-9]*$"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reference", "claim"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["rust-contract", "production-launcher-fixture", "human-gate"]
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 256,
+          "not": { "pattern": "([Hh][Ww][Nn][Dd]|[Rr]untime[Ii]d|native handle|provider private)" }
+        },
+        "claim": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 512,
+          "not": { "pattern": "([Hh][Ww][Nn][Dd]|[Rr]untime[Ii]d|native handle|provider private)" }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "discoverable",
+        "observable",
+        "semanticAction",
+        "pointerInput",
+        "keyboardInput"
+      ],
+      "properties": {
+        "discoverable": { "$ref": "#/$defs/conclusion" },
+        "observable": { "$ref": "#/$defs/conclusion" },
+        "semanticAction": { "$ref": "#/$defs/conclusion" },
+        "pointerInput": { "$ref": "#/$defs/conclusion" },
+        "keyboardInput": { "$ref": "#/$defs/conclusion" }
+      }
+    },
+    "structuredFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conclusion", "codes"],
+      "properties": {
+        "conclusion": { "$ref": "#/$defs/conclusion" },
+        "codes": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+        }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "capabilityIds",
+        "capabilities",
+        "foregroundRequirement",
+        "structuredFailure",
+        "evidence"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "custom-drawn",
+            "raw-input",
+            "exclusive-fullscreen",
+            "minimized",
+            "hidden",
+            "window-recreated",
+            "mixed-dpi",
+            "multi-monitor"
+          ]
+        },
+        "capabilityIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/capabilityId" }
+        },
+        "capabilities": { "$ref": "#/$defs/capabilities" },
+        "foregroundRequirement": {
+          "type": "string",
+          "enum": [
+            "none",
+            "consent-required",
+            "isolated-session-required",
+            "not-applicable",
+            "unknown"
+          ]
+        },
+        "structuredFailure": { "$ref": "#/$defs/structuredFailure" },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/evidence" }
+        }
+      }
+    }
+  }
+}

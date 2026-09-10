@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/environment-capability-status.schema.json",
+  "title": "Read-only environment capability status",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "surface",
+    "readOnly",
+    "cppExecutionEnabled",
+    "foregroundUnchanged",
+    "nativeIdentifiersExposed",
+    "runtimePathExposed",
+    "writesEnabled"
+  ],
+  "properties": {
+    "surface": {
+      "enum": ["browser", "win32-control", "notepad", "desktop"]
+    },
+    "readOnly": { "const": true },
+    "cppExecutionEnabled": { "type": "boolean" },
+    "foregroundUnchanged": { "const": true },
+    "nativeIdentifiersExposed": { "const": false },
+    "runtimePathExposed": { "const": false },
+    "writesEnabled": { "type": "boolean" },
+    "runtimeDetected": { "type": "boolean" },
+    "captureWorkerBundled": { "type": "boolean" },
+    "mediaFoundationH264Available": { "type": "boolean" },
+    "activeWriteProbes": { "const": 0 },
+    "controlCount": { "type": "integer", "minimum": 0 },
+    "requiresConfirmationCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "permissionBlockedCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "indeterminateCount": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "surface": {
+            "enum": ["win32-control", "browser"]
+          }
+        },
+        "required": ["surface"]
+      },
+      "then": {
+        "properties": {
+          "cppExecutionEnabled": { "const": true },
+          "writesEnabled": { "const": true }
+        }
+      },
+      "else": {
+        "properties": {
+          "cppExecutionEnabled": { "const": false },
+          "writesEnabled": { "const": false }
+        }
+      }
+    }
+  ]
+}

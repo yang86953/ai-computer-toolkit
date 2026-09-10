@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/activate-result/v1",
+  "title": "UIX exact-window foreground activation result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy",
+    "data",
+    "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "window.activate@1" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "host-foreground" },
+    "requiredExecutionRealm": { "const": "host-foreground" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested", "focusConfirmed"],
+          "properties": {
+            "activationRequested": { "const": true },
+            "focusConfirmed": { "type": "boolean" }
+          }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "nullableBoolean": {
+      "type": ["boolean", "null"]
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "targetId",
+        "outcome",
+        "activationRequestAccepted",
+        "focusObservedAfterDispatch",
+        "focusConfirmed",
+        "targetGenerationCurrentAfterDispatch",
+        "finalFocusStateGuaranteed",
+        "windowReResolved",
+        "applicationPolicyEvaluated",
+        "confirmationEvaluatedBeforeInputAndDiscovery",
+        "foregroundConsentEvaluatedBeforeInputAndDiscovery",
+        "foregroundConsentRequired",
+        "foregroundActivationRequested",
+        "automaticRetryProhibited",
+        "retrySafe",
+        "timeoutMs",
+        "executionRealm",
+        "safety"
+      ],
+      "properties": {
+        "capability": { "const": "window.activate@1" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "outcome": { "const": "request-accepted" },
+        "activationRequestAccepted": { "const": true },
+        "focusObservedAfterDispatch": { "$ref": "#/$defs/nullableBoolean" },
+        "focusConfirmed": { "type": "boolean" },
+        "targetGenerationCurrentAfterDispatch": { "$ref": "#/$defs/nullableBoolean" },
+        "finalFocusStateGuaranteed": { "const": false },
+        "windowReResolved": { "const": true },
+        "applicationPolicyEvaluated": { "const": true },
+        "confirmationEvaluatedBeforeInputAndDiscovery": { "const": true },
+        "foregroundConsentEvaluatedBeforeInputAndDiscovery": { "const": true },
+        "foregroundConsentRequired": { "const": true },
+        "foregroundActivationRequested": { "const": true },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000
+        },
+        "executionRealm": { "const": "host-foreground" },
+        "safety": { "$ref": "#/$defs/safety" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "focusObservedAfterDispatch": { "const": true },
+              "targetGenerationCurrentAfterDispatch": { "const": true }
+            },
+            "required": [
+              "focusObservedAfterDispatch",
+              "targetGenerationCurrentAfterDispatch"
+            ]
+          },
+          "then": {
+            "properties": {
+              "focusConfirmed": { "const": true }
+            }
+          },
+          "else": {
+            "properties": {
+              "focusConfirmed": { "const": false }
+            }
+          }
+        }
+      ]
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "nativeIdentityExposed",
+        "transportIdentityExposed",
+        "desktopInputInjected",
+        "x11Used",
+        "fallback"
+      ],
+      "properties": {
+        "provider": { "const": "uix-agent-v1" },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "desktopInputInjected": { "const": false },
+        "x11Used": { "const": false },
+        "fallback": { "const": "none" }
+      }
+    }
+  }
+}

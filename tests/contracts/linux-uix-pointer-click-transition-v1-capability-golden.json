@@ -1,0 +1,30 @@
+{
+  "contractVersion": "act/linux-uix-pointer-click-transition-capability-golden/v1",
+  "capabilities": [
+    "ui.input.pointer.click.transition@1"
+  ],
+  "platform": "linux",
+  "status": "production-route-protocol-fixture-verified-owner-interaction-and-observation-acceptance-deferred",
+  "executionRealm": "same-session-no-focus",
+  "coverage": "opt-in-uix-agent-applications",
+  "action": "click",
+  "windowAction": "click_at",
+  "coordinateSpace": "client-logical-px",
+  "ordinaryLeftClick": true,
+  "sameAuthenticatedConnectionUsed": true,
+  "semanticRevisionWaitUsed": true,
+  "selectorSemantics": "exact-and",
+  "conditionKinds": ["unique", "missing"],
+  "providerPolling": false,
+  "causalityConfirmed": false,
+  "finalStateReached": false,
+  "foregroundActivationRequested": false,
+  "desktopInputInjected": false,
+  "desktopPointerMoved": false,
+  "doubleClickSemantics": false,
+  "clickCountSemantics": false,
+  "independentButtonOwnership": false,
+  "automaticRetryProhibited": true,
+  "retrySafe": false,
+  "fallback": "none"
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "name": "catalog-success",
+    "argv": ["catalog"],
+    "expectedExitCode": 0,
+    "expectedOk": true
+  },
+  {
+    "name": "unknown-app-is-capability-gap",
+    "argv": ["status", "unknown-app"],
+    "expectedExitCode": 2,
+    "expectedOk": false,
+    "expectedErrorCode": "CAPABILITY_GAP"
+  },
+  {
+    "name": "unknown-operation-is-capability-gap",
+    "argv": ["run", "desktop", "uncataloged-operation", "--confirm"],
+    "expectedExitCode": 2,
+    "expectedOk": false,
+    "expectedErrorCode": "CAPABILITY_GAP"
+  },
+  {
+    "name": "mutation-requires-confirmation-before-target-resolution",
+    "argv": ["run", "desktop", "screenshot"],
+    "expectedExitCode": 2,
+    "expectedOk": false,
+    "expectedErrorCode": "CONFIRMATION_REQUIRED"
+  },
+  {
+    "name": "foreground-operation-requires-consent-before-target-resolution",
+    "argv": [
+      "run",
+      "desktop",
+      "press-key",
+      "--target",
+      "sessionId=window:1",
+      "--arg",
+      "key=ENTER",
+      "--confirm"
+    ],
+    "expectedExitCode": 4,
+    "expectedOk": false,
+    "expectedErrorCode": "FOREGROUND_CONSENT_REQUIRED"
+  },
+  {
+    "name": "consented-operation-still-requires-live-exact-target",
+    "argv": [
+      "run",
+      "desktop",
+      "press-key",
+      "--target",
+      "sessionId=window:1",
+      "--arg",
+      "key=ENTER",
+      "--confirm",
+      "--allow-foreground"
+    ],
+    "expectedExitCode": 2,
+    "expectedOk": false,
+    "expectedErrorCode": "TARGET_NOT_FOUND"
+  }
+]

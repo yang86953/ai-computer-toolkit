@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://application/session-discover/v4",
+  "title": "Linux launch-aware UIX application session discovery result v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "implementation", "capability", "data"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/control/v1" },
+    "implementation": { "const": "rust" },
+    "capability": { "const": "application.session.discover@4" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hostTargetId", "applicationContract", "processContract", "windowContract", "readOnly", "foregroundUnchanged", "coverage", "complete", "count", "total", "truncated", "warnings", "applications", "processes", "windows"],
+      "properties": {
+        "hostTargetId": { "$ref": "#/$defs/hostTargetId" },
+        "applicationContract": { "const": "application.discover@3" },
+        "processContract": { "const": "process.discover@1" },
+        "windowContract": { "const": "window.discover@3" },
+        "readOnly": { "const": true },
+        "foregroundUnchanged": { "const": true },
+        "coverage": { "$ref": "#/$defs/coverage" },
+        "complete": { "$ref": "#/$defs/completeness" },
+        "count": { "$ref": "#/$defs/counts" },
+        "total": { "$ref": "#/$defs/totals" },
+        "truncated": { "$ref": "#/$defs/truncation" },
+        "warnings": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/warning" }
+        },
+        "applications": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": { "$ref": "#/$defs/application" }
+        },
+        "processes": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": { "$ref": "#/$defs/process" }
+        },
+        "windows": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": { "$ref": "#/$defs/window" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hostTargetId": { "type": "string", "pattern": "^s2:h:[0-9a-f]{16}$" },
+    "applicationTargetId": { "type": "string", "pattern": "^s2:a:[0-9a-f]{16}$" },
+    "processTargetId": { "type": "string", "pattern": "^s2:p:[0-9a-f]{16}$" },
+    "windowTargetId": { "type": "string", "pattern": "^s2:w:[0-9a-f]{16}$" },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applications", "processes", "windows", "relationshipPolicy"],
+      "properties": {
+        "applications": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provider", "available", "complete"],
+          "properties": {
+            "provider": { "const": "xdg-desktop-entry" },
+            "available": { "type": "boolean" },
+            "complete": { "type": "boolean" }
+          }
+        },
+        "processes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provider", "available", "complete"],
+          "properties": {
+            "provider": { "const": "linux-procfs" },
+            "available": { "type": "boolean" },
+            "complete": { "type": "boolean" }
+          }
+        },
+        "windows": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provider", "coverage", "available", "complete"],
+          "properties": {
+            "provider": { "const": "uix-agent-v1" },
+            "coverage": { "const": "opt-in-uix-agent-applications" },
+            "available": { "type": "boolean" },
+            "complete": { "type": "boolean" }
+          }
+        },
+        "relationshipPolicy": { "const": "uix-window-to-process-exact-no-application-inference" }
+      }
+    },
+    "completeness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applications", "processes", "windows"],
+      "properties": {
+        "applications": { "type": "boolean" },
+        "processes": { "type": "boolean" },
+        "windows": { "type": "boolean" }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applications", "processes", "windows"],
+      "properties": {
+        "applications": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "processes": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "windows": { "type": "integer", "minimum": 0, "maximum": 4096 }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applications", "processes", "windows"],
+      "properties": {
+        "applications": { "type": ["integer", "null"], "minimum": 0 },
+        "processes": { "type": ["integer", "null"], "minimum": 0 },
+        "windows": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "truncation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applications", "processes", "windows"],
+      "properties": {
+        "applications": { "type": ["boolean", "null"] },
+        "processes": { "type": ["boolean", "null"] },
+        "windows": { "type": ["boolean", "null"] }
+      }
+    },
+    "warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "count"],
+      "properties": {
+        "code": {
+          "enum": ["desktop-entry-invalid-skipped", "desktop-entry-read-incomplete", "desktop-file-id-conflict", "desktop-entry-scan-limit-reached", "unsafe-filesystem-entry-skipped", "xdg-application-root-unreadable", "xdg-application-roots-missing", "application-source-incomplete", "process-snapshot-incomplete", "uix-window-provider-unavailable", "uix-window-authentication-rejected", "uix-window-endpoint-timeout", "uix-window-inventory-truncated", "uix-window-inventory-incomplete"]
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "count": { "type": "integer", "minimum": 1 }
+      },
+      "oneOf": [
+        { "properties": { "code": { "const": "desktop-entry-invalid-skipped" }, "message": { "const": "One or more invalid desktop entries were skipped." } } },
+        { "properties": { "code": { "const": "desktop-entry-read-incomplete" }, "message": { "const": "One or more desktop entries changed or could not be read safely." } } },
+        { "properties": { "code": { "const": "desktop-file-id-conflict" }, "message": { "const": "One or more desktop file identities were ambiguous." } } },
+        { "properties": { "code": { "const": "desktop-entry-scan-limit-reached" }, "message": { "const": "The bounded desktop entry scan limit was reached." } } },
+        { "properties": { "code": { "const": "unsafe-filesystem-entry-skipped" }, "message": { "const": "One or more unsafe filesystem entries were skipped." } } },
+        { "properties": { "code": { "const": "xdg-application-root-unreadable" }, "message": { "const": "One or more configured application roots were unreadable." } } },
+        { "properties": { "code": { "const": "xdg-application-roots-missing" }, "message": { "const": "No readable XDG application root was available." } } },
+        { "properties": { "code": { "const": "application-source-incomplete" }, "message": { "const": "The application inventory is incomplete." } } },
+        { "properties": { "code": { "const": "process-snapshot-incomplete" }, "message": { "const": "The process inventory is incomplete." } } },
+        { "properties": { "code": { "const": "uix-window-provider-unavailable" }, "message": { "const": "The cooperative UIX window inventory provider is unavailable." } } },
+        { "properties": { "code": { "const": "uix-window-authentication-rejected" }, "message": { "const": "One or more UIX Agent endpoints failed authentication." } } },
+        { "properties": { "code": { "const": "uix-window-endpoint-timeout" }, "message": { "const": "One or more UIX Agent endpoints exceeded the bounded deadline." } } },
+        { "properties": { "code": { "const": "uix-window-inventory-truncated" }, "message": { "const": "The cooperative UIX window inventory was truncated by a bounded limit." } } },
+        { "properties": { "code": { "const": "uix-window-inventory-incomplete" }, "message": { "const": "One or more UIX Agent inventory entries were unavailable or invalid." } } }
+      ]
+    },
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "targetKind", "displayName", "version", "publisher", "state", "runningProcessSessionIds", "discoverySources", "launchCapability", "relationshipEvidence", "targetIdentity"],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/applicationTargetId" },
+        "targetKind": { "const": "installed-application" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "version": { "const": "" },
+        "publisher": { "const": "" },
+        "state": { "const": "installed" },
+        "runningProcessSessionIds": { "type": "array", "maxItems": 0 },
+        "discoverySources": { "const": ["xdg-desktop-entry"] },
+        "launchCapability": { "enum": ["unavailable", "available-confirmed"] },
+        "relationshipEvidence": { "const": "none" },
+        "targetIdentity": { "$ref": "#/$defs/applicationTargetIdentity" }
+      }
+    },
+    "applicationTargetIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "providerDomain", "generationBound", "freshness", "desktopFileIdExposed", "nativePathExposed", "contentDigestExposed"],
+      "properties": {
+        "contractVersion": { "const": "act/application-target-identity/v1" },
+        "providerDomain": { "const": "linux-xdg-desktop-entry" },
+        "generationBound": { "const": true },
+        "freshness": { "const": "discovery-snapshot" },
+        "desktopFileIdExposed": { "const": false },
+        "nativePathExposed": { "const": false },
+        "contentDigestExposed": { "const": false }
+      }
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "targetKind", "processName", "state", "identityFreshness", "metadataAccess", "integrityRelation", "hasVisibleWindow", "windowVisibility", "foregroundRequiredForObservation", "windowSessionIds", "relatedApplicationIds", "relationshipStatus"],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/processTargetId" },
+        "targetKind": { "const": "running-process" },
+        "processName": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "state": { "const": "running" },
+        "identityFreshness": { "enum": ["process-lifetime", "best-effort-current-snapshot"] },
+        "metadataAccess": { "enum": ["available", "permission-blocked", "unavailable"] },
+        "integrityRelation": { "const": "unknown" },
+        "hasVisibleWindow": { "type": "boolean" },
+        "windowVisibility": { "enum": ["visible-titled-window", "no-visible-titled-window"] },
+        "foregroundRequiredForObservation": { "const": false },
+        "windowSessionIds": {
+          "type": "array",
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/windowTargetId" }
+        },
+        "relatedApplicationIds": { "type": "array", "maxItems": 0 },
+        "relationshipStatus": { "const": "unassociated" }
+      }
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "targetKind", "title", "visible", "presentable", "revision", "presentedRevision", "ownerProcessSessionId", "relationshipEvidence", "targetIdentity"],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/windowTargetId" },
+        "targetKind": { "const": "uix-agent-window" },
+        "title": { "type": "string", "maxLength": 256 },
+        "visible": { "type": "boolean" },
+        "presentable": { "type": "boolean" },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "ownerProcessSessionId": {
+          "oneOf": [
+            { "$ref": "#/$defs/processTargetId" },
+            { "type": "null" }
+          ]
+        },
+        "relationshipEvidence": { "enum": ["authenticated-peer-process-lifetime", "none"] },
+        "targetIdentity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contractVersion", "provider", "coverage", "freshness", "nativeIdentityExposed"],
+          "properties": {
+            "contractVersion": { "const": "act/window-target-identity/v3" },
+            "provider": { "const": "uix-agent-v1" },
+            "coverage": { "const": "opt-in-uix-agent-applications" },
+            "freshness": { "const": "agent-process-token-and-window-generation" },
+            "nativeIdentityExposed": { "const": false }
+          }
+        }
+      }
+    }
+  }
+}

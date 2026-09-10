@@ -1,0 +1,24 @@
+{
+  "contractVersion": "act/linux-uix-element-transition-capability-golden/v1",
+  "capabilities": [
+    "ui.element.transition@1"
+  ],
+  "platform": "linux",
+  "status": "production-route-protocol-fixture-verified-owner-interaction-and-observation-acceptance-deferred",
+  "executionRealm": "same-session-no-focus",
+  "coverage": "opt-in-uix-agent-applications",
+  "sourceScope": "snapshot-scoped-element",
+  "selectorSemantics": "exact-and",
+  "conditionKinds": ["unique", "missing"],
+  "sameAuthenticatedConnectionUsed": true,
+  "semanticRevisionWaitUsed": true,
+  "providerPolling": false,
+  "causalityConfirmed": false,
+  "finalUIStateConfirmed": false,
+  "desktopInputInjected": false,
+  "foregroundActivationRequested": false,
+  "nativeIdentityExposed": false,
+  "transportIdentityExposed": false,
+  "x11Used": false,
+  "fallback": "none"
+}

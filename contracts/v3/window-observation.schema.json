@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v3/window-observation.schema.json",
+  "title": "Opt-in UIX Agent window observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "capability", "coverage", "executionDomain", "readOnly", "mutationAllowed", "count", "total", "truncated", "complete", "warnings", "windows", "safety"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/window-observation/v3" },
+    "capability": { "const": "window.discover@3" },
+    "coverage": { "const": "opt-in-uix-agent-applications" },
+    "executionDomain": { "const": "same-session-no-focus" },
+    "readOnly": { "const": true },
+    "mutationAllowed": { "const": false },
+    "count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "total": { "type": ["integer", "null"], "minimum": 0, "maximum": 4096 },
+    "truncated": { "type": "boolean" },
+    "complete": { "type": "boolean" },
+    "warnings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["authentication-rejected", "deadline", "endpoint-limit", "endpoint-timeout", "item-limit", "provider-item-limit", "unsafe-or-invalid-entry", "unreachable-or-invalid-endpoint"]
+      }
+    },
+    "windows": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/window" } },
+    "safety": { "$ref": "#/$defs/safety" }
+  },
+  "$defs": {
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "targetKind", "title", "visible", "presentable", "focused", "revision", "presentedRevision", "targetIdentity", "capabilities"],
+      "properties": {
+        "sessionId": { "type": "string", "pattern": "^s2:w:[0-9a-f]{16}$" },
+        "targetKind": { "const": "uix-agent-window" },
+        "title": { "type": "string", "maxLength": 256 },
+        "visible": { "type": "boolean" },
+        "presentable": { "type": "boolean" },
+        "focused": { "type": ["boolean", "null"] },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "presentedRevision": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "targetIdentity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contractVersion", "provider", "coverage", "freshness", "mutationAllowed", "generationOwner", "nativeIdentityExposed"],
+          "properties": {
+            "contractVersion": { "const": "act/window-target-identity/v3" },
+            "provider": { "const": "uix-agent-v1" },
+            "coverage": { "const": "opt-in-uix-agent-applications" },
+            "freshness": { "const": "agent-process-token-and-window-generation" },
+            "mutationAllowed": { "const": false },
+            "generationOwner": { "const": "uix-application" },
+            "nativeIdentityExposed": { "const": false }
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 16,
+          "maxItems": 36,
+          "items": { "enum": ["accessibility.tree.read@3", "ui.element.action@2", "ui.element.locate@2", "ui.element.transition@1", "ui.element.wait@2", "ui.input.key@2", "ui.input.key.sequence@1", "ui.input.key.sequence.transition@1", "ui.input.key.transition@1", "ui.input.pointer@2", "ui.input.pointer.click.sequence@1", "ui.input.pointer.click.sequence.transition@1", "ui.input.pointer.click.transition@1", "ui.input.pointer.drag@1", "ui.input.pointer.drag.transition@1", "ui.input.pointer.move.sequence@1", "ui.input.pointer.move.sequence.transition@1", "ui.input.pointer.move.transition@1", "ui.input.pointer.sequence@1", "ui.input.pointer.sequence.transition@1", "ui.input.sequence@1", "ui.input.sequence.transition@1", "window.activate@1", "window.activate.transition@1", "window.close@2", "window.close.transition@1", "window.closed.wait@2", "window.lifecycle@2", "window.lifecycle.sequence@1", "window.lifecycle.sequence.transition@1", "window.lifecycle.transition@1", "window.metadata.read@3", "window.revision.wait@1", "window.screenshot@2", "window.state.read@1", "window.state.wait@1"] }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foregroundClaimed", "globalWindowDirectoryClaimed", "arbitraryThirdPartyAppsClaimed", "nativeIdentityExposed", "transportIdentityExposed", "x11Used", "fallback"],
+      "properties": {
+        "foregroundClaimed": { "const": false },
+        "globalWindowDirectoryClaimed": { "const": false },
+        "arbitraryThirdPartyAppsClaimed": { "const": false },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "x11Used": { "const": false },
+        "fallback": { "const": "none" }
+      }
+    }
+  }
+}

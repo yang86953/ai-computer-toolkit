@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/lifecycle-sequence-result/v1",
+  "title": "UIX cooperative window lifecycle sequence result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "app", "verb", "capability", "targetId", "executionRealm",
+    "requiredExecutionRealm", "executionRealmCertified", "isolationRequirement",
+    "hostImpactPolicy", "data", "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "window.lifecycle.sequence@1" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "host-foreground" },
+    "requiredExecutionRealm": { "const": "host-foreground" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested", "visibleMutationAuthorized"],
+          "properties": {
+            "activationRequested": { "const": false },
+            "visibleMutationAuthorized": { "const": true }
+          }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "simpleAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": { "type": { "enum": ["restore", "minimize", "maximize"] } }
+    },
+    "resizeAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "coordinateSpace", "width", "height"],
+      "properties": {
+        "type": { "const": "resize" },
+        "coordinateSpace": { "const": "client-logical-px" },
+        "width": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "action": {
+      "oneOf": [
+        { "$ref": "#/$defs/simpleAction" },
+        { "$ref": "#/$defs/resizeAction" }
+      ]
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability", "targetId", "action", "actions", "actionsRequested",
+        "actionsAccepted", "distinctActionKinds", "intervalMs", "plannedDurationMs",
+        "outcome", "dispatchState", "accepted", "sameConnectionRevisionChain",
+        "transactionSemantics", "rollbackSemantics", "revision", "presentedRevision",
+        "settled", "effectConfirmed", "finalStateReached", "compositorFinalStateConfirmed",
+        "windowReResolved", "applicationPolicyEvaluated", "confirmationEvaluatedBeforeDiscovery",
+        "foregroundConsentEvaluatedBeforeDiscovery", "foregroundConsentRequired",
+        "foregroundImpactAuthorized", "hostForegroundActivationRequested", "effectObservation",
+        "automaticRetryProhibited", "retrySafe", "timeoutMs", "executionRealm", "safety"
+      ],
+      "properties": {
+        "capability": { "const": "window.lifecycle.sequence@1" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "action": { "const": "lifecycle-sequence" },
+        "actions": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/action" }
+        },
+        "actionsRequested": { "type": "integer", "minimum": 2, "maximum": 16 },
+        "actionsAccepted": { "type": "integer", "minimum": 2, "maximum": 16 },
+        "distinctActionKinds": { "type": "integer", "minimum": 2, "maximum": 4 },
+        "intervalMs": { "type": "integer", "minimum": 0, "maximum": 500 },
+        "plannedDurationMs": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "sameConnectionRevisionChain": { "const": true },
+        "transactionSemantics": { "const": false },
+        "rollbackSemantics": { "const": false },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "settled": { "type": "boolean" },
+        "effectConfirmed": { "const": false },
+        "finalStateReached": { "const": false },
+        "compositorFinalStateConfirmed": { "const": false },
+        "windowReResolved": { "const": true },
+        "applicationPolicyEvaluated": { "const": true },
+        "confirmationEvaluatedBeforeDiscovery": { "const": true },
+        "foregroundConsentEvaluatedBeforeDiscovery": { "const": true },
+        "foregroundConsentRequired": { "const": true },
+        "foregroundImpactAuthorized": { "const": true },
+        "hostForegroundActivationRequested": { "const": false },
+        "effectObservation": { "const": "not-exposed-by-uix-agent-v1" },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 },
+        "executionRealm": { "const": "host-foreground" },
+        "safety": { "$ref": "#/$defs/safety" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider", "sameConnectionUsed", "windowGenerationFixed", "revisionChainUsed",
+        "desktopInputInjected", "desktopPointerMoved", "arbitraryWindowMoveSupported",
+        "nativeIdentityExposed", "transportIdentityExposed", "x11Used", "fallback"
+      ],
+      "properties": {
+        "provider": { "const": "uix-agent-v1" },
+        "sameConnectionUsed": { "const": true },
+        "windowGenerationFixed": { "const": true },
+        "revisionChainUsed": { "const": true },
+        "desktopInputInjected": { "const": false },
+        "desktopPointerMoved": { "const": false },
+        "arbitraryWindowMoveSupported": { "const": false },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "x11Used": { "const": false },
+        "fallback": { "const": "none" }
+      }
+    }
+  }
+}

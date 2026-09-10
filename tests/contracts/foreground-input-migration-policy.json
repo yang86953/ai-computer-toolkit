@@ -1,0 +1,48 @@
+{
+  "contractVersion": "act/foreground-input-migration-policy/v1",
+  "capability": "ui.input.key@1",
+  "productionRoute": "app.apply",
+  "legacyOperation": "desktop.press-key",
+  "rustExecutionStatus": "available-confirmed",
+  "cppExecutionStatus": "retired-no-route",
+  "publicRouteEnabled": true,
+  "requiresConfirmation": true,
+  "requiresForegroundConsent": true,
+  "targetPrefix": "s2:w:",
+  "keyPolicy": {
+    "steps": ["key", "chord", "text"],
+    "phases": ["press", "down", "up"],
+    "functionKeys": "F1-F24",
+    "leftRightModifiers": true,
+    "windowsKeyAllowed": true,
+    "unicodeTextAllowed": true,
+    "rawVirtualKeysAllowed": false,
+    "rawScanCodesAllowed": false,
+    "maximumChordKeys": 8,
+    "maximumSteps": 128
+  },
+  "lifecycle": {
+    "ownership": "request-scoped-balanced",
+    "downUpAcrossRequestsAllowed": false,
+    "releaseOrder": "reverse-press-order",
+    "releaseBypassedByCancelTimeoutOrForegroundChange": false
+  },
+  "partialDispatch": {
+    "outcome": "unknown",
+    "retrySafe": false,
+    "automaticRetryProhibited": true,
+    "safeReleaseEvidenceRequired": true
+  },
+  "fixtureEvidence": {
+    "projectOwnedWindow": true,
+    "productionSystemRoute": true,
+    "shortcutOrderVerified": true,
+    "longPressVerified": true,
+    "repeatVerified": true,
+    "unicodeVerified": true,
+    "cancelReleaseVerified": true,
+    "timeoutReleaseVerified": true,
+    "recoveryVerified": true
+  },
+  "formalGate": "owner-only-gc-va-001"
+}

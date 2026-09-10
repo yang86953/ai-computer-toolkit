@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/state-read/v1",
+  "title": "UIX framework-current window state read input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "maxProperties": 0
+}

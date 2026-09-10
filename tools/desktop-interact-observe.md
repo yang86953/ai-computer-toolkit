@@ -1,0 +1,47 @@
+# 桌面动作后观察：一次请求返回键鼠结果与截图
+
+在常驻 `session-host desktop --socket` 上复用已授权的 Portal 会话，通过原 `session-call desktop --input -` 调用。无需新增进程协议或重连授权；原 `interact` 请求不带 `observation` 时行为不变。
+
+```json
+{
+  "contractVersion": "act/linux-desktop-session-broker/v1",
+  "brokerEpoch": "<本次 broker-ready 返回的 epoch>",
+  "requestNonce": "<本次请求新生成的 32 位小写十六进制 nonce>",
+  "operation": "interact",
+  "sessionId": "<open 返回的 sessionId>",
+  "confirmed": true,
+  "foregroundConsent": true,
+  "strictIsolation": false,
+  "input": {
+    "timeoutMs": 3000,
+    "steps": [
+      { "type": "key", "keys": ["numpad-1"] },
+      { "type": "wait", "ms": 300 }
+    ]
+  },
+  "observation": {
+    "path": "/absolute/path/front.png",
+    "maxDimension": 1400,
+    "timeoutMs": 5000
+  }
+}
+```
+
+上述占位身份必须替换为真实返回值，确认标志仅表达已有授权。点击仍需在 `input.frameId` 中引用同会话最新观察，使用该观察图的坐标，不是原始桌面分辨率坐标。
+
+## 返回与失败语义
+
+- 成功：保留 `data.completedSteps`、`inputEventsSent` 等原字段，新增 `data.observation`（`path`、`frameId`、`coordinateSpace: observation-px`、`width`、`height`、`pointAvailable` 等）。读取 PNG 后核验界面，再决定下一批动作。
+- `effectConfirmed` 始终为 false。截图是输入之后采集的帧，不保证应用已处理完输入或画面已经刷新。示例中的等待只用于界面刷新，不构成应用完成确认。
+- 截图参数、输出 guard 和 staging 可写性在输入前预检；实际截图再次检查、原子提交。预检失败：`error.details.failedStage=observation-preflight`，`interactionAttempted=false`，无键鼠发送。
+- 输入失败：`failedStage=interaction`、`observationAttempted=false`，保留原输入错误中的完成步数、事件数、未知结果与取消信息。不继续截图或重放。
+- 输入成功但截图失败：`failedStage=observation`、`interactionCompleted=true`，`error.details.interaction` 保存完成的输入报告。整体 `completed=false`、`acceptedMayHaveOccurred=true`、`automaticRetryProhibited=true`。需要时单独 `observe`，不得重新发送整批动作。
+- 同 nonce 同请求只重放原响应，不再次输入或截图；同 nonce 改参数被拒绝。重放中的文件路径不保证文件仍存在。
+- `input-cancel` 继续绑定整个请求 nonce；输入阶段按原检查点取消，输入后开始截图前再次检查。截图开始后没有新加可中断截图机制，仍按原 capture 超时收尾。不得将“发送了取消”当作“已取消”。
+- 输入与截图各自最长 30 秒，组合请求客户端响应上限为 65 秒，避免沿用原 35 秒导致后半程断线。仍不自动重试超时请求。
+
+## 推荐连续执行链
+
+`观察 → 确认目标/焦点 → 小批次 interact + observation → 读取返回 PNG → 核验`
+
+会话和宿主在同一建模任务内复用，出现弹窗、焦点变化或结果不明时停止后续写请求并观察。结束按 `close → sessions（空）→ shutdown` 收尾。截图只获取当前任务需要的分辨率，不额外绕过 Portal 授权。

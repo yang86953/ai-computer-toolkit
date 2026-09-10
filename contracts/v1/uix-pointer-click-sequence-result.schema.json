@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://ui/pointer-click-sequence-result/v1",
+  "title": "UIX cooperative application-internal pointer click sequence result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "executionRealm",
+    "requiredExecutionRealm",
+    "executionRealmCertified",
+    "isolationRequirement",
+    "hostImpactPolicy",
+    "data",
+    "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "ui.input.pointer.click.sequence@1" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "same-session-no-focus" },
+    "requiredExecutionRealm": { "const": "same-session-no-focus" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested"],
+          "properties": { "activationRequested": { "const": false } }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number", "minimum": 0, "maximum": 65535 },
+        "y": { "type": "number", "minimum": 0, "maximum": 65535 }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "targetId",
+        "action",
+        "coordinateSpace",
+        "clicks",
+        "clicksRequested",
+        "clicksAccepted",
+        "intervalMs",
+        "plannedDurationMs",
+        "outcome",
+        "dispatchState",
+        "accepted",
+        "allClicksBalanced",
+        "doubleClickSemantics",
+        "clickCountSemantics",
+        "revision",
+        "presentedRevision",
+        "settled",
+        "effectConfirmed",
+        "finalStateReached",
+        "windowReResolved",
+        "applicationPolicyEvaluated",
+        "confirmationEvaluatedBeforeDiscovery",
+        "foregroundConsentRequired",
+        "hostForegroundActivationRequested",
+        "automaticRetryProhibited",
+        "retrySafe",
+        "timeoutMs",
+        "executionRealm",
+        "safety"
+      ],
+      "properties": {
+        "capability": { "const": "ui.input.pointer.click.sequence@1" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "action": { "const": "click-sequence" },
+        "coordinateSpace": { "const": "client-logical-px" },
+        "clicks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/point" }
+        },
+        "clicksRequested": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "clicksAccepted": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "intervalMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500
+        },
+        "plannedDurationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "outcome": { "const": "completed" },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "allClicksBalanced": { "const": true },
+        "doubleClickSemantics": { "const": false },
+        "clickCountSemantics": { "const": false },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "settled": { "type": "boolean" },
+        "effectConfirmed": { "const": false },
+        "finalStateReached": { "const": false },
+        "windowReResolved": { "const": true },
+        "applicationPolicyEvaluated": { "const": true },
+        "confirmationEvaluatedBeforeDiscovery": { "const": true },
+        "foregroundConsentRequired": { "const": false },
+        "hostForegroundActivationRequested": { "const": false },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000
+        },
+        "executionRealm": { "const": "same-session-no-focus" },
+        "safety": { "$ref": "#/$defs/safety" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "applicationInternalEventsDispatched",
+        "desktopInputInjected",
+        "desktopPointerMoved",
+        "requestScopedBalancedClicks",
+        "independentButtonOwnership",
+        "doubleClickSupported",
+        "clickCountSupported",
+        "nativeIdentityExposed",
+        "transportIdentityExposed",
+        "x11Used",
+        "fallback"
+      ],
+      "properties": {
+        "provider": { "const": "uix-agent-v1" },
+        "applicationInternalEventsDispatched": { "const": true },
+        "desktopInputInjected": { "const": false },
+        "desktopPointerMoved": { "const": false },
+        "requestScopedBalancedClicks": { "const": true },
+        "independentButtonOwnership": { "const": false },
+        "doubleClickSupported": { "const": false },
+        "clickCountSupported": { "const": false },
+        "nativeIdentityExposed": { "const": false },
+        "transportIdentityExposed": { "const": false },
+        "x11Used": { "const": false },
+        "fallback": { "const": "none" }
+      }
+    }
+  }
+}

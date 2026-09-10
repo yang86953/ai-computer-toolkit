@@ -1,0 +1,63 @@
+{
+  "contractVersion": "act/window-record-migration/v1",
+  "capability": "window.record@1",
+  "legacyOperations": ["desktop.record", "app.record"],
+  "executionLanguage": "rust",
+  "cppExecutionStatus": "retired-from-launcher",
+  "requiresConfirmation": true,
+  "targetPattern": "^s2:w:[0-9a-f]{16}$",
+  "frameBudgetMaximum": 3000,
+  "audioCaptured": false,
+  "cursorCaptured": false,
+  "systemCaptureIndicatorMayAppear": true,
+  "borderSuppressionAllowed": false,
+  "unknownFieldsRejected": true,
+  "callerSuppliedEncoderArgumentsAllowed": false,
+  "encoder": {
+    "runtime": "windows-media-foundation",
+    "implementation": "project-owned-rust-component",
+    "codec": "h264",
+    "qualityField": "quality"
+  },
+  "analysis": {
+    "strategy": "temporal-difference-storyboard",
+    "maximumKeyframes": 20,
+    "preserveUnownedFiles": true,
+    "commitOrder": ["analysis-with-rollback", "atomic-video"]
+  },
+  "worker": {
+    "fileName": "ai-computer-toolkit-recording-worker.exe",
+    "contractVersion": "act/recording-worker/v2",
+    "isolated": true,
+    "timeoutAndCancellationTerminateJob": true,
+    "foregroundMustRemainUnchanged": true,
+    "stdout": "single-json-envelope",
+    "pathsReturned": false,
+    "nativeIdentifiersReturned": false
+  },
+  "verifiedSlices": {
+    "rustWorkerImplemented": true,
+    "launcherRoutesFixedToRust": true,
+    "strictJsonNumberAndConfig": true,
+    "workerReresolvesTarget": true,
+    "staleTargetRefused": true,
+    "singleWgcSession": true,
+    "sizeChangeFailsClosed": true,
+    "projectOwnedMediaFoundationEncoder": true,
+    "externalEncoderProcessAbsent": true,
+    "ownedMultiArtifactTransaction": true,
+    "unownedAnalysisFilesPreserved": true,
+    "confirmationBeforeWrite": true,
+    "privateStagingCleaned": true,
+    "runtimeUnavailableFailsClosed": true,
+    "selfOwnedWindowRuntimeUnavailableGate": true,
+    "actualMediaFoundationEncode": true,
+    "selfOwnedDynamicWindow": true,
+    "mp4SignatureValidatedDynamically": true,
+    "analysisArtifactsValidatedDynamically": true,
+    "timeoutJobAndStagingCleanedDynamically": true,
+    "ownerVisualAcceptance": false
+  },
+  "compatibilityAndReleaseGatesPassed": false,
+  "blockedBy": "OWNER_VISUAL_ACCEPTANCE"
+}

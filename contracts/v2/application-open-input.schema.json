@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/application-open-input.schema.json",
+  "title": "Linux authenticated application open input",
+  "type": "object",
+  "additionalProperties": false,
+  "maxProperties": 0
+}

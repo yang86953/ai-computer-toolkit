@@ -1,0 +1,10 @@
+{
+  "target": {
+    "sessionId": "s2:p:0000000000000000"
+  },
+  "args": {
+    "capability": "process.terminate.graceful@1",
+    "input": {}
+  },
+  "confirmed": true
+}

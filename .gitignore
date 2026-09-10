@@ -1,0 +1,19 @@
+# 构建产物
+/build/
+/target/
+target-*/
+
+# 本机调试/临时产物
+$zigExe
+$zigExe.pdb
+tmp_*.json
+
+# 代码索引缓存
+.codegraph/
+
+# 其他
+*.log
+*.png
+
+# Python 字节码
+__pycache__/

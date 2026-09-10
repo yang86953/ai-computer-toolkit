@@ -1,0 +1,22 @@
+{
+  "contractVersion": "act/application-launch-migration-policy/v1",
+  "capability": "application.open@1",
+  "legacyOperation": "desktop.launch",
+  "cppExecutionStatus": "candidate-not-certified",
+  "rustExecutionStatus": "confirmation-gated-awaiting-live-success-evidence",
+  "rustPublicRouteEnabled": true,
+  "publicRouteEnabled": false,
+  "requiresConfirmation": true,
+  "targetPrefix": "s2:a:",
+  "publicPathAccepted": false,
+  "publicArgumentsAccepted": false,
+  "provider": "windows-public-shell-item",
+  "nativeIdentityExposed": false,
+  "foregroundMayChange": true,
+  "candidateEvidence": {
+    "selfOwnedShellLaunchSucceeded": true,
+    "foregroundUnchanged": true,
+    "userApplicationsLaunched": 0
+  },
+  "formalGate": "explicitly-confirmed-appsfolder-discovered-target"
+}

@@ -1,0 +1,1097 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/linux-desktop-session-broker-v1.schema.json",
+  "title": "Linux desktop session persistent JSONL broker v1",
+  "$defs": {
+    "observationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "capability", "frameId", "pointAvailable", "coordinateSpace", "path", "width", "height", "bytes", "pixelDigest", "atomicOutput", "replacedExisting", "oneShot"],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "capability": { "const": "desktop.observe@1" },
+        "frameId": { "$ref": "#/$defs/nonce" },
+        "pointAvailable": { "type": "boolean" },
+        "coordinateSpace": { "const": "observation-px" },
+        "path": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1, "maximum": 16384 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 16384 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "pixelDigest": { "type": "string" },
+        "atomicOutput": { "const": true },
+        "replacedExisting": { "type": "boolean" },
+        "oneShot": { "const": true }
+      }
+    },
+    "changeRegion": {
+      "type": "object", "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0, "maximum": 16383 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 16383 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 16384 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 16384 }
+      }
+    },
+    "changeDetection": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "baselineFrameId": { "anyOf": [{ "$ref": "#/$defs/nonce" }, { "type": "null" }] },
+        "region": { "anyOf": [{ "$ref": "#/$defs/changeRegion" }, { "type": "null" }] },
+        "pixelThreshold": { "type": "integer", "minimum": 0, "maximum": 255, "default": 0 },
+        "minChangedPixels": { "type": "integer", "minimum": 1, "maximum": 8388608, "default": 1 }
+      }
+    },
+    "changeResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "changed", "baselineFrameId", "coordinateSpace", "method", "effectConfirmed"],
+      "properties": {
+        "status": { "enum": ["compared", "baseline-reset", "unavailable"] },
+        "changed": { "type": ["boolean", "null"] },
+        "baselineFrameId": { "anyOf": [{ "$ref": "#/$defs/nonce" }, { "type": "null" }] },
+        "coordinateSpace": { "const": "observation-px" },
+        "method": { "const": "full-frame-rgba-diff" },
+        "effectConfirmed": { "const": false },
+        "reason": { "enum": ["baseline-created", "mapping-changed", "dimensions-changed", "tracking-limit"] },
+        "changedPixels": { "type": "integer", "minimum": 0, "maximum": 8388608 },
+        "comparedPixels": { "type": "integer", "minimum": 1, "maximum": 8388608 },
+        "changedBounds": { "anyOf": [{ "$ref": "#/$defs/changeRegion" }, { "type": "null" }] },
+        "region": { "$ref": "#/$defs/changeRegion" },
+        "pixelThreshold": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "minChangedPixels": { "type": "integer", "minimum": 1, "maximum": 8388608 }
+      },
+      "oneOf": [
+        {
+          "required": ["changedPixels", "comparedPixels", "changedBounds", "region", "pixelThreshold", "minChangedPixels"],
+          "properties": { "status": { "const": "compared" }, "changed": { "type": "boolean" }, "baselineFrameId": { "$ref": "#/$defs/nonce" } },
+          "not": { "required": ["reason"] }
+        },
+        {
+          "required": ["reason"],
+          "properties": { "status": { "const": "baseline-reset" }, "changed": { "type": "null" }, "reason": { "enum": ["baseline-created", "mapping-changed", "dimensions-changed"] } },
+          "not": { "anyOf": [{ "required": ["changedPixels"] }, { "required": ["comparedPixels"] }, { "required": ["changedBounds"] }, { "required": ["region"] }, { "required": ["pixelThreshold"] }, { "required": ["minChangedPixels"] }] }
+        },
+        {
+          "required": ["reason"],
+          "properties": { "status": { "const": "unavailable" }, "changed": { "type": "null" }, "reason": { "const": "tracking-limit" } },
+          "not": { "anyOf": [{ "required": ["changedPixels"] }, { "required": ["comparedPixels"] }, { "required": ["changedBounds"] }, { "required": ["region"] }, { "required": ["pixelThreshold"] }, { "required": ["minChangedPixels"] }] }
+        }
+      ]
+    },
+    "interactionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "steps"
+      ],
+      "properties": {
+        "frameId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 30000
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "keys"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "key"
+                  },
+                  "keys": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "uniqueItems": true,
+                    "items": {
+                      "$ref": "#/$defs/keyName"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "text"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "text"
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096,
+                    "pattern": "^[ -~]+$"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "click"
+                  },
+                  "x": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 16383
+                  },
+                  "y": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 16383
+                  },
+                  "button": {
+                    "enum": [
+                      "left",
+                      "right",
+                      "middle"
+                    ],
+                    "default": "left"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "move"
+                  },
+                  "x": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 16383
+                  },
+                  "y": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 16383
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "ms"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "wait"
+                  },
+                  "ms": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "operation": { "enum": ["open", "sessions", "inspect", "close", "input-key", "input-pointer", "input-cancel", "capture-frame", "observe", "interact", "shutdown", "observe-subscribe", "observe-next", "observe-unsubscribe"] },
+    "subscriptionRequest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contractVersion", "brokerEpoch", "requestNonce", "operation", "sessionId", "input"],
+      "properties": {
+        "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" }, "requestNonce": { "$ref": "#/$defs/nonce" },
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "operation": { "enum": ["observe-subscribe", "observe-next", "observe-unsubscribe"] },
+        "confirmed": { "type": "boolean" }, "strictIsolation": { "type": "boolean" },
+        "input": { "type": "object" }
+      },
+      "oneOf": [
+        {
+          "required": ["confirmed", "strictIsolation"],
+          "properties": {
+            "operation": { "const": "observe-subscribe" },
+            "input": {
+              "additionalProperties": false,
+              "properties": { "durationMs": { "type": "integer", "minimum": 1000, "maximum": 300000, "default": 60000 } }
+            }
+          }
+        },
+        {
+          "required": ["confirmed", "strictIsolation"],
+          "properties": {
+            "operation": { "const": "observe-next" },
+            "input": {
+              "additionalProperties": false, "required": ["subscriptionId", "afterSequence", "path"],
+              "properties": {
+                "subscriptionId": { "$ref": "#/$defs/nonce" },
+                "afterSequence": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                "waitMs": { "type": "integer", "minimum": 0, "maximum": 1000, "default": 0 },
+                "path": { "type": "string", "minLength": 1, "maxLength": 32767, "pattern": "\\.png$" },
+                "overwrite": { "type": "boolean", "default": false }
+              }
+            }
+          }
+        },
+        {
+          "not": { "anyOf": [{ "required": ["confirmed"] }, { "required": ["strictIsolation"] }] },
+          "properties": {
+            "operation": { "const": "observe-unsubscribe" },
+            "input": {
+              "additionalProperties": false, "required": ["subscriptionId"],
+              "properties": { "subscriptionId": { "$ref": "#/$defs/nonce" } }
+            }
+          }
+        }
+      ]
+    },
+    "subscriptionResult": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["subscriptionId", "status", "durationMs", "delivery", "maxTrackedPixels", "effectConfirmed"],
+          "properties": {
+            "subscriptionId": { "$ref": "#/$defs/nonce" }, "status": { "const": "starting" },
+            "durationMs": { "type": "integer", "minimum": 1000, "maximum": 300000 },
+            "delivery": { "const": "latest-pull" }, "maxTrackedPixels": { "const": 8388608 }, "effectConfirmed": { "const": false }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["subscriptionId", "status", "effectConfirmed"],
+          "properties": { "subscriptionId": { "$ref": "#/$defs/nonce" }, "status": { "const": "idle" }, "effectConfirmed": { "const": false } }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["subscriptionId", "status", "workerJoined"],
+          "properties": { "subscriptionId": { "$ref": "#/$defs/nonce" }, "status": { "const": "closed" }, "workerJoined": { "const": true } }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["subscriptionId", "status", "sequence", "baseSequence", "generation", "kind", "coordinateSpace", "width", "height", "region", "path", "bytes", "pixelDigest", "captureMethod", "framesReceived", "pixelsRead", "coalescedFrames", "ageMs", "atomicOutput", "replacedExisting", "effectConfirmed"],
+          "properties": {
+            "subscriptionId": { "$ref": "#/$defs/nonce" }, "status": { "const": "update" },
+            "sequence": { "type": "integer", "minimum": 1 }, "baseSequence": { "type": "integer", "minimum": 0 },
+            "generation": { "type": "integer", "minimum": 1 }, "kind": { "enum": ["keyframe", "patch"] },
+            "coordinateSpace": { "const": "source-px" },
+            "width": { "type": "integer", "minimum": 1, "maximum": 16384 },
+            "height": { "type": "integer", "minimum": 1, "maximum": 16384 },
+            "region": { "$ref": "#/$defs/changeRegion" }, "path": { "type": "string" },
+            "bytes": { "type": "integer", "minimum": 1, "maximum": 67108864 },
+            "pixelDigest": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+            "captureMethod": { "enum": ["pipewire-damage", "full-frame-diff"] },
+            "framesReceived": { "type": "integer", "minimum": 1 }, "pixelsRead": { "type": "integer", "minimum": 1 },
+            "coalescedFrames": { "type": "integer", "minimum": 0 }, "ageMs": { "type": "integer", "minimum": 0 },
+            "atomicOutput": { "const": true }, "replacedExisting": { "type": "boolean" }, "effectConfirmed": { "const": false }
+          },
+          "oneOf": [
+            { "properties": { "kind": { "const": "keyframe" }, "baseSequence": { "const": 0 } } },
+            { "properties": { "kind": { "const": "patch" }, "baseSequence": { "type": "integer", "minimum": 1 } } }
+          ]
+        }
+      ]
+    },
+    "nonce": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "sessionId": { "type": "string", "pattern": "^s2:i:[0-9a-f]{16}$" },
+    "commonRequest": {
+      "type": "object",
+      "required": ["contractVersion", "brokerEpoch", "requestNonce", "operation"],
+      "properties": {
+        "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "$ref": "#/$defs/operation" }
+      }
+    },
+    "keyName": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-z0-9]$" },
+        { "type": "string", "pattern": "^f([1-9]|1[0-9]|2[0-4])$" },
+        { "type": "string", "pattern": "^numpad-[0-9]$" },
+        {
+          "enum": [
+            "enter", "tab", "escape", "backspace", "delete", "insert", "space",
+            "left", "up", "right", "down", "home", "end", "page-up", "page-down",
+            "left-control", "right-control", "left-alt", "right-alt", "left-shift", "right-shift", "left-win", "right-win",
+            "numpad-add", "numpad-subtract", "numpad-multiply", "numpad-divide", "numpad-decimal", "numpad-enter",
+            "minus", "equals", "left-bracket", "right-bracket", "backslash", "semicolon", "apostrophe", "grave", "comma", "period", "slash",
+            "caps-lock", "num-lock", "scroll-lock", "print-screen", "pause", "menu",
+            "volume-mute", "volume-down", "volume-up", "media-next", "media-previous", "media-stop", "media-play-pause"
+          ]
+        }
+      ]
+    },
+    "keyStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "key"],
+      "properties": {
+        "type": { "const": "key" },
+        "key": { "$ref": "#/$defs/keyName" },
+        "phase": { "enum": ["press", "down", "up"], "default": "press" },
+        "holdMs": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 },
+        "repeat": { "type": "integer", "minimum": 1, "maximum": 100, "default": 1 },
+        "intervalMs": { "type": "integer", "minimum": 0, "maximum": 1000, "default": 0 }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["phase"], "properties": { "phase": { "enum": ["down", "up"] } } },
+          "then": {
+            "properties": {
+              "holdMs": { "const": 0 },
+              "repeat": { "const": 1 },
+              "intervalMs": { "const": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "chordStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "keys"],
+      "properties": {
+        "type": { "const": "chord" },
+        "keys": {
+          "type": "array", "minItems": 2, "maxItems": 8, "uniqueItems": true,
+          "items": { "$ref": "#/$defs/keyName" }
+        },
+        "holdMs": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 },
+        "repeat": { "type": "integer", "minimum": 1, "maximum": 100, "default": 1 },
+        "intervalMs": { "type": "integer", "minimum": 0, "maximum": 1000, "default": 0 }
+      }
+    },
+    "keyInput": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["steps"],
+          "properties": {
+            "steps": {
+              "type": "array", "minItems": 1, "maxItems": 128,
+              "items": { "oneOf": [{ "$ref": "#/$defs/keyStep" }, { "$ref": "#/$defs/chordStep" }] }
+            },
+            "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 2000 }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["key"],
+          "properties": {
+            "key": { "type": "string", "minLength": 1, "maxLength": 263, "pattern": "^[^+]{1,32}(\\+[^+]{1,32}){0,7}$" },
+            "phase": { "const": "press", "default": "press" },
+            "holdMs": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 },
+            "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 2000 }
+          }
+        }
+      ]
+    },
+    "pointerButton": { "enum": ["left", "right", "middle"] },
+    "pointerDelta": {
+      "type": "object", "additionalProperties": false, "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "integer", "minimum": -65535, "maximum": 65535 },
+        "y": { "type": "integer", "minimum": -65535, "maximum": 65535 }
+      },
+      "not": { "properties": { "x": { "const": 0 }, "y": { "const": 0 } } }
+    },
+    "pointerStep": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "delta"],
+          "properties": { "type": { "const": "move" }, "delta": { "$ref": "#/$defs/pointerDelta" } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "button", "phase"],
+          "properties": {
+            "type": { "const": "button" },
+            "button": { "$ref": "#/$defs/pointerButton" },
+            "phase": { "enum": ["down", "up"] }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "button"],
+          "properties": {
+            "type": { "const": "click" },
+            "button": { "$ref": "#/$defs/pointerButton" },
+            "count": { "type": "integer", "minimum": 1, "maximum": 2, "default": 1 },
+            "intervalMs": { "type": "integer", "minimum": 0, "maximum": 500, "default": 100 }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "axis", "ticks"],
+          "properties": {
+            "type": { "const": "scroll" },
+            "axis": { "enum": ["vertical", "horizontal"] },
+            "ticks": {
+              "type": "integer",
+              "anyOf": [
+                { "minimum": -120, "maximum": -1 },
+                { "minimum": 1, "maximum": 120 }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "button", "delta"],
+          "properties": {
+            "type": { "const": "drag" },
+            "button": { "$ref": "#/$defs/pointerButton" },
+            "delta": { "$ref": "#/$defs/pointerDelta" },
+            "durationMs": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 250 },
+            "samples": { "type": "integer", "minimum": 1, "maximum": 240, "default": 12 }
+          }
+        }
+      ]
+    },
+    "pointerInput": {
+      "type": "object", "additionalProperties": false, "required": ["coordinateSpace", "steps"],
+      "properties": {
+        "coordinateSpace": { "const": "relative-logical-px" },
+        "steps": {
+          "type": "array", "minItems": 1, "maxItems": 64,
+          "items": { "$ref": "#/$defs/pointerStep" }
+        },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 2000 }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId", "targetKind", "live", "authorizedDeviceClasses", "streamMetadata",
+        "restoreTokenRetained", "inputEventsSent", "framesCaptured", "pixelsConsumed"
+      ],
+      "allOf": [{
+        "if": { "required": ["backend"], "properties": { "backend": { "const": "windows-wgc" } } },
+        "then": { "not": { "anyOf": [
+          { "required": ["providerVersions"] }, { "required": ["eisHandshakeComplete"] }, { "required": ["pipeWireRemoteObtained"] }
+        ] } },
+        "else": { "required": ["providerVersions", "eisHandshakeComplete", "pipeWireRemoteObtained"] }
+      }],
+      "properties": {
+        "backend": { "enum": ["portal-eis", "windows-wgc"] },
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "targetKind": { "const": "desktop-session" },
+        "live": { "const": true },
+        "authorizedDeviceClasses": {
+          "type": "array",
+          "prefixItems": [{ "const": "keyboard" }, { "const": "pointer" }],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "streamMetadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["streamCount", "mappingIdCount"],
+          "properties": {
+            "streamCount": { "type": "integer", "minimum": 1 },
+            "mappingIdCount": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "providerVersions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["remoteDesktop", "screenCast"],
+          "properties": {
+            "remoteDesktop": { "type": "integer", "minimum": 2 },
+            "screenCast": { "type": "integer", "minimum": 5 }
+          }
+        },
+        "eisHandshakeComplete": { "const": true },
+        "pipeWireRemoteObtained": { "const": true },
+        "restoreTokenRetained": { "const": false },
+        "inputEventsSent": { "type": "integer", "minimum": 0 },
+        "framesCaptured": { "type": "integer", "minimum": 0 },
+        "pixelsConsumed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "details"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "details": {}
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/subscriptionRequest" },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "messageType", "brokerEpoch", "ownerState", "transport", "restoreTokenRetained", "inputEventsSent", "pixelsConsumed"],
+      "properties": {
+        "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+        "messageType": { "const": "broker-ready" },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" },
+        "ownerState": { "const": "live-single-thread" },
+        "observationModes": { "const": ["snapshot", "frame-diff", "region-diff"] },
+        "frameSubscriptions": { "const": true },
+        "postInputObservation": { "const": true },
+        "subscriptionDelivery": { "const": "latest-pull" },
+        "maxTrackedPixels": { "const": 8388608 },
+        "transport": { "enum": ["json-lines-stdio", "json-lines-unix-socket"] },
+        "restoreTokenRetained": { "const": false },
+        "inputEventsSent": { "const": 0 },
+        "pixelsConsumed": { "const": 0 }
+      }
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/commonRequest" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contractVersion", "brokerEpoch", "requestNonce", "operation", "confirmed", "foregroundConsent", "strictIsolation", "timeoutMs"],
+          "properties": {
+            "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+            "brokerEpoch": { "$ref": "#/$defs/nonce" },
+            "requestNonce": { "$ref": "#/$defs/nonce" },
+            "operation": { "const": "open" },
+            "confirmed": { "type": "boolean" },
+            "foregroundConsent": { "type": "boolean" },
+            "strictIsolation": { "type": "boolean" },
+            "timeoutMs": { "type": "integer", "minimum": 10000, "maximum": 300000 }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/commonRequest" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contractVersion", "brokerEpoch", "requestNonce", "operation", "sessionId", "confirmed", "strictIsolation", "input"],
+          "properties": {
+            "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+            "brokerEpoch": { "$ref": "#/$defs/nonce" },
+            "requestNonce": { "$ref": "#/$defs/nonce" },
+            "operation": { "const": "capture-frame" },
+            "sessionId": { "$ref": "#/$defs/sessionId" },
+            "confirmed": { "type": "boolean" },
+            "strictIsolation": { "type": "boolean" },
+            "input": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": {
+                "path": { "type": "string", "minLength": 1, "maxLength": 32767, "pattern": "\\.png$" },
+                "timeoutMs": { "type": "integer", "minimum": 1000, "maximum": 30000, "default": 5000 },
+                "overwrite": { "type": "boolean", "default": false },
+                "maxDimension": { "type": "integer", "minimum": 256, "maximum": 16384 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/commonRequest" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contractVersion", "brokerEpoch", "requestNonce", "operation", "targetRequestNonce"],
+          "properties": {
+            "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+            "brokerEpoch": { "$ref": "#/$defs/nonce" },
+            "requestNonce": { "$ref": "#/$defs/nonce" },
+            "operation": { "const": "input-cancel" },
+            "targetRequestNonce": { "$ref": "#/$defs/nonce" }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/commonRequest" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contractVersion", "brokerEpoch", "requestNonce", "operation", "sessionId", "confirmed", "foregroundConsent", "strictIsolation", "input"],
+          "properties": {
+            "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+            "brokerEpoch": { "$ref": "#/$defs/nonce" },
+            "requestNonce": { "$ref": "#/$defs/nonce" },
+            "operation": { "const": "input-pointer" },
+            "sessionId": { "$ref": "#/$defs/sessionId" },
+            "confirmed": { "type": "boolean" },
+            "foregroundConsent": { "type": "boolean" },
+            "strictIsolation": { "type": "boolean" },
+            "input": { "$ref": "#/$defs/pointerInput" }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/commonRequest" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contractVersion", "brokerEpoch", "requestNonce", "operation", "sessionId", "confirmed", "foregroundConsent", "strictIsolation", "input"],
+          "properties": {
+            "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+            "brokerEpoch": { "$ref": "#/$defs/nonce" },
+            "requestNonce": { "$ref": "#/$defs/nonce" },
+            "operation": { "const": "input-key" },
+            "sessionId": { "$ref": "#/$defs/sessionId" },
+            "confirmed": { "type": "boolean" },
+            "foregroundConsent": { "type": "boolean" },
+            "strictIsolation": { "type": "boolean" },
+            "input": { "$ref": "#/$defs/keyInput" }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/commonRequest" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contractVersion", "brokerEpoch", "requestNonce", "operation"],
+          "properties": {
+            "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+            "brokerEpoch": { "$ref": "#/$defs/nonce" },
+            "requestNonce": { "$ref": "#/$defs/nonce" },
+            "operation": { "enum": ["sessions", "shutdown"] }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "#/$defs/commonRequest" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contractVersion", "brokerEpoch", "requestNonce", "operation", "sessionId"],
+          "properties": {
+            "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+            "brokerEpoch": { "$ref": "#/$defs/nonce" },
+            "requestNonce": { "$ref": "#/$defs/nonce" },
+            "operation": { "enum": ["inspect", "close"] },
+            "sessionId": { "$ref": "#/$defs/sessionId" }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "messageType", "brokerEpoch", "requestNonce", "operation", "transportAccepted", "businessAccepted", "outcome", "completed", "retrySafe", "automaticRetryProhibited", "acceptedMayHaveOccurred", "data", "error"],
+      "properties": {
+        "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+        "messageType": { "const": "response" },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "transportAccepted": { "const": true },
+        "businessAccepted": { "type": "boolean" },
+        "outcome": { "enum": ["completed", "failed", "cancelled", "unknown"] },
+        "completed": { "type": "boolean" },
+        "retrySafe": { "type": "boolean" },
+        "automaticRetryProhibited": { "type": "boolean" },
+        "acceptedMayHaveOccurred": { "type": "boolean" },
+        "data": {
+          "oneOf": [
+            { "$ref": "#/$defs/session" },
+            { "$ref": "#/$defs/subscriptionResult" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sessions"],
+              "properties": { "sessions": { "type": "array", "items": { "$ref": "#/$defs/session" } } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sessionId", "capability", "completedSteps", "inputEventsSent", "effectConfirmed", "keysHeldAfterReturn"],
+              "properties": {
+                "sessionId": { "$ref": "#/$defs/sessionId" },
+                "capability": { "const": "ui.input.key@3" },
+                "completedSteps": { "type": "integer", "minimum": 1, "maximum": 128 },
+                "inputEventsSent": { "type": "integer", "minimum": 2 },
+                "effectConfirmed": { "const": false },
+                "keysHeldAfterReturn": { "const": 0 }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sessionId", "capability", "path", "bytes", "width", "height", "pixelDigest", "atomicOutput", "replacedExisting", "oneShot", "systemCaptureIndicatorMayAppear"],
+              "properties": {
+                "sessionId": { "$ref": "#/$defs/sessionId" },
+                "capability": { "const": "screen.capture@1" },
+                "path": { "type": "string", "minLength": 1, "maxLength": 32767, "pattern": "\\.png$" },
+                "bytes": { "type": "integer", "minimum": 1, "maximum": 67108864 },
+                "width": { "type": "integer", "minimum": 1, "maximum": 16384 },
+                "height": { "type": "integer", "minimum": 1, "maximum": 16384 },
+                "pixelDigest": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+                "sourceWidth": { "type": "integer", "minimum": 1, "maximum": 16384 },
+                "sourceHeight": { "type": "integer", "minimum": 1, "maximum": 16384 },
+                "sampling": { "enum": ["identity", "nearest-preview"] },
+                "atomicOutput": { "const": true },
+                "replacedExisting": { "type": "boolean" },
+                "oneShot": { "const": true },
+                "systemCaptureIndicatorMayAppear": { "const": true }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["targetRequestNonce", "status", "terminalForCancelRequest"],
+              "properties": {
+                "targetRequestNonce": { "$ref": "#/$defs/nonce" },
+                "status": { "enum": ["unknown-request", "cancellation-requested", "cancelled", "too-late"] },
+                "terminalForCancelRequest": { "const": true }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sessionId", "capability", "coordinateSpace", "completedSteps", "inputEventsSent", "effectConfirmed", "finalPointerPositionConfirmed", "buttonsHeldAfterReturn"],
+              "properties": {
+                "sessionId": { "$ref": "#/$defs/sessionId" },
+                "capability": { "const": "ui.input.pointer@3" },
+                "coordinateSpace": { "const": "relative-logical-px" },
+                "completedSteps": { "type": "integer", "minimum": 1, "maximum": 64 },
+                "inputEventsSent": { "type": "integer", "minimum": 1 },
+                "effectConfirmed": { "const": false },
+                "finalPointerPositionConfirmed": { "const": false },
+                "buttonsHeldAfterReturn": { "const": 0 }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sessionId", "closed", "targetInvalidated"],
+              "properties": {
+                "sessionId": { "$ref": "#/$defs/sessionId" },
+                "closed": { "const": true },
+                "targetInvalidated": { "const": true }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["shutdownAccepted", "liveSessionsBeforeShutdown", "cleanupMode"],
+              "properties": {
+                "shutdownAccepted": { "const": true },
+                "liveSessionsBeforeShutdown": { "type": "integer", "minimum": 0 },
+                "cleanupMode": { "const": "module-drop-before-process-exit" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "sessionId",
+                "capability",
+                "frameId",
+                "pointAvailable",
+                "coordinateSpace",
+                "path",
+                "width",
+                "height",
+                "bytes",
+                "pixelDigest",
+                "atomicOutput",
+                "replacedExisting",
+                "oneShot"
+              ],
+              "properties": {
+                "sessionId": {
+                  "$ref": "#/$defs/sessionId"
+                },
+                "capability": {
+                  "const": "desktop.observe@1"
+                },
+                "frameId": {
+                  "$ref": "#/$defs/nonce"
+                },
+                "pointAvailable": {
+                  "type": "boolean"
+                },
+                "coordinateSpace": {
+                  "const": "observation-px"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 16384
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 16384
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "pixelDigest": {
+                  "type": "string"
+                },
+                "atomicOutput": {
+                  "const": true
+                },
+                "replacedExisting": {
+                  "type": "boolean"
+                },
+                "oneShot": {
+                  "const": true
+                },
+                "changes": { "$ref": "#/$defs/changeResult" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "sessionId",
+                "capability",
+                "completedSteps",
+                "inputEventsSent",
+                "effectConfirmed",
+                "keysHeldAfterReturn",
+                "buttonsHeldAfterReturn"
+              ],
+              "properties": {
+                "sessionId": {
+                  "$ref": "#/$defs/sessionId"
+                },
+                "capability": {
+                  "const": "desktop.interaction@1"
+                },
+                "completedSteps": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 128
+                },
+                "inputEventsSent": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "effectConfirmed": {
+                  "const": false
+                },
+                "keysHeldAfterReturn": {
+                  "const": 0
+                },
+                "buttonsHeldAfterReturn": {
+                  "const": 0
+                },
+                "observation": { "$ref": "#/$defs/observationResult" }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "error": { "oneOf": [{ "$ref": "#/$defs/error" }, { "type": "null" }] }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "messageType", "brokerEpoch", "requestNonce", "operation", "code", "terminal", "outcome", "completed", "acceptedMayHaveOccurred", "retrySafe", "automaticRetryProhibited"],
+      "properties": {
+        "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+        "messageType": { "const": "client-error" },
+        "brokerEpoch": { "$ref": "#/$defs/nonce" },
+        "requestNonce": { "$ref": "#/$defs/nonce" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "code": { "const": "BROKER_TRANSPORT_FAILED" },
+        "terminal": { "const": true },
+        "outcome": { "enum": ["failed", "unknown"] },
+        "completed": { "const": false },
+        "acceptedMayHaveOccurred": { "type": "boolean" },
+        "retrySafe": { "const": false },
+        "automaticRetryProhibited": { "const": true }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "messageType", "code", "terminal", "retrySafe", "automaticRetryProhibited"],
+      "properties": {
+        "contractVersion": { "const": "act/linux-desktop-session-broker/v1" },
+        "messageType": { "const": "broker-error" },
+        "code": { "type": "string", "minLength": 1 },
+        "terminal": { "const": true },
+        "retrySafe": { "const": false },
+        "automaticRetryProhibited": { "const": true }
+      }
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/commonRequest"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "brokerEpoch",
+            "requestNonce",
+            "operation",
+            "sessionId",
+            "confirmed",
+            "strictIsolation",
+            "input"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": "act/linux-desktop-session-broker/v1"
+            },
+            "brokerEpoch": {
+              "$ref": "#/$defs/nonce"
+            },
+            "requestNonce": {
+              "$ref": "#/$defs/nonce"
+            },
+            "operation": {
+              "const": "observe"
+            },
+            "changeDetection": { "anyOf": [{ "$ref": "#/$defs/changeDetection" }, { "type": "null" }] },
+            "sessionId": {
+              "$ref": "#/$defs/sessionId"
+            },
+            "confirmed": {
+              "type": "boolean"
+            },
+            "strictIsolation": {
+              "type": "boolean"
+            },
+            "input": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32767,
+                  "pattern": "\\.png$"
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1000,
+                  "maximum": 30000,
+                  "default": 5000
+                },
+                "overwrite": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "maxDimension": {
+                  "type": "integer",
+                  "minimum": 256,
+                  "maximum": 16384
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/commonRequest"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "brokerEpoch",
+            "requestNonce",
+            "operation",
+            "sessionId",
+            "confirmed",
+            "foregroundConsent",
+            "strictIsolation",
+            "input"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": "act/linux-desktop-session-broker/v1"
+            },
+            "brokerEpoch": {
+              "$ref": "#/$defs/nonce"
+            },
+            "requestNonce": {
+              "$ref": "#/$defs/nonce"
+            },
+            "operation": {
+              "const": "interact"
+            },
+            "sessionId": {
+              "$ref": "#/$defs/sessionId"
+            },
+            "confirmed": {
+              "type": "boolean"
+            },
+            "foregroundConsent": {
+              "type": "boolean"
+            },
+            "strictIsolation": {
+              "type": "boolean"
+            },
+            "input": {
+              "$ref": "#/$defs/interactionInput"
+            },
+            "observation": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": {
+                "path": { "type": "string", "minLength": 1, "maxLength": 32767, "pattern": "\\.png$" },
+                "timeoutMs": { "type": "integer", "minimum": 1000, "maximum": 30000, "default": 5000 },
+                "overwrite": { "type": "boolean", "default": false },
+                "maxDimension": { "type": "integer", "minimum": 256, "maximum": 16384 }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

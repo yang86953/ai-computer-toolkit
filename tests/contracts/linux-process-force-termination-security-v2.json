@@ -1,0 +1,66 @@
+{
+  "contractVersion": "act/linux-process-force-termination-security/v2",
+  "capability": "process.terminate.force@2",
+  "owner": "Linux Process Termination Module",
+  "policy": {
+    "confirmationBeforeInputAndTarget": true,
+    "explicitForceSelectionRequired": true,
+    "processOwnerGenerationRequired": true,
+    "sameNonRootUidRequired": true,
+    "effectiveCapKillDenied": true,
+    "namespaceInitDenied": true,
+    "currentAndVisibleAncestorsDenied": true,
+    "pidfdGenerationBindingRequired": true,
+    "gracefulAttempted": false,
+    "forceFallback": false,
+    "automaticRetryAfterAcceptance": false
+  },
+  "sourceAssertions": [
+    {
+      "path": "src/adapters/linux/procfs.rs",
+      "requiredTokens": [
+        "/proc/sys/kernel/random/boot_id",
+        "/proc/self/ns/pid",
+        "MetadataExt",
+        "owner_epoch",
+        "process_identity"
+      ]
+    },
+    {
+      "path": "src/adapters/linux/process_termination_pidfd.rs",
+      "requiredTokens": [
+        "current.owner_epoch != target.owner_epoch",
+        "Signal::KILL",
+        "pidfd_send_signal",
+        "namespace_pids.contains(&1)"
+      ]
+    },
+    {
+      "path": "src/modules/linux_process_termination.rs",
+      "requiredTokens": [
+        "TerminationRoute::Force",
+        "forceWasExplicitlySelected",
+        "gracefulAttempted",
+        "automaticRetryProhibited"
+      ]
+    },
+    {
+      "path": "src/policy_linux.rs",
+      "requiredTokens": [
+        "operation.requires_confirmation",
+        "validate_fields(&request.target"
+      ]
+    }
+  ],
+  "forbiddenPublicFields": [
+    "processId",
+    "ownerUid",
+    "signalNumber",
+    "nativePid",
+    "fileDescriptor",
+    "bootId",
+    "ownerEpoch",
+    "path",
+    "argv"
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/process-observation.schema.json",
+  "title": "Read-only running process observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capability",
+    "readOnly",
+    "executionDomain",
+    "count",
+    "total",
+    "truncated",
+    "complete",
+    "foregroundUnchanged",
+    "sessions"
+  ],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "capability": { "const": "process.discover@1" },
+    "readOnly": { "const": true },
+    "executionDomain": { "const": "host-headless" },
+    "count": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "total": { "type": "integer", "minimum": 0, "maximum": 4096 },
+    "truncated": { "type": "boolean" },
+    "complete": { "type": "boolean" },
+    "foregroundUnchanged": { "const": true },
+    "sessions": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionId",
+          "targetKind",
+          "processName",
+          "state",
+          "identityFreshness",
+          "metadataAccess",
+          "integrityRelation",
+          "hasVisibleWindow",
+          "windowVisibility",
+          "foregroundRequiredForObservation",
+          "windowSessionIds"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "pattern": "^s2:p:[0-9a-f]{16}$"
+          },
+          "targetKind": { "const": "running-process" },
+          "processName": { "type": "string", "minLength": 1 },
+          "state": { "const": "running" },
+          "identityFreshness": {
+            "enum": ["process-lifetime", "best-effort-current-snapshot"]
+          },
+          "metadataAccess": {
+            "enum": ["available", "permission-blocked", "unavailable"]
+          },
+          "integrityRelation": {
+            "enum": ["lower", "same", "higher", "unknown"]
+          },
+          "hasVisibleWindow": { "type": "boolean" },
+          "windowVisibility": {
+            "enum": [
+              "visible-titled-window",
+              "no-visible-titled-window"
+            ]
+          },
+          "foregroundRequiredForObservation": { "const": false },
+          "windowSessionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^s2:w:[0-9a-f]{16}$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

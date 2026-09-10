@@ -1,0 +1,39 @@
+{
+  "contractVersion": "act/fixed-external-process-policy/v1",
+  "owners": [
+    "Browser Screenshot Module"
+  ],
+  "shellAllowed": false,
+  "unknownFieldsRejected": true,
+  "browser": {
+    "workerContract": "act/browser-screenshot-worker/v1",
+    "allowedTargetFields": ["url"],
+    "allowedArgumentFields": ["path", "width", "height", "timeoutMs", "overwrite"],
+    "allowedUrlSchemes": ["http", "https", "file"],
+    "maximumUrlBytes": 8192,
+    "callerSuppliedFlagsAllowed": false
+  },
+  "forbiddenInputFields": [
+    "argv",
+    "command",
+    "shell",
+    "chromiumFlag",
+    "browserPath",
+    "profilePath",
+    "ffmpegArgs",
+    "encoderPath",
+    "codec",
+    "filter",
+    "script"
+  ],
+  "sourceAssertions": [
+    {
+      "path": "src/modules/browser_screenshot.rs",
+      "requiredTokens": ["pub(crate) fn screenshot", "WORKER_FILE_NAME", "StagedFile::reserve"]
+    },
+    {
+      "path": "src/browser_worker.rs",
+      "requiredTokens": ["--headless=new", "--no-first-run", "deny_unknown_fields"]
+    }
+  ]
+}

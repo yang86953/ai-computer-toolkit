@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/capture-frame-probe.schema.json",
+  "title": "Confirmation-gated exact-window frame metadata probe",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capability",
+    "targetId",
+    "targetKind",
+    "readOnly",
+    "confirmationRequired",
+    "confirmationSatisfied",
+    "executionDomain",
+    "foregroundRequired",
+    "foregroundUnchanged",
+    "frame",
+    "safety"
+  ],
+  "properties": {
+    "capability": { "const": "window.capture.frame.probe@1" },
+    "targetId": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "targetKind": { "const": "application-window" },
+    "readOnly": { "const": true },
+    "confirmationRequired": { "const": true },
+    "confirmationSatisfied": { "const": true },
+    "executionDomain": { "const": "isolated-worker" },
+    "foregroundRequired": { "const": false },
+    "foregroundUnchanged": { "const": true },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "deviceDriver"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "deviceDriver": { "enum": ["hardware", "warp"] }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frameAcquired",
+        "frameSurfaceAccessed",
+        "pixelsPersisted",
+        "fileWritten",
+        "windowActivated",
+        "inputSent",
+        "nativeTargetExposed",
+        "privacyIndicatorMayHaveAppeared",
+        "workerTimeoutMs",
+        "workerCancellable"
+      ],
+      "properties": {
+        "frameAcquired": { "const": true },
+        "frameSurfaceAccessed": { "const": false },
+        "pixelsPersisted": { "const": false },
+        "fileWritten": { "const": false },
+        "windowActivated": { "const": false },
+        "inputSent": { "const": false },
+        "nativeTargetExposed": { "const": false },
+        "privacyIndicatorMayHaveAppeared": { "const": true },
+        "workerTimeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000
+        },
+        "workerCancellable": { "const": true }
+      }
+    }
+  }
+}

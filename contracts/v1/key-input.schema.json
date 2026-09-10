@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/key-input.schema.json",
+  "title": "Provider-neutral bounded keyboard input",
+  "oneOf": [
+    { "$ref": "#/$defs/sequence" },
+    { "$ref": "#/$defs/legacyKey" }
+  ],
+  "$defs": {
+    "keyName": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-z0-9]$" },
+        { "type": "string", "pattern": "^f([1-9]|1[0-9]|2[0-4])$" },
+        { "type": "string", "pattern": "^numpad-[0-9]$" },
+        {
+          "enum": [
+            "enter", "tab", "escape", "backspace", "delete", "insert", "space",
+            "left", "up", "right", "down", "home", "end", "page-up", "page-down",
+            "left-control", "right-control", "left-alt", "right-alt", "left-shift", "right-shift", "left-win", "right-win",
+            "numpad-add", "numpad-subtract", "numpad-multiply", "numpad-divide", "numpad-decimal", "numpad-enter",
+            "minus", "equals", "left-bracket", "right-bracket", "backslash", "semicolon", "apostrophe", "grave", "comma", "period", "slash",
+            "caps-lock", "num-lock", "scroll-lock", "print-screen", "pause", "menu",
+            "volume-mute", "volume-down", "volume-up", "media-next", "media-previous", "media-stop", "media-play-pause"
+          ]
+        }
+      ]
+    },
+    "keyStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "key"],
+      "properties": {
+        "type": { "const": "key" },
+        "key": { "$ref": "#/$defs/keyName" },
+        "phase": { "enum": ["press", "down", "up"], "default": "press" },
+        "holdMs": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 },
+        "repeat": { "type": "integer", "minimum": 1, "maximum": 100, "default": 1 },
+        "intervalMs": { "type": "integer", "minimum": 0, "maximum": 1000, "default": 0 }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["phase"], "properties": { "phase": { "enum": ["down", "up"] } } },
+          "then": {
+            "properties": {
+              "holdMs": { "const": 0 },
+              "repeat": { "const": 1 },
+              "intervalMs": { "const": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "chordStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "keys"],
+      "properties": {
+        "type": { "const": "chord" },
+        "keys": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/keyName" }
+        },
+        "holdMs": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 },
+        "repeat": { "type": "integer", "minimum": 1, "maximum": 100, "default": 1 },
+        "intervalMs": { "type": "integer", "minimum": 0, "maximum": 1000, "default": 0 }
+      }
+    },
+    "textStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "const": "text" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^[^\\u0000]+$" }
+      }
+    },
+    "step": {
+      "oneOf": [
+        { "$ref": "#/$defs/keyStep" },
+        { "$ref": "#/$defs/chordStep" },
+        { "$ref": "#/$defs/textStep" }
+      ]
+    },
+    "sequence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["steps"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 2000 }
+      }
+    },
+    "legacyKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1, "maxLength": 263, "pattern": "^[^+]{1,32}(\\+[^+]{1,32}){0,7}$" },
+        "phase": { "const": "press", "default": "press" },
+        "holdMs": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 30000, "default": 2000 }
+      }
+    }
+  }
+}

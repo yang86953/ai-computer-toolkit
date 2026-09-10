@@ -1,0 +1,101 @@
+{
+  "contractVersion": "act/security-boundary-policy/v1",
+  "owner": "Permission Boundary Module",
+  "systemRole": "coordinate-before-provider-resolution",
+  "platformProbe": "read-only-private-windows-adapter",
+  "targetAccessKinds": ["target-read", "target-mutation"],
+  "allowedHostState": "active-interactive-default-desktop",
+  "blockedHostReasons": [
+    "session-zero",
+    "session-not-active",
+    "protected-or-non-input-desktop"
+  ],
+  "indeterminateHostReasons": [
+    "session-state-indeterminate",
+    "desktop-state-indeterminate"
+  ],
+  "blockedError": "PERMISSION_DENIED",
+  "indeterminateError": "CAPABILITY_ASSESSMENT_UNAVAILABLE",
+  "zeroTargetAccessEvidence": {
+    "evaluatedBeforeTargetAccess": true,
+    "targetReadAttempted": false,
+    "targetWriteAttempted": false,
+    "elevationAttempted": false,
+    "injectionAttempted": false,
+    "fallbackAttempted": false
+  },
+  "forbiddenSourceTokens": [
+    "AdjustTokenPrivileges",
+    "CreateRemoteThread",
+    "DebugActiveProcess",
+    "DuplicateTokenEx",
+    "ImpersonateLoggedOnUser",
+    "SetWindowsHookEx",
+    "VirtualAllocEx",
+    "WriteProcessMemory"
+  ],
+  "forbiddenPublicDiagnosticTokens": [
+    "desktopName",
+    "nativeHandle",
+    "securityDescriptor",
+    "sid",
+    "token"
+  ],
+  "sourceAssertions": [
+    {
+      "path": "src/service.rs",
+      "requiredTokens": ["authorize_target_access", "self.registry.get"]
+    },
+    {
+      "path": "src/modules/permission_boundary.rs",
+      "requiredTokens": ["SecurityContextProbe", "evaluatedBeforeTargetAccess", "automaticRetryProhibited"]
+    },
+    {
+      "path": "src/adapters/security_context_windows.rs",
+      "requiredTokens": ["ProcessIdToSessionId", "WTSConnectState", "OpenInputDesktop", "GetThreadDesktop"]
+    },
+    {
+      "path": "src/modules/window_close.rs",
+      "requiredTokens": ["permission_preflight(target)?", "assess_static_background_mutation", "window_close_windows::close"]
+    }
+  ],
+  "targetMutationPermissionRoutes": [
+    {
+      "capabilities": ["ui.text.input@1"],
+      "path": "src/modules/standard_edit.rs",
+      "requiredToken": "assess_static_background_mutation"
+    },
+    {
+      "capabilities": ["ui.input.key@1"],
+      "path": "src/modules/keyboard_input.rs",
+      "requiredToken": "assess_static_background_mutation"
+    },
+    {
+      "capabilities": ["ui.input.pointer@1"],
+      "path": "src/modules/pointer_input.rs",
+      "requiredToken": "assess_static_background_mutation"
+    },
+    {
+      "capabilities": ["ui.element.action@1"],
+      "path": "src/modules/semantic_action.rs",
+      "requiredToken": "capability_assessment::assess"
+    },
+    {
+      "capabilities": ["window.close@1"],
+      "path": "src/modules/window_close.rs",
+      "requiredToken": "assess_static_background_mutation"
+    },
+    {
+      "capabilities": ["window.lifecycle@1"],
+      "path": "src/modules/window_lifecycle.rs",
+      "requiredToken": "assess_static_background_mutation"
+    },
+    {
+      "capabilities": ["process.terminate.graceful@1", "process.terminate.force@1"],
+      "path": "src/modules/process_termination.rs",
+      "requiredToken": "assess_static_background_mutation"
+    }
+  ],
+  "launcherFixture": "tool-owned-non-input-desktop",
+  "visualAcceptanceOwner": "project-owner"
+}

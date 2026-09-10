@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://ui/element-wait/v2",
+  "title": "Cooperative UIX semantic element revision wait input v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["selector", "condition"],
+  "properties": {
+    "selector": { "$ref": "#/$defs/selector" },
+    "condition": { "enum": ["unique", "missing"] },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 30000,
+      "default": 30000
+    }
+  },
+  "$defs": {
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "automationId": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "focused": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "action": { "type": "string", "minLength": 1, "maxLength": 64 }
+      },
+      "anyOf": [
+        { "required": ["automationId"] },
+        { "required": ["role"] },
+        { "required": ["name"] },
+        { "required": ["focused"] },
+        { "required": ["enabled"] },
+        { "required": ["action"] }
+      ]
+    }
+  }
+}

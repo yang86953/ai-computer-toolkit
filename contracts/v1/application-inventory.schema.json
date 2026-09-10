@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/application-inventory.schema.json",
+  "title": "Read-only application inventory result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "implementation", "data"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/control/v1" },
+    "implementation": { "enum": ["rust", "cpp"] },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hostTargetId",
+        "readOnly",
+        "foregroundUnchanged",
+        "productPromise",
+        "coverage",
+        "complete",
+        "counts",
+        "applications",
+        "processes",
+        "windows"
+      ],
+      "properties": {
+        "hostTargetId": { "$ref": "#/$defs/targetId" },
+        "readOnly": { "const": true },
+        "foregroundUnchanged": { "type": "boolean" },
+        "productPromise": {
+          "const": "broad-general-control-with-capability-degradation"
+        },
+        "coverage": { "$ref": "#/$defs/coverage" },
+        "complete": { "$ref": "#/$defs/complete" },
+        "counts": { "$ref": "#/$defs/counts" },
+        "applications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/application" }
+        },
+        "processes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/process" }
+        },
+        "windows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/window" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "targetId": {
+      "type": "string",
+      "pattern": "^s2:[hapw]:[0-9a-f]{16}$"
+    },
+    "targetIds": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/targetId" },
+      "uniqueItems": true
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runningProcesses",
+        "visibleTitledWindows",
+        "traditionalInstalledApplications",
+        "shellApplications",
+        "startMenuApplications",
+        "storeAndUwpPackages",
+        "noWindowProcessesIncluded",
+        "relationshipPolicy"
+      ],
+      "properties": {
+        "runningProcesses": { "const": "available" },
+        "visibleTitledWindows": { "const": "available" },
+        "traditionalInstalledApplications": {
+          "enum": ["partial-registry-uninstall", "unavailable"]
+        },
+        "shellApplications": {
+          "enum": ["available-shell-apps-folder", "unavailable"]
+        },
+        "startMenuApplications": {
+          "enum": ["available-shell-start-menu", "unavailable"]
+        },
+        "storeAndUwpPackages": {
+          "enum": ["partial-shell-apps-folder", "unavailable"]
+        },
+        "noWindowProcessesIncluded": { "const": true },
+        "relationshipPolicy": {
+          "const": "conservative-exact-normalized-display-or-icon-name"
+        }
+      }
+    },
+    "complete": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applications", "processes", "windows"],
+      "properties": {
+        "applications": { "type": "boolean" },
+        "processes": { "type": "boolean" },
+        "windows": { "type": "boolean" }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "installedApplications",
+        "runningInstalledApplications",
+        "runningProcesses",
+        "noWindowProcesses",
+        "unassociatedProcesses",
+        "permissionBlockedProcesses",
+        "higherIntegrityProcesses",
+        "visibleWindows"
+      ],
+      "properties": {
+        "installedApplications": { "type": "integer", "minimum": 0 },
+        "runningInstalledApplications": { "type": "integer", "minimum": 0 },
+        "runningProcesses": { "type": "integer", "minimum": 0 },
+        "noWindowProcesses": { "type": "integer", "minimum": 0 },
+        "unassociatedProcesses": { "type": "integer", "minimum": 0 },
+        "permissionBlockedProcesses": { "type": "integer", "minimum": 0 },
+        "higherIntegrityProcesses": { "type": "integer", "minimum": 0 },
+        "visibleWindows": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "targetKind",
+        "displayName",
+        "version",
+        "publisher",
+        "state",
+        "runningProcessSessionIds",
+        "discoverySources",
+        "launchCapability",
+        "relationshipEvidence"
+      ],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/targetId" },
+        "targetKind": { "const": "installed-application" },
+        "displayName": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" },
+        "publisher": { "type": "string" },
+        "state": { "enum": ["installed", "running"] },
+        "runningProcessSessionIds": { "$ref": "#/$defs/targetIds" },
+        "discoverySources": {
+          "type": "array",
+          "items": {
+            "enum": ["registry-uninstall", "shell-apps-folder", "shell-start-menu"]
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "launchCapability": {
+          "enum": ["available-confirmed", "candidate-not-certified", "unavailable"]
+        },
+        "relationshipEvidence": {
+          "enum": ["none", "exact-normalized-name"]
+        }
+      }
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "targetKind",
+        "processName",
+        "state",
+        "identityFreshness",
+        "metadataAccess",
+        "integrityRelation",
+        "hasVisibleWindow",
+        "windowVisibility",
+        "foregroundRequiredForObservation",
+        "windowSessionIds",
+        "relatedApplicationIds",
+        "relationshipStatus"
+      ],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/targetId" },
+        "targetKind": { "const": "running-process" },
+        "processName": { "type": "string", "minLength": 1 },
+        "state": { "const": "running" },
+        "identityFreshness": {
+          "enum": ["process-lifetime", "best-effort-current-snapshot"]
+        },
+        "metadataAccess": {
+          "enum": ["available", "permission-blocked", "unavailable"]
+        },
+        "integrityRelation": {
+          "enum": ["lower", "same", "higher", "unknown"]
+        },
+        "hasVisibleWindow": { "type": "boolean" },
+        "windowVisibility": {
+          "enum": ["visible-titled-window", "no-visible-titled-window"]
+        },
+        "foregroundRequiredForObservation": { "const": false },
+        "windowSessionIds": { "$ref": "#/$defs/targetIds" },
+        "relatedApplicationIds": { "$ref": "#/$defs/targetIds" },
+        "relationshipStatus": { "enum": ["matched", "unassociated"] }
+      }
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "targetKind",
+        "applicationName",
+        "title",
+        "visible",
+        "visibilityState",
+        "foregroundRequiredForObservation",
+        "processSessionId"
+      ],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/targetId" },
+        "targetKind": { "const": "application-window" },
+        "applicationName": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "visible": { "const": true },
+        "visibilityState": { "const": "visible" },
+        "foregroundRequiredForObservation": { "const": false },
+        "processSessionId": {
+          "oneOf": [
+            { "$ref": "#/$defs/targetId" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

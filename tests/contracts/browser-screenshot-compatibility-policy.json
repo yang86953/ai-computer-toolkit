@@ -1,0 +1,33 @@
+{
+  "contractVersion": "act/browser-screenshot-compatibility/v1",
+  "capability": "browser.screenshot@1",
+  "legacyOperation": "browser.screenshot",
+  "implementation": "rust-isolated-worker",
+  "workerContract": "act/browser-screenshot-worker/v1",
+  "cppExecutionStatus": "retired-rust-primary",
+  "cppExecutionEnabled": false,
+  "allowedUrlSchemes": ["http", "https", "file"],
+  "viewport": {
+    "minimum": 1,
+    "maximum": 10000,
+    "defaultWidth": 1280,
+    "defaultHeight": 720
+  },
+  "timeoutMs": {
+    "minimum": 1000,
+    "maximum": 300000,
+    "default": 30000
+  },
+  "requiresConfirmation": true,
+  "requiresForegroundConsent": false,
+  "isolatedProfile": true,
+  "fixedArguments": true,
+  "unknownFieldsRejected": true,
+  "callerSuppliedChromiumFlagsAllowed": false,
+  "atomicPngOutput": true,
+  "maximumPngBytes": 67108864,
+  "timeoutTerminatesJob": true,
+  "runtimePathExposed": false,
+  "nativeIdentifiersExposed": false,
+  "compatibilityShape": "isolated-headless-browser-v1"
+}

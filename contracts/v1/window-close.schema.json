@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v1/window-close.schema.json",
+  "title": "Provider-neutral exact window close result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "app",
+    "verb",
+    "capability",
+    "targetId",
+    "data",
+    "meta",
+    "nativeIdentifiersExposed",
+    "compatibilityShape"
+  ],
+  "properties": {
+    "executionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "requiredExecutionRealm": { "enum": ["host-headless", "host-background", "same-session-no-focus", "isolated-worker", "host-foreground", "none"] },
+    "executionRealmCertified": { "type": "boolean" },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "interactiveSessionId": { "type": "string", "pattern": "^s2:i:[0-9a-f]{16}$" },
+    "isolationKind": { "const": "independent-interactive-session" },
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "close" },
+    "capability": { "const": "window.close@1" },
+    "targetId": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "state",
+        "closed",
+        "foreground",
+        "permissionPreflight",
+        "activeWriteProbePerformed"
+      ],
+      "properties": {
+        "kind": { "const": "application-window" },
+        "state": { "const": "closed" },
+        "closed": { "const": true },
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unchanged"],
+          "properties": {
+            "unchanged": { "const": true }
+          }
+        },
+        "permissionPreflight": { "const": "no-static-integrity-block-observed" },
+        "activeWriteProbePerformed": { "const": false }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unchanged"],
+          "properties": {
+            "unchanged": { "const": true }
+          }
+        },
+        "targeting": { "const": "opaque exact session" }
+      }
+    },
+    "nativeIdentifiersExposed": { "const": false },
+    "compatibilityShape": {
+      "const": "provider-neutral-window-close-v1"
+    }
+  }
+}

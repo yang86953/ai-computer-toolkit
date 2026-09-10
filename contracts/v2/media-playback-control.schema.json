@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ai-computer-toolkit/contracts/v2/media-playback-control.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "contractVersion", "capability", "data"],
+  "properties": {
+    "ok": { "const": true },
+    "contractVersion": { "const": "act/control/v2" },
+    "capability": { "const": "media.playback.control@2" },
+    "executionRealm": { "const": "isolated-worker" },
+    "requiredExecutionRealm": { "const": "isolated-worker" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "enum": ["standard", "strict"] },
+    "hostImpactPolicy": { "enum": ["background-preferred", "strict-no-interference"] },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "targetKind",
+        "operation",
+        "accepted",
+        "finalStateReached",
+        "dispatchOutcome",
+        "effectConfirmed",
+        "retrySafe",
+        "targetMayHaveMutated",
+        "automaticRetryProhibited"
+      ],
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "pattern": "^s2:m:[0-9a-f]{16}$"
+        },
+        "targetKind": { "const": "media-session" },
+        "operation": {
+          "enum": [
+            "play",
+            "pause",
+            "toggle-play-pause",
+            "stop",
+            "skip-next",
+            "skip-previous"
+          ]
+        },
+        "accepted": { "type": "boolean" },
+        "finalStateReached": { "type": "boolean" },
+        "dispatchOutcome": {
+          "enum": [
+            "replied",
+            "provider-error",
+            "outcome-unknown",
+            "pre-dispatch-rejected"
+          ]
+        },
+        "effectConfirmed": { "const": false },
+        "retrySafe": { "type": "boolean" },
+        "targetMayHaveMutated": { "type": "boolean" },
+        "automaticRetryProhibited": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "dispatchOutcome": { "const": "replied" } }
+          },
+          "then": {
+            "properties": {
+              "accepted": { "const": true },
+              "finalStateReached": { "const": true },
+              "retrySafe": { "const": false },
+              "targetMayHaveMutated": { "const": true },
+              "automaticRetryProhibited": { "const": true }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "dispatchOutcome": { "const": "provider-error" } }
+          },
+          "then": {
+            "properties": {
+              "accepted": { "const": true },
+              "finalStateReached": { "const": true },
+              "retrySafe": { "const": false },
+              "targetMayHaveMutated": { "const": true },
+              "automaticRetryProhibited": { "const": true }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "dispatchOutcome": { "const": "outcome-unknown" } }
+          },
+          "then": {
+            "properties": {
+              "accepted": { "const": true },
+              "finalStateReached": { "const": false },
+              "retrySafe": { "const": false },
+              "targetMayHaveMutated": { "const": true },
+              "automaticRetryProhibited": { "const": true }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dispatchOutcome": { "const": "pre-dispatch-rejected" }
+            }
+          },
+          "then": {
+            "properties": {
+              "accepted": { "const": false },
+              "finalStateReached": { "const": false },
+              "retrySafe": { "const": true },
+              "targetMayHaveMutated": { "const": false },
+              "automaticRetryProhibited": { "const": false }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://window/lifecycle-result/v2",
+  "title": "UIX cooperative window lifecycle result v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "app", "verb", "capability", "targetId", "executionRealm",
+    "requiredExecutionRealm", "executionRealmCertified", "isolationRequirement",
+    "hostImpactPolicy", "data", "meta"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "app": { "const": "app" },
+    "verb": { "const": "apply" },
+    "capability": { "const": "window.lifecycle@2" },
+    "targetId": { "$ref": "#/$defs/windowTarget" },
+    "executionRealm": { "const": "host-foreground" },
+    "requiredExecutionRealm": { "const": "host-foreground" },
+    "executionRealmCertified": { "const": true },
+    "isolationRequirement": { "const": "standard" },
+    "hostImpactPolicy": { "const": "background-preferred" },
+    "data": { "$ref": "#/$defs/data" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foreground", "targeting"],
+      "properties": {
+        "foreground": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activationRequested", "visibleMutationAuthorized"],
+          "properties": {
+            "activationRequested": { "const": false },
+            "visibleMutationAuthorized": { "const": true }
+          }
+        },
+        "targeting": { "const": "opaque exact window generation" }
+      }
+    }
+  },
+  "$defs": {
+    "windowTarget": {
+      "type": "string",
+      "pattern": "^s2:w:[0-9a-f]{16}$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability", "targetId", "action", "outcome", "dispatchState", "accepted",
+        "effectConfirmed", "finalStateReached", "effectObservation", "revision",
+        "presentedRevision", "settled", "coordinateSpace", "requestedClientSize",
+        "windowReResolved", "applicationPolicyEvaluated", "confirmationEvaluatedBeforeDiscovery",
+        "foregroundConsentEvaluatedBeforeDiscovery", "foregroundImpactAuthorized",
+        "automaticRetryProhibited", "retrySafe", "timeoutMs", "executionRealm", "safety"
+      ],
+      "properties": {
+        "capability": { "const": "window.lifecycle@2" },
+        "targetId": { "$ref": "#/$defs/windowTarget" },
+        "action": { "enum": ["restore", "minimize", "maximize", "resize"] },
+        "outcome": { "enum": ["completed", "completed-unsettled"] },
+        "dispatchState": { "const": "completed" },
+        "accepted": { "const": true },
+        "effectConfirmed": { "const": false },
+        "finalStateReached": { "const": false },
+        "effectObservation": { "const": "not-exposed-by-uix-agent-v1" },
+        "revision": { "type": "integer", "minimum": 0 },
+        "presentedRevision": { "type": "integer", "minimum": 0 },
+        "settled": { "type": "boolean" },
+        "coordinateSpace": { "type": ["string", "null"], "enum": ["client-logical-px", null] },
+        "requestedClientSize": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["width", "height"],
+              "properties": {
+                "width": { "type": "integer", "minimum": 1, "maximum": 65535 },
+                "height": { "type": "integer", "minimum": 1, "maximum": 65535 }
+              }
+            }
+          ]
+        },
+        "windowReResolved": { "const": true },
+        "applicationPolicyEvaluated": { "const": true },
+        "confirmationEvaluatedBeforeDiscovery": { "const": true },
+        "foregroundConsentEvaluatedBeforeDiscovery": { "const": true },
+        "foregroundImpactAuthorized": { "const": true },
+        "automaticRetryProhibited": { "const": true },
+        "retrySafe": { "const": false },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 },
+        "executionRealm": { "const": "host-foreground" },
+        "safety": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nativeIdentityExposed", "transportIdentityExposed",
+            "hostForegroundActivationRequested", "desktopInputInjected",
+            "moveSupportedOnLinux", "x11Used", "fallback"
+          ],
+          "properties": {
+            "nativeIdentityExposed": { "const": false },
+            "transportIdentityExposed": { "const": false },
+            "hostForegroundActivationRequested": { "const": false },
+            "desktopInputInjected": { "const": false },
+            "moveSupportedOnLinux": { "const": false },
+            "x11Used": { "const": false },
+            "fallback": { "const": "none" }
+          }
+        }
+      }
+    }
+  }
+}

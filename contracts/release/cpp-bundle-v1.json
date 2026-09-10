@@ -1,0 +1,48 @@
+{
+  "contractVersion": "act/cpp-release-bundle/v1",
+  "mainExecutable": "ai-computer-toolkit-cpp.exe",
+  "artifacts": [
+    {
+      "path": "ai-computer-toolkit-cpp.exe",
+      "role": "public-cli"
+    },
+    {
+      "path": "ai-computer-toolkit-observation-worker.exe",
+      "role": "uia-observation-worker"
+    },
+    {
+      "path": "ai-computer-toolkit-capture-worker.exe",
+      "role": "capture-worker"
+    },
+    {
+      "path": "ai-computer-toolkit-media-worker.exe",
+      "role": "media-observation-worker"
+    },
+    {
+      "path": "ai-computer-toolkit-media-control-worker.exe",
+      "role": "isolated-confirmed-media-control-worker"
+    },
+    {
+      "path": "ai-computer-toolkit-structured-image-worker.exe",
+      "role": "isolated-structured-image-observation-worker"
+    },
+    {
+      "path": "ai-computer-toolkit-browser-worker.exe",
+      "role": "isolated-headless-browser-worker"
+    },
+    {
+      "path": "ai-computer-toolkit-recording-worker.exe",
+      "role": "isolated-window-recording-worker"
+    },
+    {
+      "path": "legacy-public-catalog-v1.json",
+      "role": "descriptor-compatibility-manifest"
+    }
+  ],
+  "forbiddenBundleEntries": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "src",
+    "target"
+  ]
+}

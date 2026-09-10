@@ -1,0 +1,815 @@
+{
+  "contractVersion": "act/legacy-public-catalog/v1",
+  "policy": "background-preferred",
+  "apps": [
+    {
+      "background_policy": "background-preferred",
+      "blocked": [
+        "provider-specific public commands",
+        "native handles as public targets",
+        "arbitrary scripts, COM members, menu ids, or shell commands",
+        "silent fallback from structured APIs to foreground input"
+      ],
+      "id": "app",
+      "operations": [
+        {
+          "argument_fields": [
+            {
+              "name": "capability",
+              "required": true,
+              "value_type": "versioned-capability-id"
+            },
+            {
+              "name": "input",
+              "required": true,
+              "value_type": "object"
+            }
+          ],
+          "background_policy": "best-effort",
+          "id": "app.create",
+          "methods": [
+            "app-api",
+            "command-line",
+            "com-automation",
+            "ipc",
+            "file-automation"
+          ],
+          "mutates": true,
+          "operation": "create",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "Create a domain object through a versioned capability on an exact application session.",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "opaque-session-id"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "capability",
+              "required": true,
+              "value_type": "versioned-capability-id"
+            },
+            {
+              "name": "input",
+              "required": true,
+              "value_type": "object"
+            }
+          ],
+          "background_policy": "prefer-background-then-consent",
+          "id": "app.apply",
+          "methods": [
+            "app-api",
+            "com-automation",
+            "ipc",
+            "uia",
+            "win32-message",
+            "foreground-input"
+          ],
+          "mutates": true,
+          "operation": "apply",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "Apply a provider-neutral domain patch to an exact session.",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "opaque-session-id"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "capability",
+              "required": true,
+              "value_type": "versioned-capability-id"
+            },
+            {
+              "name": "input",
+              "required": true,
+              "value_type": "object"
+            }
+          ],
+          "background_policy": "best-effort",
+          "id": "app.save",
+          "methods": [
+            "app-api",
+            "command-line",
+            "com-automation",
+            "file-automation"
+          ],
+          "mutates": true,
+          "operation": "save",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "Save the editable source artifact owned by an exact document session.",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "opaque-session-id"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "capability",
+              "required": true,
+              "value_type": "versioned-capability-id"
+            },
+            {
+              "name": "input",
+              "required": true,
+              "value_type": "object"
+            }
+          ],
+          "background_policy": "best-effort",
+          "id": "app.export",
+          "methods": [
+            "app-api",
+            "command-line",
+            "com-automation",
+            "file-automation"
+          ],
+          "mutates": true,
+          "operation": "export",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "Export a derived artifact without changing the source session identity.",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "opaque-session-id"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "capability",
+              "required": true,
+              "value_type": "versioned-capability-id"
+            },
+            {
+              "name": "input",
+              "required": true,
+              "value_type": "object"
+            }
+          ],
+          "background_policy": "best-effort",
+          "id": "app.close",
+          "methods": [
+            "app-api",
+            "com-automation",
+            "ipc"
+          ],
+          "mutates": true,
+          "operation": "close",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "Close an exact session through a versioned lifecycle capability.",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "opaque-session-id"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "capability",
+              "required": true,
+              "value_type": "versioned-capability-id"
+            },
+            {
+              "name": "input",
+              "required": true,
+              "value_type": "object"
+            }
+          ],
+          "background_policy": "best-effort",
+          "id": "app.screenshot",
+          "methods": [
+            "windows-graphics-capture",
+            "headless-browser"
+          ],
+          "mutates": true,
+          "operation": "screenshot",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "Capture the exact window represented by an opaque app session.",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "opaque-session-id"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "capability",
+              "required": true,
+              "value_type": "versioned-capability-id"
+            },
+            {
+              "name": "input",
+              "required": true,
+              "value_type": "object"
+            }
+          ],
+          "background_policy": "best-effort",
+          "id": "app.record",
+          "methods": [
+            "windows-graphics-capture",
+            "media-foundation-h264"
+          ],
+          "mutates": true,
+          "operation": "record",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "Record an exact window and produce a bounded storyboard for AI analysis.",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "opaque-session-id"
+            }
+          ]
+        }
+      ],
+      "public_verbs": [
+        "status",
+        "sessions",
+        "inspect",
+        "run"
+      ],
+      "summary": "Unified opaque-session and versioned-capability facade for application control."
+    },
+    {
+      "background_policy": "guaranteed",
+      "blocked": [
+        "SetFocus",
+        "Invoke",
+        "Value.SetValue",
+        "Toggle",
+        "Select",
+        "Scroll"
+      ],
+      "id": "uia",
+      "operations": [],
+      "public_verbs": [
+        "status",
+        "sessions",
+        "inspect"
+      ],
+      "summary": "只读 Windows UI Automation 窗口发现和控件树检查。"
+    },
+    {
+      "background_policy": "guaranteed",
+      "blocked": [
+        "focus",
+        "show",
+        "close",
+        "move",
+        "resize"
+      ],
+      "id": "window",
+      "operations": [],
+      "public_verbs": [
+        "status",
+        "sessions",
+        "inspect"
+      ],
+      "summary": "只读 Win32 顶层窗口发现。"
+    },
+    {
+      "background_policy": "guaranteed",
+      "blocked": [
+        "start",
+        "run",
+        "stop"
+      ],
+      "id": "process",
+      "operations": [],
+      "public_verbs": [
+        "status",
+        "sessions"
+      ],
+      "summary": "只读 Windows 进程发现。"
+    },
+    {
+      "background_policy": "guaranteed",
+      "blocked": [
+        "用户 profile",
+        "用户标签页",
+        "扩展",
+        "保存的凭据",
+        "可见浏览器窗口"
+      ],
+      "id": "browser",
+      "operations": [
+        {
+          "argument_fields": [
+            {
+              "name": "path",
+              "required": true,
+              "value_type": "string"
+            },
+            {
+              "name": "width",
+              "required": false,
+              "value_type": "integer"
+            },
+            {
+              "name": "height",
+              "required": false,
+              "value_type": "integer"
+            },
+            {
+              "name": "timeoutMs",
+              "required": false,
+              "value_type": "integer"
+            },
+            {
+              "name": "overwrite",
+              "required": false,
+              "value_type": "boolean"
+            }
+          ],
+          "background_policy": "guaranteed",
+          "id": "browser.screenshot",
+          "methods": [
+            "headless-browser"
+          ],
+          "mutates": true,
+          "operation": "screenshot",
+          "requires_confirmation": true,
+          "requires_session_id": false,
+          "summary": "使用临时隔离 profile 的 headless Chromium 截图。",
+          "target_fields": [
+            {
+              "name": "url",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        }
+      ],
+      "public_verbs": [
+        "status",
+        "run"
+      ],
+      "summary": "隔离的一次性 headless Chromium 检查与截图。"
+    },
+    {
+      "background_policy": "guaranteed",
+      "blocked": [
+        "任意消息号",
+        "指针参数",
+        "WM_USER 及自定义消息",
+        "窗口激活"
+      ],
+      "id": "win32-control",
+      "operations": [
+        {
+          "argument_fields": [
+            {
+              "name": "text",
+              "required": true,
+              "value_type": "string"
+            }
+          ],
+          "background_policy": "guaranteed",
+          "id": "win32-control.set-text",
+          "methods": [
+            "win32-message"
+          ],
+          "mutates": true,
+          "operation": "set-text",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "仅向标准 Edit 控件发送系统定义的 WM_SETTEXT，不激活窗口。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        }
+      ],
+      "public_verbs": [
+        "status",
+        "sessions",
+        "inspect",
+        "run"
+      ],
+      "summary": "经过白名单认证的 Win32 控件操作。"
+    },
+    {
+      "background_policy": "guaranteed",
+      "blocked": [
+        "键鼠输入",
+        "剪贴板",
+        "窗口激活",
+        "保存已有文档",
+        "关闭已有文档"
+      ],
+      "id": "notepad",
+      "operations": [
+        {
+          "argument_fields": [
+            {
+              "name": "text",
+              "required": true,
+              "value_type": "string"
+            }
+          ],
+          "background_policy": "guaranteed",
+          "id": "notepad.open-and-write-text",
+          "methods": [
+            "file-automation",
+            "command-line"
+          ],
+          "mutates": true,
+          "operation": "open-and-write-text",
+          "requires_confirmation": true,
+          "requires_session_id": false,
+          "summary": "原子创建 UTF-8 文本文件，再由系统 Notepad 打开；不模拟键盘输入。",
+          "target_fields": []
+        }
+      ],
+      "public_verbs": [
+        "status",
+        "run"
+      ],
+      "summary": "可见 Notepad 的后台文档创建与打开。"
+    },
+    {
+      "background_policy": "guaranteed",
+      "blocked": [
+        "未注册媒体会话的应用",
+        "窗口激活",
+        "键鼠输入"
+      ],
+      "id": "media-session",
+      "operations": [
+        {
+          "argument_fields": [],
+          "background_policy": "guaranteed",
+          "id": "media-session.toggle-play-pause",
+          "methods": [
+            "media-session"
+          ],
+          "mutates": true,
+          "operation": "toggle-play-pause",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "通过 Windows 系统媒体会话切换播放/暂停，不激活播放器窗口。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        },
+        {
+          "argument_fields": [],
+          "background_policy": "guaranteed",
+          "id": "media-session.play",
+          "methods": [
+            "media-session"
+          ],
+          "mutates": true,
+          "operation": "play",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "通过 Windows 系统媒体会话开始播放，不激活播放器窗口。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        },
+        {
+          "argument_fields": [],
+          "background_policy": "guaranteed",
+          "id": "media-session.pause",
+          "methods": [
+            "media-session"
+          ],
+          "mutates": true,
+          "operation": "pause",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "通过 Windows 系统媒体会话暂停播放，不激活播放器窗口。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        },
+        {
+          "argument_fields": [],
+          "background_policy": "guaranteed",
+          "id": "media-session.skip-next",
+          "methods": [
+            "media-session"
+          ],
+          "mutates": true,
+          "operation": "skip-next",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "通过 Windows 系统媒体会话切换下一首，不激活播放器窗口。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        },
+        {
+          "argument_fields": [],
+          "background_policy": "guaranteed",
+          "id": "media-session.skip-previous",
+          "methods": [
+            "media-session"
+          ],
+          "mutates": true,
+          "operation": "skip-previous",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "通过 Windows 系统媒体会话切换上一首，不激活播放器窗口。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        }
+      ],
+      "public_verbs": [
+        "status",
+        "sessions",
+        "inspect",
+        "run"
+      ],
+      "summary": "Windows GSMTC 系统媒体会话的后台播放控制。"
+    },
+    {
+      "background_policy": "background-preferred",
+      "blocked": [
+        "未确认的前台激活",
+        "未确认的键鼠输入",
+        "Shell 命令拼接",
+        "模糊窗口选择"
+      ],
+      "id": "desktop",
+      "operations": [
+        {
+          "argument_fields": [
+            {
+              "name": "path",
+              "required": true,
+              "value_type": "string"
+            },
+            {
+              "name": "timeoutMs",
+              "required": false,
+              "value_type": "integer"
+            },
+            {
+              "name": "overwrite",
+              "required": false,
+              "value_type": "boolean"
+            }
+          ],
+          "background_policy": "best-effort",
+          "id": "desktop.screenshot",
+          "methods": [
+            "windows-graphics-capture"
+          ],
+          "mutates": true,
+          "operation": "screenshot",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "通过 Windows Graphics Capture 截取精确窗口，不激活窗口或发送输入。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "path",
+              "required": true,
+              "value_type": "string (.mp4)"
+            },
+            {
+              "name": "durationMs",
+              "required": false,
+              "value_type": "integer (1000..=300000; default 30000)"
+            },
+            {
+              "name": "fps",
+              "required": false,
+              "value_type": "integer (1..=10; default 2)"
+            },
+            {
+              "name": "maxWidth",
+              "required": false,
+              "value_type": "integer (320..=1920; default 960)"
+            },
+            {
+              "name": "quality",
+              "required": false,
+              "value_type": "integer (1..=100; default 75)"
+            },
+            {
+              "name": "maxKeyframes",
+              "required": false,
+              "value_type": "integer (2..=20; default 8)"
+            },
+            {
+              "name": "changeThreshold",
+              "required": false,
+              "value_type": "number (0.005..=0.5; default 0.035)"
+            },
+            {
+              "name": "analysisDir",
+              "required": false,
+              "value_type": "string"
+            },
+            {
+              "name": "timeoutMs",
+              "required": false,
+              "value_type": "integer (250..=30000; default 5000)"
+            },
+            {
+              "name": "overwrite",
+              "required": false,
+              "value_type": "boolean"
+            }
+          ],
+          "background_policy": "best-effort",
+          "id": "desktop.record",
+          "methods": [
+            "windows-graphics-capture",
+            "media-foundation-h264"
+          ],
+          "mutates": true,
+          "operation": "record",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "低帧率录制精确窗口为 H.264 MP4，并生成供 AI 优先分析的变化关键帧故事板。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "text",
+              "required": true,
+              "value_type": "string"
+            }
+          ],
+          "background_policy": "prefer-background-then-consent",
+          "id": "desktop.type-text",
+          "methods": [
+            "win32-message",
+            "foreground-input"
+          ],
+          "mutates": true,
+          "operation": "type-text",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "先向唯一标准 Edit 发送后台 WM_SETTEXT；无安全后台路径时请求前台授权。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "key",
+              "required": true,
+              "value_type": "string"
+            }
+          ],
+          "background_policy": "foreground-consent",
+          "id": "desktop.press-key",
+          "methods": [
+            "foreground-input"
+          ],
+          "mutates": true,
+          "operation": "press-key",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "恢复并激活精确窗口后发送按键；必须先取得前台授权。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "x",
+              "required": true,
+              "value_type": "integer"
+            },
+            {
+              "name": "y",
+              "required": true,
+              "value_type": "integer"
+            }
+          ],
+          "background_policy": "foreground-consent",
+          "id": "desktop.click",
+          "methods": [
+            "foreground-input"
+          ],
+          "mutates": true,
+          "operation": "click",
+          "requires_confirmation": true,
+          "requires_session_id": true,
+          "summary": "恢复并激活精确窗口后点击屏幕坐标；必须先取得前台授权。",
+          "target_fields": [
+            {
+              "name": "sessionId",
+              "required": true,
+              "value_type": "string"
+            }
+          ]
+        },
+        {
+          "argument_fields": [
+            {
+              "name": "path",
+              "required": true,
+              "value_type": "string"
+            },
+            {
+              "name": "argv",
+              "required": false,
+              "value_type": "array<string>"
+            }
+          ],
+          "background_policy": "best-effort",
+          "id": "desktop.launch",
+          "methods": [
+            "command-line"
+          ],
+          "mutates": true,
+          "operation": "launch",
+          "requires_confirmation": true,
+          "requires_session_id": false,
+          "summary": "直接启动指定可执行文件，不经 shell，不调用焦点 API。",
+          "target_fields": []
+        }
+      ],
+      "public_verbs": [
+        "status",
+        "sessions",
+        "inspect",
+        "run"
+      ],
+      "summary": "任意 Windows 窗口的后台优先通用控制，前台输入必须二次授权。"
+    }
+  ]
+}

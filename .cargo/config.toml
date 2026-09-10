@@ -1,0 +1,6 @@
+# UIX workspace 的内部 crate 使用同一已有 registry；凭据由使用者本机配置。
+[registries.gitea]
+index = "sparse+https://yang-server.tail9d5559.ts.net/api/packages/admin/cargo/"
+
+[net]
+git-fetch-with-cli = true

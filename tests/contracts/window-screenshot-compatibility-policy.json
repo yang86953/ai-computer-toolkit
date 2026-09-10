@@ -1,0 +1,26 @@
+{
+  "capability": "window.screenshot@1",
+  "implementation": "rust",
+  "catalogStatus": "available-confirmed",
+  "legacyTargetCompatibility": "rust-only",
+  "requiresConfirmation": true,
+  "requiresExactTarget": true,
+  "timeoutMinimumMs": 250,
+  "timeoutMaximumMs": 30000,
+  "maximumDimension": 4096,
+  "maximumPngBytes": 67108864,
+  "requiresAtomicOutput": true,
+  "requiresForegroundUnchanged": true,
+  "cppBuildRequired": false,
+  "cppEquivalenceRequired": false,
+  "cppExecutionStatus": "retired-rust-primary",
+  "cppExecutionEnabled": false,
+  "selfOwnedFixtureOnly": true,
+  "forbiddenFallbacks": [
+    "foreground-activation",
+    "input-injection",
+    "permission-bypass",
+    "privacy-indicator-suppression",
+    "unconfirmed-overwrite"
+  ]
+}

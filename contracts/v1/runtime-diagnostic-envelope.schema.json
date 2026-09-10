@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-computer-toolkit.local/contracts/v1/runtime-diagnostic-envelope.schema.json",
+  "title": "Rust runtime-only diagnostic envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "policy", "results"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "policy": { "const": "background-preferred" },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 9,
+      "items": { "type": "object" }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema://browser/page-screenshot/v1",
+  "title": "Provider-neutral browser page screenshot input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pageId"],
+  "properties": {
+    "pageId": { "$ref": "#/$defs/browserPageId" },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000,
+      "default": 5000
+    }
+  },
+  "$defs": {
+    "browserPageId": {
+      "type": "string",
+      "pattern": "^s2:bp:[0-9a-f]{32}$"
+    }
+  }
+}

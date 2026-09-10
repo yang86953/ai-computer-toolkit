@@ -1,0 +1,43 @@
+{
+  "contractVersion": "act/control/v1",
+  "capability": "window.capture.preflight@1",
+  "captureCapability": "window.screenshot@1",
+  "captureExecutionMigrated": true,
+  "allowedContentProtection": [
+    "none",
+    "monitor-only",
+    "excluded-from-capture",
+    "unknown"
+  ],
+  "allowedWgcRuntime": ["supported", "unsupported", "unavailable"],
+  "allowedWgcItemInterop": [
+    "available",
+    "permission-blocked",
+    "unsupported",
+    "unavailable"
+  ],
+  "forbiddenPublicFields": [
+    "hwnd",
+    "pid",
+    "processId",
+    "nativeHandle",
+    "left",
+    "top",
+    "right",
+    "bottom",
+    "width",
+    "height",
+    "path"
+  ],
+  "forbiddenPreflightTokens": [
+    "SetForegroundWindow",
+    "SendInput",
+    "SetFocus",
+    "SetClipboardData",
+    "PrintWindow",
+    "BitBlt",
+    "StartCapture",
+    "CreateFreeThreaded",
+    "CreateCaptureSession"
+  ]
+}

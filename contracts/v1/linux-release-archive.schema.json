@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "act/linux-release-archive/v1",
+  "title": "ai-computer-toolkit Linux release archive manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "packageName",
+    "version",
+    "target",
+    "sourceDateEpoch",
+    "archiveRoot",
+    "layout",
+    "binaries",
+    "companionBinaries",
+    "siblingPolicy",
+    "elfNeeded",
+    "maximumGlibc",
+    "ubuntu2204Compatible",
+    "releaseEnvironmentVerified",
+    "elfPolicy",
+    "sbomPackageCount",
+    "files"
+  ],
+  "properties": {
+    "contractVersion": { "const": "act/linux-release-archive/v1" },
+    "packageName": { "const": "ai-computer-toolkit" },
+    "version": { "type": "string", "minLength": 1 },
+    "target": {
+      "enum": ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"]
+    },
+    "sourceDateEpoch": { "type": "integer", "minimum": 0 },
+    "archiveRoot": {
+      "type": "string",
+      "pattern": "^ai-computer-toolkit-[0-9][A-Za-z0-9.+-]*-(x86_64|aarch64)-unknown-linux-gnu$"
+    },
+    "layout": { "const": "versioned-releases-with-recoverable-link-transaction" },
+    "binaries": {
+      "const": ["bin/ai-computer-toolkit"]
+    },
+    "companionBinaries": {
+      "const": []
+    },
+    "siblingPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resolution", "pathFallback", "executableOverride"],
+      "properties": {
+        "resolution": { "const": "same-release-bin-only" },
+        "pathFallback": { "const": false },
+        "executableOverride": { "const": false }
+      }
+    },
+    "elfNeeded": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "maximumGlibc": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$" },
+    "ubuntu2204Compatible": { "type": "boolean" },
+    "releaseEnvironmentVerified": { "type": "boolean" },
+    "elfPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "architecture",
+        "interpreter",
+        "positionIndependentExecutable",
+        "nonExecutableStack",
+        "relro",
+        "bindNow",
+        "needed",
+        "maximumGlibc"
+      ],
+      "properties": {
+        "architecture": {
+          "enum": ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"]
+        },
+        "interpreter": {
+          "enum": ["/lib64/ld-linux-x86-64.so.2", "/lib/ld-linux-aarch64.so.1"]
+        },
+        "positionIndependentExecutable": { "const": true },
+        "nonExecutableStack": { "const": true },
+        "relro": { "const": true },
+        "bindNow": { "const": true },
+        "needed": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "ld-linux-x86-64.so.2",
+              "ld-linux-aarch64.so.1",
+              "libc.so.6",
+              "libgcc_s.so.1"
+            ]
+          }
+        },
+        "maximumGlibc": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$" }
+      }
+    },
+    "sbomPackageCount": { "type": "integer", "minimum": 1 },
+    "files": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "role", "mode", "sha256"],
+        "properties": {
+          "path": {
+            "enum": [
+              "bin/ai-computer-toolkit",
+              "install.sh",
+              "LICENSE",
+              "THIRD_PARTY_NOTICES.txt",
+              "SBOM.spdx.json"
+            ]
+          },
+          "role": {
+            "enum": [
+              "main-cli",
+              "managed-installer",
+              "license",
+              "third-party-notices",
+              "spdx-sbom"
+            ]
+          },
+          "mode": { "enum": [420, 493] },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    }
+  }
+}
