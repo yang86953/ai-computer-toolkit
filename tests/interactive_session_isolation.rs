@@ -69,7 +69,7 @@ fn launcher_path() -> PathBuf {
     // 从 Cargo 根目录开始。
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         // 进入工具目录。
-        .join("tools")
+        .join("tools/windows")
         // 选择唯一受支持的生产入口。
         .join("Invoke-ComputerControl.ps1")
 }

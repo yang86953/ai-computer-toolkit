@@ -482,7 +482,7 @@ fn production_launcher_rejects_tool_owned_non_input_desktop_before_target_access
         )?
     });
     // 定位唯一生产 launcher。
-    let launcher = root.join("tools/Invoke-ComputerControl.ps1");
+    let launcher = root.join("tools/windows/Invoke-ComputerControl.ps1");
     // 复用固定 stale 进程请求，证明安全门禁早于目标重解析。
     let input = root.join("tests/fixtures/process-termination-force-stale.json");
     // 固定临时 stdout JSON 文件。

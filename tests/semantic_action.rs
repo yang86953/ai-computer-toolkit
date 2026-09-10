@@ -198,7 +198,7 @@ fn launcher_path() -> PathBuf {
     // 从 Cargo 根组合固定脚本。
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         // 进入 tools 目录。
-        .join("tools")
+        .join("tools/windows")
         // 选择唯一生产入口。
         .join("Invoke-ComputerControl.ps1")
 }

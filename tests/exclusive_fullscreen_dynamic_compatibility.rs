@@ -485,7 +485,7 @@ fn launcher_path() -> PathBuf {
     // 从固定 manifest 根组合生产脚本。
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         // 进入 tools 目录。
-        .join("tools")
+        .join("tools/windows")
         // 选择唯一正式入口。
         .join("Invoke-ComputerControl.ps1")
 }

@@ -34,5 +34,5 @@
   ],
   "foregroundConsentCannotDowngradeStrict": true,
   "policyRunsBeforeProviderResolution": true,
-  "launcherGate": "tools/Test-RustIsolationPolicy.ps1"
+  "launcherGate": "tools/windows/Test-RustIsolationPolicy.ps1"
 }

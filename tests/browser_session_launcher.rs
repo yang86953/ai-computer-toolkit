@@ -57,7 +57,7 @@ const RUNTIME_SOURCE: &str =
 const ACCEPTED_ONLY_WORKER_SOURCE: &str =
     env!("CARGO_BIN_EXE_ai-computer-toolkit-browser-session-accepted-only-worker-fixture");
 // 固定生产 launcher 的仓库相对路径。
-const LAUNCHER_RELATIVE_PATH: &str = "tools/Invoke-ComputerControl.ps1";
+const LAUNCHER_RELATIVE_PATH: &str = "tools/windows/Invoke-ComputerControl.ps1";
 // 固定生产主程序 sibling 名称。
 const MAIN_FILE_NAME: &str = "ai-computer-toolkit.exe";
 // 固定生产 broker sibling 名称。
@@ -133,7 +133,7 @@ impl LauncherLayout {
             std::process::id(),
         ));
         // 创建原样 launcher 所需的 tools 目录。
-        fs::create_dir_all(root.join("tools"))
+        fs::create_dir_all(root.join("tools/windows"))
             // 创建失败时停止测试。
             .must("launcher tools directory should be created");
         // 创建原样 launcher 所需的 debug sibling 目录。

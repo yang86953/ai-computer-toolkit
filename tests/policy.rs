@@ -849,7 +849,7 @@ fn strict_isolation_manifest_matches_runtime_contract() -> Result<(), Box<dyn st
     // 清单必须指向唯一真实 launcher 门禁。
     assert_eq!(
         manifest["launcherGate"],
-        "tools/Test-RustIsolationPolicy.ps1"
+        "tools/windows/Test-RustIsolationPolicy.ps1"
     );
     // 逐个解析封闭 domain schema 并防止拒绝 System 新增字段。
     for source in domain_schema_sources {

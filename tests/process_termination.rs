@@ -57,7 +57,7 @@ fn launcher_stale_request(fixture: &str) -> Result<Value, Box<dyn std::error::Er
     // 读取编译期仓库根目录。
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     // 定位唯一生产 launcher。
-    let launcher = root.join("tools").join("Invoke-ComputerControl.ps1");
+    let launcher = root.join("tools/windows").join("Invoke-ComputerControl.ps1");
     // 定位本轮固定 JSON 请求夹具。
     let input = root.join("tests").join("fixtures").join(fixture);
     // 启动生产 PowerShell launcher 并收集唯一 JSON 输出。

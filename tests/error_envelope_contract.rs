@@ -16,7 +16,7 @@ const REPOSITORY_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 // 定义公开错误 envelope schema 的仓库内位置。
 const ERROR_SCHEMA_PATH: &str = "contracts/v1/error-envelope.schema.json";
 // 定义唯一生产 launcher 的仓库内位置。
-const PRODUCTION_LAUNCHER_PATH: &str = "tools/Invoke-ComputerControl.ps1";
+const PRODUCTION_LAUNCHER_PATH: &str = "tools/windows/Invoke-ComputerControl.ps1";
 
 // 验证生产源码中的错误码全部进入封闭公开 schema。
 #[test]

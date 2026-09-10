@@ -116,7 +116,7 @@ fn wait_for_broker_endpoint() {
 // 返回仓库唯一生产 launcher 路径。
 fn launcher_path() -> PathBuf {
     // 从 Cargo manifest 根定位固定 PowerShell launcher。
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tools/Invoke-ComputerControl.ps1")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tools/windows/Invoke-ComputerControl.ps1")
 }
 
 // 经生产 launcher 执行固定参数。
@@ -310,7 +310,7 @@ fn client_route_is_fixed_and_foreground_free() {
     // 写后失败必须公开未知结果语义。
     assert!(adapter.contains("businessAcceptedMayHaveOccurred"));
     // 生产 launcher 继续只进入 Rust runtime。
-    let launcher = include_str!("../tools/Invoke-ComputerControl.ps1");
+    let launcher = include_str!("../tools/windows/Invoke-ComputerControl.ps1");
     // 不得出现 C++ fallback。
     assert!(!launcher.contains("ai-computer-toolkit-cpp.exe"));
 }

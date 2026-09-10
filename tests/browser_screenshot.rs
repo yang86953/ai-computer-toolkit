@@ -139,7 +139,7 @@ fn run_launcher(output: &Path) -> Output {
     // 定位仓库 launcher 脚本。
     let launcher = Path::new(env!("CARGO_MANIFEST_DIR"))
         // 进入工具目录。
-        .join("tools")
+        .join("tools/windows")
         // 选择固定 launcher。
         .join("Invoke-ComputerControl.ps1");
     // 构造仓库 HTML fixture URL。

@@ -151,7 +151,7 @@ fn uncertified_media_launcher_route_is_rust_fail_closed() -> Result<(), Box<dyn 
         "contracts/media-control-migration-policy.json"
     ))?;
     // 嵌入生产 launcher 以防止 opaque 目标重新触发 C++。
-    let launcher = include_str!("../tools/Invoke-ComputerControl.ps1");
+    let launcher = include_str!("../tools/windows/Invoke-ComputerControl.ps1");
     // 契约必须禁止历史 C++ 执行。
     assert_eq!(policy["cppExecutionEnabled"], false);
     // 契约必须禁止未认证 Rust provider 执行。
