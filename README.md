@@ -19,7 +19,7 @@ Its source and client-specific extensions are maintained outside this repository
 cargo build --locked --bin ai-computer-toolkit
 ```
 
-Rust 1.96 (see `rust-toolchain.toml`; rustup installs it automatically). Linux and
+Latest stable Rust (see `rust-toolchain.toml`; the manifest declares the minimum supported version). Linux and
 Windows are both supported.
 
 All dependencies come from crates.io and the public UIX Git repository, so no
@@ -170,3 +170,11 @@ platform.
 ## License
 
 MIT. See `LICENSE`. External dependencies retain their own licenses.
+
+## Documentation
+
+[文档中心](docs/README.md) · [定位与边界](docs/产品/定位与边界.md) · [SMC 采用](docs/架构/SMC采用.md)
+
+Product and technical documentation is maintained in this repository. Versioned
+contract notes include historical and feature-specific routes; use current
+runtime capabilities and schemas for live availability, not an old acceptance claim.
