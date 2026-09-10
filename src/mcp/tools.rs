@@ -163,7 +163,7 @@ pub fn tool_catalog() -> Vec<Value> {
         ),
         tool(
             "interact",
-            "直接鼠标移动/点击、快捷键与小批次输入，执行后直接返回截图。frameId 必须为本会话最新 observe；动作后旧帧失效。text 是 ASCII 键盘输入，会受输入法影响。",
+            "直接鼠标移动/点击、快捷键与小批次输入，执行后直接返回截图。键鼠只送达持有焦点的窗口：发键前先点一下目标窗口，别在别的窗口打字。frameId 必须为本会话最新 observe；输入一旦送出旧帧即失效，被预检拒绝则不消耗帧。steps 内 wait 合计必须小于 timeoutMs（默认 3000ms），按键与文本不计入该预算，超限整批拒收。text 是 ASCII 键盘输入，会受输入法影响。",
             object(
                 json!({
                     "sessionId": session_id_property(),
@@ -193,7 +193,7 @@ pub fn tool_catalog() -> Vec<Value> {
         ),
         tool(
             "keys",
-            "发送完整按键或快捷键（例如 left-shift+f5、numpad-1），随后返回截图。依当前截图核对焦点，不自动切换输入法。",
+            "发送完整按键或快捷键（例如 left-shift+f5、numpad-1），随后返回截图。按键只送达持有焦点的窗口，先用 interact 点一下目标窗口；依当前截图核对焦点，不自动切换输入法。",
             object(
                 json!({
                     "sessionId": session_id_property(),

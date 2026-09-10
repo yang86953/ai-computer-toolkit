@@ -407,15 +407,17 @@ impl Desktop {
         arguments: &serde_json::Map<String, Value>,
     ) -> Result<ToolOutcome, BrokerFailure> {
         self.require_frame(arguments)?;
-        // 任何输入尝试都使旧帧失效，包括失败的情况。
-        self.frame = None;
-        let capture = self.capture_fields(arguments);
-        let session = self.session.clone().unwrap_or_default();
         let frame = arguments
             .get("frameId")
             .and_then(Value::as_str)
             .unwrap_or_default()
             .to_owned();
+        // 预检拒绝（acceptedMayHaveOccurred=false）没有投递任何事件，观察仍然成立，
+        // 这一帧不该被消耗；只有输入可能已经送出时才作废旧帧。
+        let keep_alive = frame.clone();
+        self.frame = None;
+        let capture = self.capture_fields(arguments);
+        let session = self.session.clone().unwrap_or_default();
         let timeout_ms = arguments
             .get("timeoutMs")
             .and_then(Value::as_u64)
@@ -432,7 +434,7 @@ impl Desktop {
             .as_mut()
             .ok_or_else(|| BrokerFailure::failed("BROKER_CLOSED", "No active broker."))?;
         if name == "computer_pointer" {
-            let interaction = broker.call(
+            let interaction = match broker.call(
                 "input-pointer",
                 json!({
                     "sessionId": session,
@@ -446,7 +448,13 @@ impl Desktop {
                     },
                 }),
                 Duration::from_millis(timeout_ms) + Duration::from_secs(5),
-            )?;
+            ) {
+                Ok(interaction) => interaction,
+                Err(failure) => {
+                    restore_undelivered_frame(&mut self.frame, &failure, keep_alive);
+                    return Err(failure);
+                }
+            };
             let interaction = interaction.get("data").cloned().unwrap_or(json!({}));
             let response = match broker.call(
                 "observe",
@@ -487,7 +495,7 @@ impl Desktop {
             }
             return Ok(outcome);
         }
-        let response = broker.call(
+        let response = match broker.call(
             "interact",
             json!({
                 "sessionId": session,
@@ -498,7 +506,13 @@ impl Desktop {
                 "observation": capture,
             }),
             Duration::from_millis(timeout_ms) + Duration::from_secs(70),
-        )?;
+        ) {
+            Ok(response) => response,
+            Err(failure) => {
+                restore_undelivered_frame(&mut self.frame, &failure, keep_alive);
+                return Err(failure);
+            }
+        };
         self.image_result(&response, &capture)
     }
 
@@ -571,6 +585,14 @@ impl Desktop {
     }
 }
 
+/// 预检拒绝时把帧还给会话：broker 明确报告没有投递事件，观察结论仍然成立。
+/// 一旦输入可能已经送出（含结果未知），保持失效，绝不自动重放。
+fn restore_undelivered_frame(frame: &mut Option<String>, failure: &BrokerFailure, frame_id: String) {
+    if !failure.accepted_may_have_occurred {
+        *frame = Some(frame_id);
+    }
+}
+
 /// 校验并读取截图文件；身份不一致、软链接、超大或非 PNG 都拒绝。
 fn read_capture(
     path: &Path,
@@ -628,4 +650,28 @@ fn unique_name() -> String {
         .map(|elapsed| elapsed.as_nanos())
         .unwrap_or_default();
     format!("{nanos:032x}{sequence:016x}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pre_dispatch_rejection_keeps_the_observation_alive() {
+        let frame = "a".repeat(32);
+        // 预检拒绝没有投递任何事件，观察仍然成立：帧还给会话，省掉一次重新观察。
+        let mut current = None;
+        restore_undelivered_frame(
+            &mut current,
+            &BrokerFailure::failed("INVALID_ARGUMENT", "rejected before dispatch"),
+            frame.clone(),
+        );
+        assert_eq!(current.as_deref(), Some(frame.as_str()));
+        // 输入可能已经送出（含结果未知）：调用前帧已作废，这里必须保持失效，只能重新观察。
+        let mut dispatched = None;
+        let mut failure = BrokerFailure::failed("OUTCOME_UNKNOWN", "input may have been sent");
+        failure.accepted_may_have_occurred = true;
+        restore_undelivered_frame(&mut dispatched, &failure, frame);
+        assert_eq!(dispatched, None);
+    }
 }

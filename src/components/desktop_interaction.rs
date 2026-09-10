@@ -87,7 +87,7 @@ const fn default_timeout() -> u32 {
     30_000
 }
 
-fn invalid(message: &'static str) -> AppControlError {
+fn invalid(message: &str) -> AppControlError {
     AppControlError::new("INVALID_ARGUMENT", message)
 }
 
@@ -147,8 +147,16 @@ pub(crate) fn parse(value: &Value) -> AppResult<InteractionPlan> {
                 InteractionStep::Wait(ms)
             }
         });
-        if units > 16_384 || waits > 10_000 || waits >= wire.timeout_ms {
-            return Err(invalid("Interaction exceeds its input or waiting budget."));
+        if units > 16_384 {
+            return Err(invalid(&format!(
+                "Interaction spends {units} input units, above the 16384 limit; split it into smaller batches."
+            )));
+        }
+        if waits > 10_000 || waits >= wire.timeout_ms {
+            return Err(invalid(&format!(
+                "Waits total {waits}ms and must stay below timeoutMs ({}ms): raise timeoutMs or shorten the waits.",
+                wire.timeout_ms
+            )));
         }
     }
     Ok(InteractionPlan {
@@ -259,6 +267,26 @@ mod tests {
         assert!(parse(&json!({"steps":[{"type":"click","x":1,"y":2}]})).is_err());
         assert!(parse(&json!({"steps":[{"type":"text","text":"x".repeat(4096)},{"type":"key","keys":["enter"]}]})).is_err());
         assert!(parse(&json!({"steps":[{"type":"wait","ms":1000}],"timeoutMs":1000})).is_err());
+    }
+
+    #[test]
+    fn waiting_budget_error_reports_the_actual_limits() {
+        // 等待合计必须严格小于 timeoutMs；超限要报出实际数值、上限和修法，便于一次改对。
+        let error = match parse(&json!({
+            "steps":[{"type":"wait","ms":900},{"type":"wait","ms":900}],
+            "timeoutMs":1500
+        })) {
+            Ok(_) => panic!("expected the waiting budget to be rejected"),
+            Err(error) => error,
+        };
+        assert_eq!(error.code, "INVALID_ARGUMENT");
+        assert!(error.message.contains("1800ms"), "{}", error.message);
+        assert!(error.message.contains("1500ms"), "{}", error.message);
+        assert!(error.message.contains("raise timeoutMs"), "{}", error.message);
+        // 预算之内的同一批步骤照常通过，错误信息改动不影响可用性。
+        assert!(
+            parse(&json!({"steps":[{"type":"wait","ms":900}],"timeoutMs":1500})).is_ok()
+        );
     }
 
     #[test]
