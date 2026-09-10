@@ -20,10 +20,8 @@ use crate::{
 };
 
 // 注册独立交互会话专属的纯 Policy 边界，控制主文件规模。
-#[path = "policy_interactive_session.rs"]
 mod interactive_session_policy;
 // 注册 Browser Session 生命周期专属的固定 Policy 事实。
-#[path = "policy_browser_session.rs"]
 mod browser_session_policy;
 
 // 固定当前唯一已认证 Rust 隔离执行 companion。

@@ -414,7 +414,7 @@ fn response_deadline_does_not_wait_for_peer_disconnect() -> TestResult {
 #[test]
 fn socket_ready_and_client_failures_match_public_schema() -> TestResult {
     let schema: Value = serde_json::from_str(include_str!(
-        "../contracts/v1/linux-desktop-session-broker-v1.schema.json"
+        "../../../contracts/v1/linux-desktop-session-broker-v1.schema.json"
     ))?;
     let port = TestPort {
         opens: Arc::new(AtomicUsize::new(0)),

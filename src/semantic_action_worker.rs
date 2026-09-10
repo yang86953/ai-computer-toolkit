@@ -71,7 +71,6 @@ use windows::{
 };
 
 // 把错误集合保留为 Worker 私有类型。
-#[path = "semantic_action_worker_error.rs"]
 mod error_code;
 // 导入 Worker 私有错误类型。
 use error_code::SemanticActionWorkerErrorCode;
@@ -885,5 +884,4 @@ pub fn run_stdio() -> i32 {
 
 // 把纯协议与映射测试拆出生产文件。
 #[cfg(test)]
-#[path = "semantic_action_worker_tests.rs"]
 mod tests;

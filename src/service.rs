@@ -37,7 +37,6 @@ use crate::{
 };
 
 // 把错误码实现保留为 ComputerControlSystem 的普通私有类型。
-#[path = "service_error.rs"]
 mod error_code;
 // 导入当前 System 私有封闭错误码。
 use error_code::ComputerControlSystemErrorCode;
@@ -555,7 +554,6 @@ impl AppControlService {
 
 // 编译 ComputerControlSystem dispatch 观察顺序的独立回归。
 #[cfg(test)]
-#[path = "service_dispatch_hook_tests.rs"]
 mod dispatch_hook_tests;
 
 // 静态验证 System 到 Browser Session Module/Process 的 RAII 所有权链。

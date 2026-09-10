@@ -439,5 +439,4 @@ pub fn run_socket_client(arguments: Vec<String>) -> i32 {
 }
 
 #[cfg(test)]
-#[path = "linux_desktop_session_transport_tests.rs"]
 mod tests;

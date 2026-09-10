@@ -1,10 +1,8 @@
 //! 固定同会话 browser-session broker 的组合根与生命周期宿主。
 
 // 注册唯一拥有 ComputerControlSystem 的 dispatcher。
-#[path = "browser_session_broker_dispatcher.rs"]
 mod dispatcher;
 // 注册只负责响应编码、绝对截止时间选择与有界写入的宿主 Component。
-#[path = "browser_session_broker_response_transport.rs"]
 mod response_transport;
 
 // 导入安全错误输出、共享所有权、线程与连接预算。
@@ -848,5 +846,4 @@ pub fn run() -> i32 {
 
 // 注册不打开 pipe 或真实浏览器的宿主辅助回归。
 #[cfg(test)]
-#[path = "browser_session_broker_tests.rs"]
 mod tests;

@@ -1,7 +1,6 @@
 //! 在唯一线程中串行拥有并调用 browser-session 的 ComputerControlSystem。
 
 // 注册页面动作与截图的窄 dispatcher Component。
-#[path = "browser_session_broker_dispatcher_actions.rs"]
 mod page_actions;
 
 // 导入共享运行时、同步队列、线程与执行预算。
@@ -852,5 +851,4 @@ fn unavailable(
 
 // 注册不启动真实浏览器的 dispatcher 回归。
 #[cfg(test)]
-#[path = "browser_session_broker_dispatcher_tests.rs"]
 mod tests;

@@ -120,7 +120,7 @@ fn request(operation: &str, nonce: usize) -> Value {
 }
 fn schema_valid(value: &Value) {
     let schema: Value = serde_json::from_str(include_str!(
-        "../contracts/v1/linux-desktop-session-broker-v1.schema.json"
+        "../../contracts/v1/linux-desktop-session-broker-v1.schema.json"
     ))
     .unwrap();
     jsonschema::draft202012::validate(&schema, value).unwrap_or_else(|e| panic!("{e}: {value}"));

@@ -699,7 +699,7 @@ mod tests {
         let attestation = discover_plan.attest_result(&mut discover);
         assert!(attestation.is_ok(), "发现证明必须成功");
         assert_schema(
-            include_str!("../contracts/v2/media-session-observation.schema.json"),
+            include_str!("../../contracts/v2/media-session-observation.schema.json"),
             &discover,
         );
 
@@ -729,7 +729,7 @@ mod tests {
         let attestation = state_plan.attest_result(&mut state);
         assert!(attestation.is_ok(), "状态证明必须成功");
         assert_schema(
-            include_str!("../contracts/v2/media-playback-state.schema.json"),
+            include_str!("../../contracts/v2/media-playback-state.schema.json"),
             &state,
         );
 
@@ -760,7 +760,7 @@ mod tests {
         let attestation = control_plan.attest_result(&mut control);
         assert!(attestation.is_ok(), "控制证明必须成功");
         assert_schema(
-            include_str!("../contracts/v2/media-playback-control.schema.json"),
+            include_str!("../../contracts/v2/media-playback-control.schema.json"),
             &control,
         );
     }
