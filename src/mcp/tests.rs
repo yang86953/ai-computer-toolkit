@@ -7,6 +7,7 @@ use serde_json::{Value, json};
 
 use super::server::Session;
 use super::tools::{input_schema, is_known_tool, tool_catalog};
+use crate::components::desktop_interaction::MAXIMUM_INTERACTION_STEPS;
 
 /// 取出响应中的 `error.code`。
 fn error_code(response: &Value) -> Option<i64> {
@@ -76,10 +77,18 @@ fn run_batches_share_the_interaction_input_contract() {
     assert_eq!(batches["maxItems"], 64);
     let step = &batches["items"]["properties"]["steps"];
     assert_eq!(step["minItems"], 1);
-    assert_eq!(step["maxItems"], 128, "每批不得超出 broker 的 128 步契约");
+    // 直接对齐 broker 的常量：写死数字正是「MCP 64 / broker 128」那次漂移的成因。
+    assert_eq!(
+        step["maxItems"],
+        MAXIMUM_INTERACTION_STEPS,
+        "每批不得超出 broker 的步数契约"
+    );
     // 单批工具与批次内单批必须给出同一个上限，否则同一批输入会在两条路上表现不同。
     let interact = input_schema("computer_interact").expect("schema");
-    assert_eq!(interact["properties"]["steps"]["maxItems"], 128);
+    assert_eq!(
+        interact["properties"]["steps"]["maxItems"],
+        MAXIMUM_INTERACTION_STEPS
+    );
 }
 
 #[test]

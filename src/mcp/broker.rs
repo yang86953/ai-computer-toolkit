@@ -293,6 +293,10 @@ fn validate_response(
         failure.accepted_may_have_occurred = details["acceptedMayHaveOccurred"]
             .as_bool()
             .unwrap_or(failure.outcome_unknown);
+        // 细节原样保留给调用方：诊断输入失败靠的就是 stage 与已完成步数。
+        if details.is_object() {
+            failure.details = details.clone();
+        }
         return Err(failure);
     }
     Ok(())

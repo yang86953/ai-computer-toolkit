@@ -5,6 +5,8 @@
 
 use serde_json::{Value, json};
 
+use crate::components::desktop_interaction::MAXIMUM_INTERACTION_STEPS;
+
 /// 授权三元组：这些布尔值表示用户已有授权，不是模型可自行批准的权限。
 const AUTH: [&str; 3] = ["confirmed", "foregroundConsent", "strictIsolation"];
 
@@ -140,7 +142,7 @@ fn run_batch_schema() -> Value {
                 "type": "array",
                 "items": interaction_step_schema(),
                 "minItems": 1,
-                "maxItems": 128,
+                "maxItems": MAXIMUM_INTERACTION_STEPS,
             },
             "timeoutMs": integer(1, 30_000, "该批 wait 预算上限，毫秒"),
         }),
@@ -199,7 +201,7 @@ pub fn tool_catalog() -> Vec<Value> {
                         "type": "array",
                         "items": interaction_step_schema(),
                         "minItems": 1,
-                        "maxItems": 128,
+                        "maxItems": MAXIMUM_INTERACTION_STEPS,
                     },
                     "timeoutMs": integer(1, 30_000, "输入超时，毫秒"),
                     "maxDimension": integer(256, 2560, "返回图最长边像素"),
