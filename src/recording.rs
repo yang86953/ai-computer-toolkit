@@ -6,7 +6,6 @@ use std::{
 use serde_json::{Map, Value};
 
 // 把错误码实现保留为 RecordingConfig 普通领域边界的私有类型。
-#[path = "recording_error.rs"]
 mod error_code;
 // 导入当前录制配置私有封闭错误码。
 use error_code::RecordingConfigErrorCode;

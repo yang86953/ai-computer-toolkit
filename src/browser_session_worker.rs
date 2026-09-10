@@ -21,10 +21,8 @@ use std::{
 };
 
 // 加载私有会话握手输出组件。
-#[path = "browser_session_worker_output.rs"]
 mod output;
 // 加载私有 Chromium 命令模板组件。
-#[path = "browser_session_worker_command.rs"]
 mod command;
 
 // 导入固定 Chromium 命令模板。
@@ -892,5 +890,4 @@ pub fn run_stdio() -> i32 {
 // 保持纯函数回归靠近 worker 私有实现。
 #[cfg(test)]
 // 加载独立测试文件避免生产文件超过行数边界。
-#[path = "browser_session_worker_tests.rs"]
 mod tests;

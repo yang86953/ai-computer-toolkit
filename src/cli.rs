@@ -1,7 +1,6 @@
 use serde_json::{Map, Value, json};
 
 // 把错误码实现保留为 CLI 适配边界的普通私有类型。
-#[path = "cli_error.rs"]
 mod error_code;
 // 导入当前 CLI 私有封闭错误码。
 use error_code::CliErrorCode;

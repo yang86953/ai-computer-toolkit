@@ -372,5 +372,4 @@ pub fn run_stdio() -> i32 {
 
 // 编译 worker 投影与有界输入的独立回归。
 #[cfg(test)]
-#[path = "sequence_step_worker_tests.rs"]
 mod tests;

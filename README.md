@@ -19,7 +19,28 @@ Its source and client-specific extensions are maintained outside this repository
 cargo build --locked --bin ai-computer-toolkit
 ```
 
-Rust 1.96 (see `rust-toolchain.toml`). Linux and Windows are both supported.
+Rust 1.96 (see `rust-toolchain.toml`; rustup installs it automatically). Linux and
+Windows are both supported.
+
+All dependencies come from crates.io and the public UIX Git repository, so no
+credentials or private registry configuration are required.
+
+Requirements by host:
+
+| Host | Requirement |
+| --- | --- |
+| Linux | PipeWire development files for linking (`libpipewire-0.3-dev` or equivalent, discovered through pkg-config). The resulting binary links `libpipewire-0.3.so.0` at runtime |
+| Windows native | MSVC toolchain |
+| Windows cross-compiled from Linux | `mingw-w64` (`x86_64-w64-mingw32-gcc`) |
+
+Cross-compiling the Windows binary from Linux:
+
+```bash
+cargo build --locked --release --target x86_64-pc-windows-gnu --bin ai-computer-toolkit
+```
+
+The Windows binary only imports system DLLs (UCRT requires Windows 10 or later);
+no MinGW runtime DLLs are needed alongside it.
 
 ## Platform support
 
@@ -61,10 +82,15 @@ Supported protocol versions: `2024-11-05`, `2025-03-26`, `2025-06-18`.
 | `computer_interact` | Move/click in screenshot coordinates, or a small batch of keys/text. |
 | `computer_keys` | Send a full key or shortcut such as `["left-shift", "f5"]`. |
 | `computer_pointer` | Relative movement, scroll and complete drags. |
+| `computer_run` | Run many input batches in one call; the server refreshes the frame between batches. |
 | `computer_disconnect` | Close the session, read back empty `sessions`, release the broker. |
 
 Operate as `connect → observe → confirm the target in the image →
-interact/keys/pointer → verify the returned image → disconnect`.
+interact/keys/pointer → verify the returned image → disconnect`. For long
+deterministic sequences use `computer_run`: it keeps the same freshness contract
+(every batch binds the frame captured right before it) but moves the
+observe/input loop into the toolkit process, so one call drives many batches
+instead of one round trip per batch.
 
 - `interact` coordinates are **observation-px**, taken from the returned image.
   `pointer` deltas are **relative-logical-px**; do not mix them.
@@ -121,11 +147,11 @@ remain Linux-only and are advertised by the broker feature flag.
 
 ## UIX dependency
 
-Cargo fetches UIX and its workspace crates from the pinned upstream Git revision.
-Build hosts need access to that repository and the registry configuration in
-`.cargo/config.toml`; credentials stay in the host's Cargo/SSH configuration.
-UIX platform changes belong in the UIX repository and are consumed by updating
-the dependency revision. No framework source is copied into this package.
+Cargo fetches UIX and its workspace crates from the pinned revision of the public
+repository <https://github.com/yang86953/uix-app> (MIT licensed). No credentials
+or registry configuration are required. UIX platform changes belong in the UIX
+repository and are consumed by updating the dependency revision. No framework
+source is copied into this package.
 
 ## Tests
 

@@ -88,6 +88,10 @@ fn interaction_step_schema() -> Value {
                 "type": { "const": "text" },
                 "text": { "type": "string", "maxLength": 4096 },
             }), &["type", "text"]),
+            object(json!({
+                "type": { "const": "wait" },
+                "ms": integer(1, 1_000, "该步等待毫秒；计入本批 wait 预算"),
+            }), &["type", "ms"]),
         ],
     })
 }
@@ -122,6 +126,26 @@ fn pointer_step_schema() -> Value {
 
 pub(super) fn relative_coordinate_space() -> &'static str {
     "relative-logical-px"
+}
+
+/// 长流程执行中单个批次的封闭 schema：一批输入 + 该批自己的 wait 预算。
+///
+/// 批次只是把「同一次调用内的连续小步」组织起来，不改变单批的输入契约：
+/// 每批仍绑定送出当时的最新帧，wait 合计仍须小于该批 timeoutMs。
+fn run_batch_schema() -> Value {
+    object(
+        json!({
+            "name": { "type": "string", "maxLength": 80 },
+            "steps": {
+                "type": "array",
+                "items": interaction_step_schema(),
+                "minItems": 1,
+                "maxItems": 128,
+            },
+            "timeoutMs": integer(1, 30_000, "该批 wait 预算上限，毫秒"),
+        }),
+        &["steps"],
+    )
 }
 
 /// 返回全部工具定义；顺序即 `tools/list` 的公开顺序。
@@ -163,7 +187,7 @@ pub fn tool_catalog() -> Vec<Value> {
         ),
         tool(
             "interact",
-            "直接鼠标移动/点击、快捷键与小批次输入，执行后直接返回截图。frameId 必须为本会话最新 observe；动作后旧帧失效。text 是 ASCII 键盘输入，会受输入法影响。",
+            "直接鼠标移动/点击、快捷键与小批次输入，执行后直接返回截图。键鼠只送达持有焦点的窗口：发键前先点一下目标窗口，别在别的窗口打字。frameId 必须为本会话最新 observe；输入一旦送出旧帧即失效，被预检拒绝则不消耗帧。steps 内 wait 合计必须小于 timeoutMs（默认 3000ms），按键与文本不计入该预算，超限整批拒收。text 是 ASCII 键盘输入，会受输入法影响。",
             object(
                 json!({
                     "sessionId": session_id_property(),
@@ -175,7 +199,7 @@ pub fn tool_catalog() -> Vec<Value> {
                         "type": "array",
                         "items": interaction_step_schema(),
                         "minItems": 1,
-                        "maxItems": 64,
+                        "maxItems": 128,
                     },
                     "timeoutMs": integer(1, 30_000, "输入超时，毫秒"),
                     "maxDimension": integer(256, 2560, "返回图最长边像素"),
@@ -193,7 +217,7 @@ pub fn tool_catalog() -> Vec<Value> {
         ),
         tool(
             "keys",
-            "发送完整按键或快捷键（例如 left-shift+f5、numpad-1），随后返回截图。依当前截图核对焦点，不自动切换输入法。",
+            "发送完整按键或快捷键（例如 left-shift+f5、numpad-1），随后返回截图。按键只送达持有焦点的窗口，先用 interact 点一下目标窗口；依当前截图核对焦点，不自动切换输入法。",
             object(
                 json!({
                     "sessionId": session_id_property(),
@@ -247,6 +271,37 @@ pub fn tool_catalog() -> Vec<Value> {
                     "foregroundConsent",
                     "strictIsolation",
                     "steps",
+                ],
+            ),
+            false,
+        ),
+        tool(
+            "run",
+            "长流程批量执行：一次调用内由服务端自己完成「取新帧 → 送一批输入 → 读回新帧」的循环，可连续跑多批，不必每批回来一次。每批仍绑定送出当时的最新帧，绝不复用旧帧；调用方不需要先 observe，也不必逐批给 frameId。出错默认停止后续批次，并回读该批已发生的效果。返回逐批回执与有界关键帧；长流程用本工具，单批小步才用 interact。",
+            object(
+                json!({
+                    "sessionId": session_id_property(),
+                    "confirmed": consent("用户已确认本次前台桌面操作"),
+                    "foregroundConsent": consent("用户已同意发送前台输入"),
+                    "strictIsolation": consent("必须为 false：此路线不提供后台隔离"),
+                    "batches": {
+                        "type": "array",
+                        "items": run_batch_schema(),
+                        "minItems": 1,
+                        "maxItems": 64,
+                    },
+                    "captureEveryBatches": integer(0, 64, "每 N 批回读一张关键帧；0 表示只回读最后一批"),
+                    "maxFrames": integer(1, 8, "返回图像张数上限"),
+                    "stopOnError": { "type": "boolean", "description": "出错时停止后续批次，默认 true" },
+                    "totalTimeoutMs": integer(1_000, 600_000, "整次调用总预算，毫秒；默认 45 秒"),
+                    "maxDimension": integer(256, 2560, "返回图最长边像素"),
+                }),
+                &[
+                    "sessionId",
+                    "confirmed",
+                    "foregroundConsent",
+                    "strictIsolation",
+                    "batches",
                 ],
             ),
             false,

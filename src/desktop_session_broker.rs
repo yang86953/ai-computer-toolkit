@@ -34,16 +34,13 @@ const MAXIMUM_LEDGER_ENTRIES: usize = 1024;
 const MAXIMUM_PENDING_FRAMES: usize = 16;
 
 #[cfg(target_os = "linux")]
-#[path = "linux_desktop_session_transport.rs"]
 mod transport;
 #[cfg(target_os = "linux")]
 pub use transport::{run_socket_client, run_socket_server};
 
-#[path = "desktop_session_request.rs"]
 mod request;
 use request::BrokerRequest;
 
-#[path = "desktop_session_interaction.rs"]
 mod interaction;
 
 struct LedgerRecord {
@@ -760,11 +757,9 @@ pub fn run_stdio() -> i32 {
 }
 
 #[cfg(all(test, target_os = "linux"))]
-#[path = "linux_desktop_subscription_tests.rs"]
 mod subscription_tests;
 
 #[cfg(all(test, target_os = "linux"))]
-#[path = "linux_desktop_session_changes_tests.rs"]
 mod change_tests;
 
 #[cfg(all(test, target_os = "linux"))]

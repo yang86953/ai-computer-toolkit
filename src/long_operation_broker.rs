@@ -894,5 +894,4 @@ pub fn run() -> i32 {
 // 声明 broker 响应与 registry 路由回归测试。
 #[cfg(test)]
 // 将 fixture 放入独立文件控制 broker 规模。
-#[path = "long_operation_broker_tests.rs"]
 mod tests;

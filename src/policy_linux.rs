@@ -13,7 +13,6 @@ use crate::{
 
 // MPRIS 候选 Policy 只冻结 feature 内部契约，不进入默认 Service 或 AdapterRegistry。
 #[cfg(feature = "linux-mpris-candidate")]
-#[path = "policy_linux_mpris_candidate.rs"]
 pub(crate) mod mpris_candidate;
 
 /// Linux System 在 provider 前冻结的执行计划。

@@ -16,7 +16,6 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 // 把错误码实现保留为 Recording Worker 协议边界的普通私有类型。
-#[path = "recording_worker_error.rs"]
 mod error_code;
 // 导入当前 Worker 私有封闭错误码。
 use error_code::RecordingWorkerErrorCode;

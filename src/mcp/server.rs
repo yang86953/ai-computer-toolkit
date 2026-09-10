@@ -27,7 +27,7 @@ const SERVER_NAME: &str = "computer-control-toolkit";
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// 面向模型的固定引导语。
-const INSTRUCTIONS: &str = "Use computer_connect, computer_observe, then the direct keyboard/mouse tools. Confirm the target and focus from returned screenshots. There is no implicit authorization and no automatic input replay.";
+const INSTRUCTIONS: &str = "Use computer_connect, computer_observe, then the direct keyboard/mouse tools. For long deterministic sequences prefer computer_run: it refreshes the frame between batches on the server, so one call can drive many batches instead of one round trip per batch. Confirm the target and focus from returned screenshots. There is no implicit authorization and no automatic input replay.";
 
 /// 读取线程只做帧、BUSY 和取消路由；唯一 owner 顺序执行桌面操作。
 pub fn run_stdio() -> i32 {

@@ -695,5 +695,4 @@ pub fn run_stdio() -> i32 {
 // 注册 fixture 输入边界的纯解析回归测试。
 #[cfg(test)]
 // 将测试保留在独立文件，避免运行时 fixture 承担测试细节。
-#[path = "browser_session_broker_command_fixture_tests.rs"]
 mod tests;

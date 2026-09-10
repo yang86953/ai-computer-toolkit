@@ -162,6 +162,406 @@ name = "ai-computer-toolkit-sequence-step-fixture"
 path = "src/bin/ai-computer-toolkit-sequence-step-fixture.rs"
 required-features = ["test-fixtures"]
 
+[[test]]
+name = "browser_page_action_contract"
+path = "tests/browser/browser_page_action_contract.rs"
+
+[[test]]
+name = "browser_page_read_contract"
+path = "tests/browser/browser_page_read_contract.rs"
+
+[[test]]
+name = "browser_page_read_input_contract"
+path = "tests/browser/browser_page_read_input_contract.rs"
+
+[[test]]
+name = "browser_screenshot"
+path = "tests/browser/browser_screenshot.rs"
+
+[[test]]
+name = "browser_session_broker_commands"
+path = "tests/browser/browser_session_broker_commands.rs"
+
+[[test]]
+name = "browser_session_broker_outcome_unknown"
+path = "tests/browser/browser_session_broker_outcome_unknown.rs"
+
+[[test]]
+name = "browser_session_broker_raw_protocol"
+path = "tests/browser/browser_session_broker_raw_protocol.rs"
+
+[[test]]
+name = "browser_session_broker_transport"
+path = "tests/browser/browser_session_broker_transport.rs"
+
+[[test]]
+name = "browser_session_launcher"
+path = "tests/browser/browser_session_launcher.rs"
+
+[[test]]
+name = "browser_session_lifecycle_contract"
+path = "tests/browser/browser_session_lifecycle_contract.rs"
+
+[[test]]
+name = "browser_session_page_interrupt"
+path = "tests/browser/browser_session_page_interrupt.rs"
+
+[[test]]
+name = "browser_session_process"
+path = "tests/browser/browser_session_process.rs"
+
+[[test]]
+name = "browser_session_worker"
+path = "tests/browser/browser_session_worker.rs"
+
+[[test]]
+name = "error_envelope_contract"
+path = "tests/contracts/error_envelope_contract.rs"
+
+[[test]]
+name = "long_operation_contract"
+path = "tests/contracts/long_operation_contract.rs"
+
+[[test]]
+name = "special_window_input_compatibility_contract"
+path = "tests/contracts/special_window_input_compatibility_contract.rs"
+
+[[test]]
+name = "window_generation_contract"
+path = "tests/contracts/window_generation_contract.rs"
+
+[[test]]
+name = "window_target_identity_contract"
+path = "tests/contracts/window_target_identity_contract.rs"
+
+[[test]]
+name = "background_read"
+path = "tests/core/background_read.rs"
+
+[[test]]
+name = "build_info"
+path = "tests/core/build_info.rs"
+
+[[test]]
+name = "capability_metadata"
+path = "tests/core/capability_metadata.rs"
+
+[[test]]
+name = "capture_privacy_indicator"
+path = "tests/core/capture_privacy_indicator.rs"
+
+[[test]]
+name = "diagnostic_metadata"
+path = "tests/core/diagnostic_metadata.rs"
+
+[[test]]
+name = "element_location"
+path = "tests/core/element_location.rs"
+
+[[test]]
+name = "interactive_command_worker"
+path = "tests/core/interactive_command_worker.rs"
+
+[[test]]
+name = "interactive_session_isolation"
+path = "tests/core/interactive_session_isolation.rs"
+
+[[test]]
+name = "keyboard_input"
+path = "tests/core/keyboard_input.rs"
+
+[[test]]
+name = "long_operation_launcher"
+path = "tests/core/long_operation_launcher.rs"
+
+[[test]]
+name = "mcp_stdio"
+path = "tests/core/mcp_stdio.rs"
+
+[[test]]
+name = "media_fail_closed"
+path = "tests/core/media_fail_closed.rs"
+
+[[test]]
+name = "pointer_input"
+path = "tests/core/pointer_input.rs"
+
+[[test]]
+name = "process_termination"
+path = "tests/core/process_termination.rs"
+
+[[test]]
+name = "semantic_action"
+path = "tests/core/semantic_action.rs"
+
+[[test]]
+name = "task_control_cli"
+path = "tests/core/task_control_cli.rs"
+
+[[test]]
+name = "window_record"
+path = "tests/core/window_record.rs"
+
+[[test]]
+name = "linux_application_launch"
+path = "tests/linux/linux_application_launch.rs"
+
+[[test]]
+name = "linux_application_session_v2"
+path = "tests/linux/linux_application_session_v2.rs"
+
+[[test]]
+name = "linux_application_session_v3"
+path = "tests/linux/linux_application_session_v3.rs"
+
+[[test]]
+name = "linux_application_session_v4"
+path = "tests/linux/linux_application_session_v4.rs"
+
+[[test]]
+name = "linux_atspi_candidate"
+path = "tests/linux/linux_atspi_candidate.rs"
+
+[[test]]
+name = "linux_atspi_contracts"
+path = "tests/linux/linux_atspi_contracts.rs"
+
+[[test]]
+name = "linux_desktop_entry_limits"
+path = "tests/linux/linux_desktop_entry_limits.rs"
+
+[[test]]
+name = "linux_desktop_session_contract"
+path = "tests/linux/linux_desktop_session_contract.rs"
+
+[[test]]
+name = "linux_media_playback_cli"
+path = "tests/linux/linux_media_playback_cli.rs"
+
+[[test]]
+name = "linux_mpris_candidate"
+path = "tests/linux/linux_mpris_candidate.rs"
+
+[[test]]
+name = "linux_mpris_contracts"
+path = "tests/linux/linux_mpris_contracts.rs"
+
+[[test]]
+name = "linux_mpris_control_worker"
+path = "tests/linux/linux_mpris_control_worker.rs"
+
+[[test]]
+name = "linux_mpris_observation_worker"
+path = "tests/linux/linux_mpris_observation_worker.rs"
+
+[[test]]
+name = "linux_mpris_runtime_client"
+path = "tests/linux/linux_mpris_runtime_client.rs"
+
+[[test]]
+name = "linux_process"
+path = "tests/linux/linux_process.rs"
+
+[[test]]
+name = "linux_process_termination"
+path = "tests/linux/linux_process_termination.rs"
+
+[[test]]
+name = "linux_release_baseline"
+path = "tests/linux/linux_release_baseline.rs"
+
+[[test]]
+name = "linux_release_bin_inventory"
+path = "tests/linux/linux_release_bin_inventory.rs"
+
+[[test]]
+name = "linux_release_p1"
+path = "tests/linux/linux_release_p1.rs"
+
+[[test]]
+name = "linux_release_reproducibility"
+path = "tests/linux/linux_release_reproducibility.rs"
+
+[[test]]
+name = "linux_schema_contracts"
+path = "tests/linux/linux_schema_contracts.rs"
+
+[[test]]
+name = "linux_uix_agent_contracts"
+path = "tests/linux/linux_uix_agent_contracts.rs"
+
+[[test]]
+name = "linux_uix_capability_surface"
+path = "tests/linux/linux_uix_capability_surface.rs"
+
+[[test]]
+name = "linux_uix_element_transition_contracts"
+path = "tests/linux/linux_uix_element_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_element_wait_contracts"
+path = "tests/linux/linux_uix_element_wait_contracts.rs"
+
+[[test]]
+name = "linux_uix_input_sequence_contracts"
+path = "tests/linux/linux_uix_input_sequence_contracts.rs"
+
+[[test]]
+name = "linux_uix_input_sequence_transition_contracts"
+path = "tests/linux/linux_uix_input_sequence_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_key_sequence_transition_contracts"
+path = "tests/linux/linux_uix_key_sequence_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_key_transition_contracts"
+path = "tests/linux/linux_uix_key_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_pointer_click_sequence_contracts"
+path = "tests/linux/linux_uix_pointer_click_sequence_contracts.rs"
+
+[[test]]
+name = "linux_uix_pointer_click_sequence_transition_contracts"
+path = "tests/linux/linux_uix_pointer_click_sequence_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_pointer_click_transition_contracts"
+path = "tests/linux/linux_uix_pointer_click_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_pointer_drag_transition_contracts"
+path = "tests/linux/linux_uix_pointer_drag_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_pointer_move_sequence_contracts"
+path = "tests/linux/linux_uix_pointer_move_sequence_contracts.rs"
+
+[[test]]
+name = "linux_uix_pointer_move_sequence_transition_contracts"
+path = "tests/linux/linux_uix_pointer_move_sequence_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_pointer_move_transition_contracts"
+path = "tests/linux/linux_uix_pointer_move_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_pointer_sequence_contracts"
+path = "tests/linux/linux_uix_pointer_sequence_contracts.rs"
+
+[[test]]
+name = "linux_uix_pointer_sequence_transition_contracts"
+path = "tests/linux/linux_uix_pointer_sequence_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_window_activation_transition_contracts"
+path = "tests/linux/linux_uix_window_activation_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_window_close_transition_contracts"
+path = "tests/linux/linux_uix_window_close_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_window_lifecycle_sequence_contracts"
+path = "tests/linux/linux_uix_window_lifecycle_sequence_contracts.rs"
+
+[[test]]
+name = "linux_uix_window_lifecycle_sequence_transition_contracts"
+path = "tests/linux/linux_uix_window_lifecycle_sequence_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_window_lifecycle_transition_contracts"
+path = "tests/linux/linux_uix_window_lifecycle_transition_contracts.rs"
+
+[[test]]
+name = "linux_uix_window_state_wait_contracts"
+path = "tests/linux/linux_uix_window_state_wait_contracts.rs"
+
+[[test]]
+name = "linux_wayland_desktop"
+path = "tests/linux/linux_wayland_desktop.rs"
+
+[[test]]
+name = "custom_drawn_window_dynamic_compatibility"
+path = "tests/platform/custom_drawn_window_dynamic_compatibility.rs"
+
+[[test]]
+name = "display_topology_dynamic_compatibility"
+path = "tests/platform/display_topology_dynamic_compatibility.rs"
+
+[[test]]
+name = "exclusive_fullscreen_dynamic_compatibility"
+path = "tests/platform/exclusive_fullscreen_dynamic_compatibility.rs"
+
+[[test]]
+name = "raw_input_dynamic_compatibility"
+path = "tests/platform/raw_input_dynamic_compatibility.rs"
+
+[[test]]
+name = "special_window_dynamic_compatibility"
+path = "tests/platform/special_window_dynamic_compatibility.rs"
+
+[[test]]
+name = "error_semantics_policy"
+path = "tests/policy/error_semantics_policy.rs"
+
+[[test]]
+name = "fixed_external_process_policy"
+path = "tests/policy/fixed_external_process_policy.rs"
+
+[[test]]
+name = "foreground_api_policy"
+path = "tests/policy/foreground_api_policy.rs"
+
+[[test]]
+name = "overwrite_policy"
+path = "tests/policy/overwrite_policy.rs"
+
+[[test]]
+name = "policy"
+path = "tests/policy/policy.rs"
+
+[[test]]
+name = "security_boundary"
+path = "tests/policy/security_boundary.rs"
+
+[[test]]
+name = "source_line_limit"
+path = "tests/policy/source_line_limit.rs"
+
+[[test]]
+name = "stage5_rust_closeout"
+path = "tests/policy/stage5_rust_closeout.rs"
+
+[[test]]
+name = "sequence_bindings"
+path = "tests/sequence/sequence_bindings.rs"
+
+[[test]]
+name = "sequence_execution_broker_contract"
+path = "tests/sequence/sequence_execution_broker_contract.rs"
+
+[[test]]
+name = "sequence_execution_workflow"
+path = "tests/sequence/sequence_execution_workflow.rs"
+
+[[test]]
+name = "sequence_preconditions"
+path = "tests/sequence/sequence_preconditions.rs"
+
+[[test]]
+name = "sequence_step_worker"
+path = "tests/sequence/sequence_step_worker.rs"
+
+[[test]]
+name = "sequence_templates"
+path = "tests/sequence/sequence_templates.rs"
+
+[[test]]
+name = "sequence_workflow"
+path = "tests/sequence/sequence_workflow.rs"
+
 [dependencies]
 # 使用纯 Rust RFC 4648 编码验证 WebSocket 升级握手与页面截图。
 base64 = "0.22.1"
@@ -173,7 +573,7 @@ sha1 = "0.10.6"
 thiserror = "2.0.18"
 # UIX 作为外部版本化依赖维护，不将其源码复制到本仓库。
 # 基础输入控件依赖 feedback；显式启用它，不启用图形 backend 默认集合。
-uix = { git = "ssh://gitea@100.79.245.29:2222/admin/uix-app.git", rev = "981941643735813be0a39233587277ddc840c540", default-features = false, features = ["feedback"] }
+uix = { git = "https://github.com/yang86953/uix-app.git", rev = "b652c0843cd69e3ca3bdf99e8d4d4604ed60e556", default-features = false, features = ["feedback"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-future = "0.3.2"
@@ -288,4 +688,3 @@ spec_version = "2.0"
 spec_revision = "64f55bc5634bf5a647a37cfc296a4b75a4799734"
 spec_repository = "../smc"
 scope = "all-first-party-rust"
-adoption_document = "../../workspace/projects/computer-control-toolkit/docs/SMC架构采用.md"

@@ -43,14 +43,27 @@ Windows 使用当前活动交互桌面；不绕过锁屏、安全桌面或权限
 | `computer_interact` | 截图坐标移动/点击、按键、ASCII 短批次；同一 broker 请求执行并截图 |
 | `computer_keys` | 完整单键或组合键，动作后截图 |
 | `computer_pointer` | 相对移动、点击、滚轮和完整拖拽；之后截图 |
+| `computer_run` | 一次调用内由服务端循环「补帧 → 送一批 → 读回新帧」，连续跑多批；回读关键帧有界 |
 | `computer_disconnect` | close → 验证空 sessions → shutdown |
 
 调用顺序：`connect → observe → 看图确认目标 → interact/keys/pointer → 核验返回图 → disconnect`。`confirmed`、`foregroundConsent`、`strictIsolation` 只表达已有用户授权，不能用于自行授予权限。此路线要求显式 `strictIsolation=false`。
+
+### 长流程：`computer_run`
+
+单批调用（`interact`）每次都要调用方先观察一次并回传 `frameId`，长流程因此被迫在「模型往返」和「输入批次」之间交替；`computer_run` 把这段循环搬进工具包进程内：
+
+- 调用方给 `batches`（1..64 批，每批 1..128 步 + 自己的 `timeoutMs`），**不需要先 observe，也不需要给 frameId**。
+- 服务端在每批前补一帧，因此每批仍绑定送出当时的最新帧，绝不复用旧帧；契约不变，只是不再把换帧的成本推给调用方。
+- 出错默认停止后续批次并回读该批已发生的效果。预检拒绝（`acceptedMayHaveOccurred=false`）没有投递事件，属于可跳过的批次；`stopOnError=false` 时跳过并继续，但「输入可能已送出」永远停止，不自动重放。
+- `captureEveryBatches` 采样回读关键帧，`maxFrames`（≤8）封顶；`totalTimeoutMs` 默认 45s、上限 600s，实际可用值取决于 MCP 客户端自己的工具超时（例如某客户端缺省 60s）。
+- 内部补帧沿用调用方的 `maxDimension`：`observation-px` 由捕获图尺寸决定，内部帧与回读帧分辨率不一致会让调用方坐标落到另一套坐标系。
+- 单客户端同一时刻只跑一个工具调用：一次 `computer_run` 期间其他工具调用返回 BUSY。
 
 - 所有输入引用本客户端最新 `frameId`。输入尝试后旧帧失效，包括失败。
 - `interact` 的 x/y 为返回图中的 `observation-px`。`pointer` 使用 `relative-logical-px`；Windows 按每段移动起点所在显示器的 UIX scale 换算。虚拟桌面可含负物理坐标，显示器之间的空隙不接受点击。
 - 不提供跨请求按键或按钮持有。`text` 为 ASCII 键盘合成，仍受输入法影响。
 - 截图身份不锁定应用焦点。输入已接受不代表应用效果已完成，需要核验返回图。
+- 焦点不属于本工具包可控范围：Wayland 这条路线拿到的是整屏会话，没有第三方窗口目录，也没有前台窗口信号（`sessions window` 只覆盖 opt-in 的 UIX 应用）。因此 `computer_run` 的长批次一旦在发出期间被别的窗口抢走焦点，整批按键会落到那个窗口，工具包不会察觉、也无法预先阻止。不要把批次拉长到「用户可能中途切窗口」的时间尺度；确实需要长时间连续输入时，先与用户确认这段时间不要切换前台窗口。
 - 单客户端只执行一个工具调用，并发请求立即返回 BUSY。临时截图在私有目录内生成，读取为 MCP 图像后删除，退出清理目录。
 
 ## 取消与失败

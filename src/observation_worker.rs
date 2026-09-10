@@ -14,12 +14,10 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 // 把错误码实现保留为 Observation Worker 协议边界的普通私有类型。
-#[path = "observation_worker_error.rs"]
 mod error_code;
 // 导入当前 Worker 私有封闭错误码。
 use error_code::ObservationWorkerErrorCode;
 // 把语义定位实现保留为 observation worker 私有 Component。
-#[path = "observation_worker_location.rs"]
 mod location;
 
 // 导入 Windows COM 与只读 UIA 接口。
@@ -876,6 +874,5 @@ pub fn run_stdio() -> i32 {
 // 验证协议解析、cache request 与隐私边界的纯单元测试。
 #[cfg(test)]
 // 把测试拆出生产 worker 文件以遵守文件规模边界。
-#[path = "observation_worker_tests.rs"]
 // 声明 worker 私有测试模块。
 mod tests;

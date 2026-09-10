@@ -18,14 +18,15 @@ fn request(id: i64, method: &str, params: Value) -> Value {
     json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params })
 }
 
-/// 表单内必须包含的七个工具，顺序即公开顺序。
-const EXPECTED_TOOLS: [&str; 7] = [
+/// 表单内必须包含的八个工具，顺序即公开顺序。
+const EXPECTED_TOOLS: [&str; 8] = [
     "computer_connect",
     "computer_status",
     "computer_observe",
     "computer_interact",
     "computer_keys",
     "computer_pointer",
+    "computer_run",
     "computer_disconnect",
 ];
 
@@ -66,6 +67,47 @@ fn every_tool_schema_is_a_closed_object() {
     }
 }
 
+/// 长流程工具与单批工具共用同一输入契约边界；MCP 不得比 broker 更严或更松。
+#[test]
+fn run_batches_share_the_interaction_input_contract() {
+    let run = input_schema("computer_run").expect("schema");
+    let batches = &run["properties"]["batches"];
+    assert_eq!(batches["minItems"], 1);
+    assert_eq!(batches["maxItems"], 64);
+    let step = &batches["items"]["properties"]["steps"];
+    assert_eq!(step["minItems"], 1);
+    assert_eq!(step["maxItems"], 128, "每批不得超出 broker 的 128 步契约");
+    // 单批工具与批次内单批必须给出同一个上限，否则同一批输入会在两条路上表现不同。
+    let interact = input_schema("computer_interact").expect("schema");
+    assert_eq!(interact["properties"]["steps"]["maxItems"], 128);
+}
+
+#[test]
+fn run_requires_foreground_authorization_and_batches() {
+    let schema = input_schema("computer_run").expect("schema");
+    let required = schema["required"].as_array().expect("required");
+    for key in [
+        "sessionId",
+        "confirmed",
+        "foregroundConsent",
+        "strictIsolation",
+        "batches",
+    ] {
+        assert!(
+            required.iter().any(|entry| entry == key),
+            "computer_run must require {key}"
+        );
+    }
+    // 长流程不接收调用方帧：帧必须由服务端在每批前自己补。
+    assert!(
+        !schema["properties"]
+            .as_object()
+            .expect("properties")
+            .contains_key("frameId"),
+        "computer_run must not accept a caller-supplied frameId"
+    );
+}
+
 #[test]
 fn input_tools_publish_foreground_authorization() {
     for name in [
@@ -73,6 +115,7 @@ fn input_tools_publish_foreground_authorization() {
         "computer_interact",
         "computer_keys",
         "computer_pointer",
+        "computer_run",
     ] {
         let schema = input_schema(name).expect("schema");
         let required = schema["required"].as_array().expect("required");
