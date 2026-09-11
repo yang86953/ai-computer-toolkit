@@ -72,10 +72,12 @@ impl DesktopEisInput {
             // 供脱敏诊断（维度与代际可同时不同，维度优先报出）。
             let dimensions_match =
                 mapping.width == point.mapping.width && mapping.height == point.mapping.height;
-            return Err(DesktopSessionInputFailure::before_dispatch(
-                "STALE_OBSERVATION",
-                frame_point_mapping_stage(dimensions_match),
-            ));
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
+                    "STALE_OBSERVATION",
+                    frame_point_mapping_stage(dimensions_match),
+                )),
+            );
         }
         let (x, y) = normalized_point(point).map_err(|_| {
             DesktopSessionInputFailure::before_dispatch("INVALID_ARGUMENT", "frame-point")
@@ -92,7 +94,7 @@ impl DesktopEisInput {
         })?;
         let deadline = Instant::now() + Duration::from_millis(u64::from(timeout_ms));
         self.ensure_absolute_live(&device, point.mapping.generation, &mut guard, deadline)
-            .map_err(before_dispatch_failure)?;
+            .map_err(|failure| self.with_event_trail(before_dispatch_failure(failure)))?;
         let mut sent = 0usize;
         let mut held = None;
         let result = (|| {

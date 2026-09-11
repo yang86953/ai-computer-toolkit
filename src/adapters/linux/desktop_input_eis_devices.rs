@@ -3,6 +3,12 @@
 use super::*;
 
 impl DesktopEisInput {
+    /// 在 mutating 事件应用后记录脱敏事实；只反映到达顺序与状态结果。
+    pub(super) fn record_eis_event(&mut self, event: &'static str) {
+        self.event_trail
+            .record(event, self.absolute_generation, self.absolute_devices.len());
+    }
+
     pub(super) fn apply_event(&mut self, event: EiEvent) -> Result<(), RuntimeFailure> {
         match event {
             EiEvent::SeatAdded(added) => {
@@ -28,6 +34,8 @@ impl DesktopEisInput {
                 }
             }
             EiEvent::DeviceResumed(resumed) => {
+                // 记录放在分支末尾（见各分支 return 前的 record_eis_event），
+                // 事实在状态应用后读取。
                 if resumed
                     .device
                     .has_capability(DeviceCapability::PointerAbsolute)
@@ -50,6 +58,7 @@ impl DesktopEisInput {
                 {
                     self.pointer_device = Some(resumed.device);
                 }
+                self.record_eis_event("device-resumed");
             }
             EiEvent::DevicePaused(paused) => {
                 if self.absolute_devices.contains(&paused.device) {
@@ -63,6 +72,7 @@ impl DesktopEisInput {
                 if self.pointer_device.as_ref() == Some(&paused.device) {
                     self.pointer_device = None;
                 }
+                self.record_eis_event("device-paused");
             }
             EiEvent::DeviceRemoved(removed) => {
                 if self.absolute_devices.contains(&removed.device) {
@@ -76,18 +86,21 @@ impl DesktopEisInput {
                 if self.pointer_device.as_ref() == Some(&removed.device) {
                     self.pointer_device = None;
                 }
+                self.record_eis_event("device-removed");
             }
             EiEvent::SeatRemoved(_) => {
                 self.absolute_devices.clear();
                 self.absolute_generation = self.absolute_generation.wrapping_add(1);
                 self.keyboard_device = None;
                 self.pointer_device = None;
+                self.record_eis_event("seat-removed");
             }
             EiEvent::Disconnected(_) => {
                 self.absolute_devices.clear();
                 self.absolute_generation = self.absolute_generation.wrapping_add(1);
                 self.keyboard_device = None;
                 self.pointer_device = None;
+                self.record_eis_event("disconnected");
                 return Err(RuntimeFailure {
                     code: "EIS_DEVICE_UNAVAILABLE",
                     stage: "eis-disconnected",

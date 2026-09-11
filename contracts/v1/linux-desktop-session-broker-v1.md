@@ -178,6 +178,17 @@ frame-point 的映射比较失败分解为 `frame-point-mapping-dimensions`（�
 最新观察）。代际只在 apply_event 随服务端设备事件变化，工具自身输入不产生代际变化；
 键盘引起的内容变化不使坐标观察失效，几何/授权变化才失效。stage 均不携带原生设备身份。
 
+绝对输入与键鼠 preflight 的相关失败详情还携带 `providerRecentEvents`（脱敏、有界）：每条
+为 `{sequence, event, generationAfter, absoluteDevicesAfter}`——事件类别词（`device-paused`
+/`device-resumed`/`device-removed`/`seat-removed`/`disconnected`）、单调到达序号、该事件
+应用后的代际与可用绝对设备数。轨迹由生产事件处理在应用每个 mutating 事件后记录（固定
+容量环形，超出覆盖最旧），失败时只输出最近数条、从旧到新；它证明「到达顺序与服务端
+状态事实」，不证明事件间因果或触发原因，也不含设备 ID、按键、文本或坐标。该字段用于
+把 stage（检查点事实）与服务端事件序列对上：例如 `device-unregistered` 检查点前若紧跟
+`device-paused`，即服务端确在暂停设备；若只有历史 `device-resumed` 而无新事件，则列表
+缺失另有原因，需继续排查。2026-09-11 本机（KDE）实机一次 `device-unregistered` 失败现场
+即因缺此轨迹无法区分，属未知而非已证。
+
 对历史失败响应的回溯推断以代码路径为限：`outcome`/`accepted` 区分的是失败发生在
 emulation 会话的哪个阶段（外层派发前，或 start_emulating 之后的检查点），不能还原该
 检查点命中的具体条件；`before_dispatch` 也不蕴含设备健康。2026-09-11 本机（KDE）三次

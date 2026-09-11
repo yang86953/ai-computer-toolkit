@@ -499,6 +499,22 @@ impl DesktopSessionFrameFailure {
     }
 }
 
+/// 一条脱敏的输入后端事件事实：只含事件类别词、单调序号与事件后的
+/// 代际/可用设备计数，不含设备 ID、区域内容、按键或坐标。
+///
+/// 供失败诊断区分「哪个服务端事件、按什么顺序」；由生产事件处理路径
+/// 记录，固定容量、只随失败详情输出。
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct DesktopProviderEventFact {
+    pub(crate) sequence: u64,
+    pub(crate) event: &'static str,
+    pub(crate) generation_after: u64,
+    pub(crate) absolute_devices_after: usize,
+}
+
+/// 失败详情携带的最近事件数上限；环形轨迹容量更大，输出取最近这些。
+pub(crate) const PROVIDER_EVENT_FACT_SNAPSHOT: usize = 8;
+
 /// 保存会话级输入 Adapter 的稳定失败事实，不暴露 EIS 原生对象或消息。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct DesktopSessionInputFailure {
@@ -508,6 +524,8 @@ pub(crate) struct DesktopSessionInputFailure {
     releases_confirmed: bool,
     completed_steps: usize,
     input_events_sent: usize,
+    /// 最近的后端事件事实（脱敏、固定容量）；空表示无记录或非相关失败。
+    provider_events: [Option<DesktopProviderEventFact>; PROVIDER_EVENT_FACT_SNAPSHOT],
 }
 
 impl DesktopSessionInputFailure {
@@ -519,7 +537,23 @@ impl DesktopSessionInputFailure {
             releases_confirmed: true,
             completed_steps: 0,
             input_events_sent: 0,
+            provider_events: [None; PROVIDER_EVENT_FACT_SNAPSHOT],
         }
+    }
+
+    /// 附上最近的后端事件事实（脱敏快照）；只影响诊断详情。
+    pub(crate) fn with_provider_events(
+        mut self,
+        events: [Option<DesktopProviderEventFact>; PROVIDER_EVENT_FACT_SNAPSHOT],
+    ) -> Self {
+        self.provider_events = events;
+        self
+    }
+
+    pub(crate) const fn provider_recent_events(
+        &self,
+    ) -> &[Option<DesktopProviderEventFact>; PROVIDER_EVENT_FACT_SNAPSHOT] {
+        &self.provider_events
     }
 
     pub(crate) const fn after_dispatch(
@@ -536,6 +570,7 @@ impl DesktopSessionInputFailure {
             releases_confirmed,
             completed_steps,
             input_events_sent,
+            provider_events: [None; PROVIDER_EVENT_FACT_SNAPSHOT],
         }
     }
 
@@ -552,6 +587,7 @@ impl DesktopSessionInputFailure {
             releases_confirmed,
             completed_steps,
             input_events_sent,
+            provider_events: [None; PROVIDER_EVENT_FACT_SNAPSHOT],
         }
     }
 
@@ -1402,10 +1438,7 @@ fn input_port_error(
 ) -> AppControlError {
     let cancelled = failure.code() == "CANCELLED";
     let outcome_unknown = failure.accepted_may_have_occurred();
-    AppControlError::with_details(
-        failure.code(),
-        "The desktop-session input provider did not complete the requested sequence.",
-        json!({
+    let mut details = json!({
             "stage": failure.stage(),
             "outcome": if cancelled {
                 "cancelled"
@@ -1423,7 +1456,28 @@ fn input_port_error(
             "automaticRetryProhibited": true,
             "targetInvalidated": true,
             "fallback": "none",
-        }),
+    });
+    // 脱敏有界的事件轨迹：让「哪个服务端事件、什么顺序」可辨，空则省略。
+    let provider_events = failure
+        .provider_recent_events()
+        .iter()
+        .flatten()
+        .map(|fact| {
+            json!({
+                "sequence": fact.sequence,
+                "event": fact.event,
+                "generationAfter": fact.generation_after,
+                "absoluteDevicesAfter": fact.absolute_devices_after,
+            })
+        })
+        .collect::<Vec<_>>();
+    if !provider_events.is_empty() {
+        details["providerRecentEvents"] = json!(provider_events);
+    }
+    AppControlError::with_details(
+        failure.code(),
+        "The desktop-session input provider did not complete the requested sequence.",
+        details,
     )
 }
 

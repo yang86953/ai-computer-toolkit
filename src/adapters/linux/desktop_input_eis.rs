@@ -32,7 +32,8 @@ use crate::{
         pointer_input_contract::{PointerButton, PointerButtonPhase, PointerScrollAxis},
     },
     modules::desktop_session::{
-        DesktopKeyboardDispatchFacts, DesktopPointerDispatchFacts, DesktopSessionInputFailure,
+        DesktopKeyboardDispatchFacts, DesktopPointerDispatchFacts, DesktopProviderEventFact,
+        DesktopSessionInputFailure, PROVIDER_EVENT_FACT_SNAPSHOT,
     },
 };
 
@@ -169,6 +170,70 @@ pub(crate) struct DesktopEisInput {
     /// 开关后断开 EIS 连接（实测 `stage=stop-emulating`、会话作废）。会话由
     /// `finish_frame_points` 在小批次结束时关闭。
     absolute_emulating: bool,
+    /// 最近 EIS 服务端 mutating 事件的脱敏轨迹；固定容量环形，只在失败
+    /// 详情中输出快照，不记录任何设备身份、按键或坐标。
+    event_trail: EisEventTrail,
+}
+
+/// 环形轨迹容量；输出快照只取最近 [`PROVIDER_EVENT_FACT_SNAPSHOT`] 条。
+const EIS_EVENT_TRAIL_CAPACITY: usize = 16;
+
+/// 最近 EIS 服务端事件的脱敏环形记录（纯状态，可离线回归）。
+///
+/// 只存事件类别词、单调序号与事件应用后的代际/可用设备计数；容量固定，
+/// 超出后覆盖最旧记录。记录本身不代表事件间因果，只代表到达顺序。
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct EisEventTrail {
+    sequence: u64,
+    events: [Option<DesktopProviderEventFact>; EIS_EVENT_TRAIL_CAPACITY],
+    next: usize,
+}
+
+impl Default for EisEventTrail {
+    fn default() -> Self {
+        Self {
+            sequence: 0,
+            events: [None; EIS_EVENT_TRAIL_CAPACITY],
+            next: 0,
+        }
+    }
+}
+
+impl EisEventTrail {
+    /// 记录一条已应用的事件事实（调用点在 apply_event 各 mutating 分支末尾）。
+    pub(super) fn record(
+        &mut self,
+        event: &'static str,
+        generation_after: u64,
+        absolute_devices_after: usize,
+    ) {
+        self.sequence = self.sequence.saturating_add(1);
+        self.events[self.next] = Some(DesktopProviderEventFact {
+            sequence: self.sequence,
+            event,
+            generation_after,
+            absolute_devices_after,
+        });
+        self.next = (self.next + 1) % EIS_EVENT_TRAIL_CAPACITY;
+    }
+
+    /// 从旧到新返回最近 [`PROVIDER_EVENT_FACT_SNAPSHOT`] 条；不足时右侧留空。
+    pub(super) fn snapshot(
+        &self,
+    ) -> [Option<DesktopProviderEventFact>; PROVIDER_EVENT_FACT_SNAPSHOT] {
+        let mut result = [None; PROVIDER_EVENT_FACT_SNAPSHOT];
+        let mut cursor = self.next;
+        let mut slot = PROVIDER_EVENT_FACT_SNAPSHOT;
+        while slot > 0 {
+            cursor = (cursor + EIS_EVENT_TRAIL_CAPACITY - 1) % EIS_EVENT_TRAIL_CAPACITY;
+            let Some(fact) = self.events[cursor] else {
+                break;
+            };
+            slot -= 1;
+            result[slot] = Some(fact);
+        }
+        result
+    }
 }
 
 #[path = "desktop_input_eis_absolute.rs"]
@@ -219,6 +284,7 @@ impl DesktopEisInput {
             capture_mapping_id: None,
             sequence: 1,
             absolute_emulating: false,
+            event_trail: EisEventTrail::default(),
         };
         let deadline = Instant::now() + timeout;
         while input.keyboard_device.is_none() || input.pointer_device.is_none() {
@@ -263,6 +329,14 @@ impl DesktopEisInput {
     }
 
     /// 发送已完整验证的请求内配平序列。
+    /// 给输入失败附上脱敏事件轨迹快照；只影响诊断详情，不改判定。
+    pub(super) fn with_event_trail(
+        &self,
+        failure: DesktopSessionInputFailure,
+    ) -> DesktopSessionInputFailure {
+        failure.with_provider_events(self.event_trail.snapshot())
+    }
+
     pub(crate) fn send_keyboard(
         &mut self,
         input: &KeyboardInput,
@@ -273,10 +347,10 @@ impl DesktopEisInput {
         self.refresh_events(&mut guard)
             .map_err(before_dispatch_failure)?;
         let device = self.keyboard_device.clone().ok_or_else(|| {
-            DesktopSessionInputFailure::before_dispatch(
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
                 "EIS_DEVICE_UNAVAILABLE",
                 "keyboard-preflight",
-            )
+            ))
         })?;
         let keyboard = device.interface::<ei::Keyboard>().ok_or_else(|| {
             DesktopSessionInputFailure::before_dispatch(
@@ -285,10 +359,12 @@ impl DesktopEisInput {
             )
         })?;
         if !device.device().is_alive() || !keyboard.is_alive() {
-            return Err(DesktopSessionInputFailure::before_dispatch(
-                "EIS_DEVICE_UNAVAILABLE",
-                "keyboard-preflight",
-            ));
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
+                    "EIS_DEVICE_UNAVAILABLE",
+                    "keyboard-preflight",
+                )),
+            );
         }
         validate_key_mapping(input)?;
         let deadline = Instant::now() + Duration::from_millis(u64::from(input.timeout_ms));
@@ -376,10 +452,10 @@ impl DesktopEisInput {
         self.refresh_events(&mut guard)
             .map_err(before_dispatch_failure)?;
         let device = self.pointer_device.clone().ok_or_else(|| {
-            DesktopSessionInputFailure::before_dispatch(
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
                 "EIS_DEVICE_UNAVAILABLE",
                 "pointer-preflight",
-            )
+            ))
         })?;
         let pointer = device.interface::<ei::Pointer>().ok_or_else(|| {
             DesktopSessionInputFailure::before_dispatch(
@@ -404,10 +480,12 @@ impl DesktopEisInput {
             || !button.is_alive()
             || !scroll.is_alive()
         {
-            return Err(DesktopSessionInputFailure::before_dispatch(
-                "EIS_DEVICE_UNAVAILABLE",
-                "pointer-preflight",
-            ));
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
+                    "EIS_DEVICE_UNAVAILABLE",
+                    "pointer-preflight",
+                )),
+            );
         }
         let deadline = Instant::now() + Duration::from_millis(u64::from(input.timeout_ms));
         let serial = self.connection.serial();
@@ -1464,5 +1542,69 @@ mod tests {
             }
         );
         assert_eq!(liveness.polls, 1);
+    }
+}
+
+#[cfg(test)]
+mod trail_tests {
+    use super::*;
+
+    /// 真实生产轨迹：记录数超过环形容量时只保留最近事件，快照从旧到新
+    /// 且序号单调；这是失败详情 providerRecentEvents 的顺序契约。
+    #[test]
+    fn event_trail_truncates_and_keeps_chronological_order() {
+        let mut trail = EisEventTrail::default();
+        for round in 0_u64..(EIS_EVENT_TRAIL_CAPACITY as u64 + 8) {
+            trail.record("device-paused", round, 0);
+        }
+        let snapshot = trail.snapshot();
+        let recorded = snapshot.iter().flatten().count();
+        assert_eq!(recorded, PROVIDER_EVENT_FACT_SNAPSHOT);
+        let sequences = snapshot
+            .iter()
+            .flatten()
+            .map(|fact| fact.sequence)
+            .collect::<Vec<_>>();
+        // 最旧一条是第 capacity+1 次记录（总数 capacity+8，快照 8 条）。
+        assert_eq!(
+            sequences.first(),
+            Some(&((EIS_EVENT_TRAIL_CAPACITY + 1) as u64))
+        );
+        assert_eq!(
+            sequences.last(),
+            Some(&((EIS_EVENT_TRAIL_CAPACITY + 8) as u64))
+        );
+        assert!(
+            sequences.windows(2).all(|pair| pair[0] < pair[1]),
+            "快照必须从旧到新单调"
+        );
+    }
+
+    /// 共存事件按真实到达顺序保留：paused→removed 的轨迹必须先 paused 后
+    /// removed，且各自携带事件应用后的代际/设备数事实。
+    #[test]
+    fn event_trail_preserves_coexisting_event_order() {
+        let mut trail = EisEventTrail::default();
+        trail.record("device-paused", 2, 0);
+        trail.record("device-removed", 3, 0);
+        let snapshot = trail.snapshot();
+        let events = snapshot
+            .iter()
+            .flatten()
+            .map(|fact| (fact.sequence, fact.event, fact.generation_after))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            events,
+            vec![(1, "device-paused", 2), (2, "device-removed", 3),]
+        );
+    }
+
+    /// 未记录时快照为空；这保证旧失败详情不出现空数组字段。
+    #[test]
+    fn empty_trail_snapshot_is_empty() {
+        assert_eq!(
+            EisEventTrail::default().snapshot().iter().flatten().count(),
+            0
+        );
     }
 }
