@@ -165,6 +165,17 @@ best-effort 逆序释放工具持有键或按钮、停止 emulation、关闭 Por
 `acceptedMayHaveOccurred`、`releasesConfirmed`、`sessionCleanupConfirmed` 与 `outcome`，不得隐式
 恢复句柄或转用其他输入路线。
 
+绝对输入的新鲜度失败按脱敏 `stage` 细分，便于把「正确的拒绝」与服务端状态变化对上：
+`absolute-input-generation`（EIS 服务端 pause/remove/resume/seat 事件改变了输入区域代际，
+设备仍在）、`absolute-input-device-paused`（设备已不在可用列表）、`absolute-input-device-dead`
+（设备对象已失效）、`frame-point-mapping`（派发时维度/代际与观察时不一致）、以及模块侧
+`observation-mapping`（观察后区域映射已变）/`observation-missing`（无本会话最新观察）。
+代际只在 apply_event 随服务端设备事件变化，工具自身输入不产生代际变化；键盘引起的
+内容变化不使坐标观察失效，几何/授权变化才失效。这些 stage 不携带任何原生设备身份，
+用于实机区分 compositor 侧重配置与工具缺陷（2026-09-11 实机三次
+`STALE_OBSERVATION` 会话失效即属此类；触发 pause 的 compositor 侧原因未取得，为候选
+解释，不凭单次现象定因）。
+
 `sessions` 与 `inspect` 只查询当前 broker owner generation；`close` 先使 opaque 句柄 stale，
 再消费唯一 lease。主动 `Session.Close` 的成功方法回复，或异步 `Closed`/Portal owner 变化，
 均为清理确认；无法确认时返回 `outcome=unknown`、`retrySafe=false`，不得恢复句柄或自动重试。

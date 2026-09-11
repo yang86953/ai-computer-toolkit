@@ -68,9 +68,10 @@ impl DesktopEisInput {
             height: region.height,
         };
         if mapping != point.mapping {
+            // 维度或代际与观察时不一致：坐标不再可信，必须重新观察。
             return Err(DesktopSessionInputFailure::before_dispatch(
                 "STALE_OBSERVATION",
-                "frame-point",
+                "frame-point-mapping",
             ));
         }
         let (x, y) = normalized_point(point).map_err(|_| {
@@ -194,13 +195,25 @@ impl DesktopEisInput {
     ) -> Result<(), RuntimeFailure> {
         guard.check_with_deadline(deadline, "absolute-input")?;
         self.refresh_events(guard)?;
-        if generation != self.absolute_generation
-            || !self.absolute_devices.contains(device)
-            || !device.device().is_alive()
-        {
+        // stage 细分是脱敏诊断：generation 只随 EIS 服务端 pause/remove/
+        // resume/seat 事件变化（apply_event 是唯一写点）。三种子条件对应
+        // 不同的服务端状态变化，公开错误不携带任何原生设备身份。
+        if generation != self.absolute_generation {
             return Err(RuntimeFailure {
                 code: "STALE_OBSERVATION",
-                stage: "absolute-input",
+                stage: "absolute-input-generation",
+            });
+        }
+        if !self.absolute_devices.contains(device) {
+            return Err(RuntimeFailure {
+                code: "STALE_OBSERVATION",
+                stage: "absolute-input-device-paused",
+            });
+        }
+        if !device.device().is_alive() {
+            return Err(RuntimeFailure {
+                code: "STALE_OBSERVATION",
+                stage: "absolute-input-device-dead",
             });
         }
         Ok(())

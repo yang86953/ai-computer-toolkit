@@ -199,18 +199,24 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
         for step in &plan.steps {
             let point = if let InteractionStep::Point { x, y, button } = step {
                 let o = observation.ok_or_else(|| {
-                    AppControlError::new("STALE_OBSERVATION", "A point requires an observation.")
+                    AppControlError::with_details(
+                        "STALE_OBSERVATION",
+                        "A point requires an observation.",
+                        json!({"stage": "observation-missing"}),
+                    )
                 })?;
                 let mapping = o.mapping.ok_or_else(|| {
-                    AppControlError::new(
+                    AppControlError::with_details(
                         "INPUT_MAPPING_UNAVAILABLE",
                         "The captured stream has no matching absolute input region.",
+                        json!({"stage": "observation-mapping-unavailable"}),
                     )
                 })?;
                 if current_mapping != Some(mapping) {
-                    return Err(AppControlError::new(
+                    return Err(AppControlError::with_details(
                         "STALE_OBSERVATION",
                         "The input region changed after observation.",
+                        json!({"stage": "observation-mapping"}),
                     ));
                 }
                 let point = FramePoint {
