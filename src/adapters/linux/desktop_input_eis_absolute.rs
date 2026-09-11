@@ -68,10 +68,13 @@ impl DesktopEisInput {
             height: region.height,
         };
         if mapping != point.mapping {
-            // 维度或代际与观察时不一致：坐标不再可信，必须重新观察。
+            // 与观察时不一致：坐标不再可信，必须重新观察；分解差异类别
+            // 供脱敏诊断（维度与代际可同时不同，维度优先报出）。
+            let dimensions_match =
+                mapping.width == point.mapping.width && mapping.height == point.mapping.height;
             return Err(DesktopSessionInputFailure::before_dispatch(
                 "STALE_OBSERVATION",
-                "frame-point-mapping",
+                frame_point_mapping_stage(dimensions_match),
             ));
         }
         let (x, y) = normalized_point(point).map_err(|_| {
@@ -195,27 +198,91 @@ impl DesktopEisInput {
     ) -> Result<(), RuntimeFailure> {
         guard.check_with_deadline(deadline, "absolute-input")?;
         self.refresh_events(guard)?;
-        // stage 细分是脱敏诊断：generation 只随 EIS 服务端 pause/remove/
-        // resume/seat 事件变化（apply_event 是唯一写点）。三种子条件对应
-        // 不同的服务端状态变化，公开错误不携带任何原生设备身份。
-        if generation != self.absolute_generation {
-            return Err(RuntimeFailure {
-                code: "STALE_OBSERVATION",
-                stage: "absolute-input-generation",
-            });
+        // 同一检查点读取全部脱敏事实后交给纯分类：DevicePaused/Removed/
+        // SeatRemoved 会同时改代际并移出列表，条件可共存；stage 按固定
+        // 优先级报最先命中的失败事实，不是互斥的事件原因，也不携带任何
+        // 原生设备身份。
+        let device_registered = self.absolute_devices.contains(device);
+        let device_alive = device.device().is_alive();
+        if device_registered && device_alive && generation == self.absolute_generation {
+            return Ok(());
         }
-        if !self.absolute_devices.contains(device) {
-            return Err(RuntimeFailure {
-                code: "STALE_OBSERVATION",
-                stage: "absolute-input-device-paused",
-            });
-        }
-        if !device.device().is_alive() {
-            return Err(RuntimeFailure {
-                code: "STALE_OBSERVATION",
-                stage: "absolute-input-device-dead",
-            });
-        }
-        Ok(())
+        Err(RuntimeFailure {
+            code: "STALE_OBSERVATION",
+            stage: absolute_input_stage(device_registered, device_alive),
+        })
+    }
+}
+
+/// 绝对输入新鲜度失败的脱敏分类：设备事实（列表缺失/失效）优先于代际，
+/// 避免 pause/remove 同时改代际+移除列表时被代际分支遮住。
+///
+/// `device_registered=false` 只说明本检查点设备不在可用列表——pause、
+/// remove、seat 撤销都会产生这一事实，区分它们需要真实事件轨迹，
+/// 本工具不凭列表缺失断言具体事件。两个设备事实共存时仍按此优先级
+/// 报第一个，文档明确 stage 不是唯一原因。
+const fn absolute_input_stage(device_registered: bool, device_alive: bool) -> &'static str {
+    if !device_registered {
+        "absolute-input-device-unregistered"
+    } else if !device_alive {
+        "absolute-input-device-dead"
+    } else {
+        "absolute-input-generation"
+    }
+}
+
+/// frame-point 映射比较失败的脱敏分类：先报维度差异，再报代际差异。
+///
+/// 调用点已保证 `mapping != point.mapping`；两者可同时不同，stage 只按
+/// 固定优先级报最先命中者。
+const fn frame_point_mapping_stage(dimensions_match: bool) -> &'static str {
+    if dimensions_match {
+        "frame-point-mapping-generation"
+    } else {
+        "frame-point-mapping-dimensions"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 反例回归：DevicePaused/Removed/SeatRemoved 同时改代际并移出列表，
+    /// 设备事实必须优先于代际，否则最需要识别的设备暂停/移除全被
+    /// generation 分支遮住（主脑源码反例）。
+    #[test]
+    fn coexisting_device_loss_is_not_masked_by_generation() {
+        assert_eq!(
+            absolute_input_stage(false, true),
+            "absolute-input-device-unregistered"
+        );
+        // 设备失效与代际漂移共存：设备事实优先。
+        assert_eq!(
+            absolute_input_stage(false, false),
+            "absolute-input-device-unregistered"
+        );
+        assert_eq!(
+            absolute_input_stage(true, false),
+            "absolute-input-device-dead"
+        );
+        // 设备在列表且存活时，失败只能是代际不匹配。
+        assert_eq!(
+            absolute_input_stage(true, true),
+            "absolute-input-generation"
+        );
+    }
+
+    /// frame-point 映射失败必须指出差异类别；维度与代际可同时不同，
+    /// 维度优先报出。
+    #[test]
+    fn frame_point_mapping_reports_which_fact_differed() {
+        assert_eq!(
+            frame_point_mapping_stage(false),
+            "frame-point-mapping-dimensions"
+        );
+        assert_eq!(
+            frame_point_mapping_stage(true),
+            "frame-point-mapping-generation"
+        );
     }
 }

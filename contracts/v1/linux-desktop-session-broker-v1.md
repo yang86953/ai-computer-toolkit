@@ -165,16 +165,26 @@ best-effort 逆序释放工具持有键或按钮、停止 emulation、关闭 Por
 `acceptedMayHaveOccurred`、`releasesConfirmed`、`sessionCleanupConfirmed` 与 `outcome`，不得隐式
 恢复句柄或转用其他输入路线。
 
-绝对输入的新鲜度失败按脱敏 `stage` 细分，便于把「正确的拒绝」与服务端状态变化对上：
-`absolute-input-generation`（EIS 服务端 pause/remove/resume/seat 事件改变了输入区域代际，
-设备仍在）、`absolute-input-device-paused`（设备已不在可用列表）、`absolute-input-device-dead`
-（设备对象已失效）、`frame-point-mapping`（派发时维度/代际与观察时不一致）、以及模块侧
-`observation-mapping`（观察后区域映射已变）/`observation-missing`（无本会话最新观察）。
-代际只在 apply_event 随服务端设备事件变化，工具自身输入不产生代际变化；键盘引起的
-内容变化不使坐标观察失效，几何/授权变化才失效。这些 stage 不携带任何原生设备身份，
-用于实机区分 compositor 侧重配置与工具缺陷（2026-09-11 实机三次
-`STALE_OBSERVATION` 会话失效即属此类；触发 pause 的 compositor 侧原因未取得，为候选
-解释，不凭单次现象定因）。
+绝对输入的新鲜度失败按脱敏 `stage` 分类，分类由读取全部事实后的纯 helper 按固定优先级
+完成：`absolute-input-device-unregistered`（该检查点设备不在可用列表）优先于
+`absolute-input-device-dead`（设备对象已失效），两者都命中时代际分支不再被评估，最后才是
+`absolute-input-generation`（设备在列表且存活，仅代际与观察时不一致）。EIS 的
+DevicePaused/Removed/SeatRemoved 事件会同时改变代际并移出列表，即多个失败条件可共存：
+stage 只表示「按优先级最先命中的失败事实」，不是互斥的事件原因；列表缺失也不能区分
+pause、remove 还是 seat 撤销，区分它们需要真实事件轨迹，本工具不携带也不推断。
+frame-point 的映射比较失败分解为 `frame-point-mapping-dimensions`（维度与观察时不一致）
+与 `frame-point-mapping-generation`（仅代际不一致），两者可同时不同，维度优先报出。
+模块侧另有 `observation-mapping`（观察后区域映射已变）/`observation-missing`（无本会话
+最新观察）。代际只在 apply_event 随服务端设备事件变化，工具自身输入不产生代际变化；
+键盘引起的内容变化不使坐标观察失效，几何/授权变化才失效。stage 均不携带原生设备身份。
+
+对历史失败响应的回溯推断以代码路径为限：`outcome`/`accepted` 区分的是失败发生在
+emulation 会话的哪个阶段（外层派发前，或 start_emulating 之后的检查点），不能还原该
+检查点命中的具体条件；`before_dispatch` 也不蕴含设备健康。2026-09-11 本机（KDE）三次
+同会话 `STALE_OBSERVATION` 失效与上述静态候选路径一致——观察与派发之间 EIS 服务端
+发生过设备状态事件是代码可达性的必要解释，但每次失败的具体条件、检查点与服务端触发
+原因（KDE/KWin EIS 实现的设备重配置或其他）均未取得实际事件轨迹，属未知/候选，
+不凭单次现象定因，也不把任何桌面环境当已证对象。
 
 `sessions` 与 `inspect` 只查询当前 broker owner generation；`close` 先使 opaque 句柄 stale，
 再消费唯一 lease。主动 `Session.Close` 的成功方法回复，或异步 `Closed`/Portal owner 变化，
