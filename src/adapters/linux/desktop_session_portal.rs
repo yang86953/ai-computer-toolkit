@@ -217,32 +217,10 @@ impl DesktopSessionLease for PortalDesktopSessionLease {
                 DesktopSessionFrameFailure::new(failure.code(), failure.stage(), false, true)
             })?;
         }
-        let remote = match live.pipe_wire_remote.take() {
-            Some(remote) => remote,
-            None => async_io::block_on(async {
-                let screen_cast =
-                    portal_proxy(connection, SCREEN_CAST_INTERFACE, "capture-frame").await?;
-                open_pipe_wire_remote(&screen_cast, &session.path, PORTAL_REPLY_GRACE).await
-            })
-            .map(OwnedFd::from)
-            .map_err(|failure| {
-                DesktopSessionFrameFailure::new(failure.code, failure.stage, false, false)
-            })?,
-        };
-        let frame = desktop_frame_pipewire::capture_frame(
-            remote,
-            live.stream_target,
-            timeout,
-            max_dimension,
-        )
-        .map_err(|failure| {
-            DesktopSessionFrameFailure::new(
-                failure.code(),
-                failure.stage(),
-                failure.pixels_may_have_been_consumed(),
-                false,
-            )
-        })?;
+        // 首帧建立会话内复用通道；此后快照复用同一已授权连接，不再每帧
+        // 重新 OpenPipeWireRemote（同会话重复请求 Portal 不及时应答）。
+        let frame =
+            live.capture_with_channel(connection, &session.path, timeout, max_dimension)?;
         let mut liveness = PortalInputLiveness {
             session,
             owner_changes,
@@ -690,7 +668,65 @@ struct LiveEvidence {
     input: DesktopEisInput,
     host_session: SystemLoginSessionMonitor,
     pipe_wire_remote: Option<OwnedFd>,
+    /// 会话内复用的已授权单帧捕获通道；首次快照时建立。
+    capture_channel: Option<desktop_frame_pipewire::PipeWireCaptureChannel>,
     stream_target: PipeWireStreamTarget,
+}
+
+impl LiveEvidence {
+    /// 单帧捕获：首次调用用未消费 remote（无存货时按回复宽限重开一个）
+    /// 建立常驻 pw 连接，之后每次在同一连接上新建 stream 等首帧。
+    ///
+    /// 不复制已连接 socket 充当新连接；订阅 worker 与本通道各自独占一条
+    /// remote fd，互不共享。
+    fn capture_with_channel(
+        &mut self,
+        connection: &zbus::Connection,
+        session: &OwnedObjectPath,
+        timeout: Duration,
+        max_dimension: Option<u32>,
+    ) -> Result<
+        crate::components::desktop_session_frame_capture::DesktopCapturedFrame,
+        DesktopSessionFrameFailure,
+    > {
+        if self.capture_channel.is_none() {
+            let remote = match self.pipe_wire_remote.take() {
+                Some(remote) => remote,
+                None => async_io::block_on(async {
+                    let screen_cast =
+                        portal_proxy(connection, SCREEN_CAST_INTERFACE, "capture-frame").await?;
+                    open_pipe_wire_remote(&screen_cast, session, PORTAL_REPLY_GRACE).await
+                })
+                .map(OwnedFd::from)
+                .map_err(|failure| {
+                    DesktopSessionFrameFailure::new(failure.code, failure.stage, false, false)
+                })?,
+            };
+            self.capture_channel = Some(
+                desktop_frame_pipewire::PipeWireCaptureChannel::open(remote).map_err(|failure| {
+                    DesktopSessionFrameFailure::new(failure.code(), failure.stage(), false, false)
+                })?,
+            );
+        }
+        match self.capture_channel.as_ref() {
+            Some(channel) => channel
+                .capture_frame(self.stream_target, timeout, max_dimension)
+                .map_err(|failure| {
+                    DesktopSessionFrameFailure::new(
+                        failure.code(),
+                        failure.stage(),
+                        failure.pixels_may_have_been_consumed(),
+                        false,
+                    )
+                }),
+            None => Err(DesktopSessionFrameFailure::new(
+                "CAPABILITY_UNAVAILABLE",
+                "capture-channel",
+                false,
+                false,
+            )),
+        }
+    }
 }
 
 /// 聚合建立 live 证据所需的私有 Portal 与宿主依赖。
@@ -895,6 +931,7 @@ async fn establish_live_evidence(
         input,
         host_session,
         pipe_wire_remote: Some(OwnedFd::from(pipe_wire_remote)),
+        capture_channel: None,
         stream_target: projection.stream_target,
     })
 }
@@ -1399,10 +1436,19 @@ async fn close_session(
     )
     .await
     {
+        // Session.Close 的方法回复同样不能无界等待（call_with_flags 不应用
+        // 连接 method_timeout）；超时落入下面的 Closed 信号/owner 变化 race。
         matches!(
-            proxy
-                .call_with_flags::<_, _, ()>("Close", MethodFlags::NoAutoStart.into(), &())
-                .await,
+            bounded_portal_reply(
+                proxy.call_with_flags::<_, _, ()>(
+                    "Close",
+                    MethodFlags::NoAutoStart.into(),
+                    &(),
+                ),
+                PORTAL_REPLY_GRACE,
+                PortalFailure::new("SESSION_CLOSE_UNCONFIRMED", "close-session"),
+            )
+            .await,
             Ok(Some(()))
         )
     } else {
@@ -1453,9 +1499,13 @@ async fn close_request(connection: &zbus::Connection, request: &OwnedObjectPath)
     else {
         return;
     };
-    let _ = proxy
-        .call_with_flags::<_, _, ()>("Close", MethodFlags::NoAutoStart.into(), &())
-        .await;
+    // Request.Close 也在回复宽限内等待，失败路径不得被无界回复挂住。
+    let _ = bounded_portal_reply(
+        proxy.call_with_flags::<_, _, ()>("Close", MethodFlags::NoAutoStart.into(), &()),
+        PORTAL_REPLY_GRACE,
+        PortalFailure::new("PORTAL_PROTOCOL_ERROR", "close-request"),
+    )
+    .await;
 }
 
 async fn signal_stream(

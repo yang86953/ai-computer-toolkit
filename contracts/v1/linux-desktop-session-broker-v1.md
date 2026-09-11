@@ -39,7 +39,12 @@ handle、PipeWire node、mapping identity、EIS/PipeWire FD 均不得输出。
 
 `capture-frame` 只接受当前 broker 仍持有的精确 `s2:i`，要求 `confirmed=true` 并拒绝
 `strictIsolation=true`。它不重新显示 Portal 选择器、不激活窗口，也不需要前景影响同意；系统
-捕获指示器仍可能出现。Adapter 使用同一 ScreenCast 会话的授权 remote，ScreenCast v5 只在
+捕获指示器仍可能出现。Adapter 使用同一 ScreenCast 会话的授权 remote：首次快照用一个 remote
+建立会话内复用的常驻 PipeWire 连接，之后的每次快照都在该连接上新建一条 stream 并等待首帧，
+一次性 frameId/映射核对与坐标快照语义不变；不再每帧重新 `OpenPipeWireRemote`（实机证据：
+同会话重复请求会在回复宽限内得不到应答，`code=TIMEOUT`/`stage=open-pipewire-remote`；Portal
+侧原因的旧栈未取得，属候选解释）。连接通道与订阅 worker 各自独占一条 remote，互不复制或
+共享已连接 socket；通道建立前的重开请求一律受回复宽限约束。ScreenCast v5 只在
 私有边界使用 node ID，v6 起必须优先 `pipewire-serial` 与 `PW_KEY_TARGET_OBJECT`。两者都不得进入
 Module、JSON、日志或文件名。每次请求只协商 packed RGBA/BGRA/RGBx/BGRx/xRGB/xBGR，拒绝
 DMA-BUF、modifier、YUV、多平面与损坏 chunk；raw frame、stride、宽高、像素数和 PNG 均有硬

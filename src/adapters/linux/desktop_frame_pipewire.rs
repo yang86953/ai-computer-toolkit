@@ -63,21 +63,60 @@ struct CaptureState {
     result: Option<Result<DesktopCapturedFrame, PipeWireCaptureFailure>>,
 }
 
-/// 使用一次授权 remote 连接一条精确 stream，首帧到达后立即退出。
-pub(super) fn capture_frame(
-    remote: OwnedFd,
+/// 会话内复用同一已授权 PipeWire 连接的单帧通道。
+///
+/// 旧实现每次快照消耗一个 Portal remote fd，之后再向 Portal 重新
+/// `OpenPipeWireRemote`（每帧捕获都重开一次）。实机证明同会话内重复
+/// `OpenPipeWireRemote` 不被 Portal 及时应答：一次成功重开后，下一次在
+/// 2 秒回复宽限内无响应（2026-09-11 实测 `code=TIMEOUT`、
+/// `stage=open-pipewire-remote`，这是真实证据）；Portal 侧为何不回包的
+/// 旧栈未取得，候选解释是后端对同会话重复 remote 请求的串行/泄漏问题。
+/// 通道只在首次快照用 open 持有的（或重新打开的）remote 建立一次 pw
+/// 连接；此后每次快照在同一连接上新建一条 stream 并等首帧——与旧一次性
+/// 捕获同语义（新 stream 协商后的首个 buffer 即当前画面），但不再向
+/// Portal 请求新 fd。绝不复制已连接 socket 充当新连接。
+pub(super) struct PipeWireCaptureChannel {
+    main_loop: pw::main_loop::MainLoopRc,
+    core: pw::core::CoreRc,
+}
+
+impl PipeWireCaptureChannel {
+    /// 用一个未消费的 Portal remote fd 建立常驻连接。
+    pub(super) fn open(remote: OwnedFd) -> Result<Self, PipeWireCaptureFailure> {
+        PIPEWIRE_INITIALIZED.call_once(pw::init);
+        let main_loop = pw::main_loop::MainLoopRc::new(None)
+            .map_err(|_| failure("CAPTURE_UNAVAILABLE", "pipewire-main-loop", false))?;
+        let context = pw::context::ContextRc::new(&main_loop, None)
+            .map_err(|_| failure("CAPTURE_UNAVAILABLE", "pipewire-context", false))?;
+        let core = context
+            .connect_fd_rc(remote, None)
+            .map_err(|_| failure("CAPTURE_UNAVAILABLE", "pipewire-connect-fd", false))?;
+        Ok(Self { main_loop, core })
+    }
+
+    /// 在常驻连接上新建一条精确 stream，首帧到达后立即退出循环。
+    ///
+    /// 主循环支持顺序多次 run/quit（见 `rerun_probe`），同一通道可反复调用。
+    pub(super) fn capture_frame(
+        &self,
+        target: PipeWireStreamTarget,
+        timeout: Duration,
+        max_dimension: Option<u32>,
+    ) -> Result<DesktopCapturedFrame, PipeWireCaptureFailure> {
+        let main_loop = self.main_loop.clone();
+        let core = self.core.clone();
+        run_first_frame(&main_loop, &core, target, timeout, max_dimension)
+    }
+}
+
+/// 单次快照：新 stream + 超时 timer，run 循环在首帧/失败/超时之一退出。
+fn run_first_frame(
+    main_loop: &pw::main_loop::MainLoopRc,
+    core: &pw::core::CoreRc,
     target: PipeWireStreamTarget,
     timeout: Duration,
     max_dimension: Option<u32>,
 ) -> Result<DesktopCapturedFrame, PipeWireCaptureFailure> {
-    PIPEWIRE_INITIALIZED.call_once(pw::init);
-    let main_loop = pw::main_loop::MainLoopRc::new(None)
-        .map_err(|_| failure("CAPTURE_UNAVAILABLE", "pipewire-main-loop", false))?;
-    let context = pw::context::ContextRc::new(&main_loop, None)
-        .map_err(|_| failure("CAPTURE_UNAVAILABLE", "pipewire-context", false))?;
-    let core = context
-        .connect_fd_rc(remote, None)
-        .map_err(|_| failure("CAPTURE_UNAVAILABLE", "pipewire-connect-fd", false))?;
     let mut stream_properties = properties! {
         *pw::keys::MEDIA_TYPE => "Video",
         *pw::keys::MEDIA_CATEGORY => "Capture",
@@ -91,7 +130,7 @@ pub(super) fn capture_frame(
         }
     };
     let stream = pw::stream::StreamBox::new(
-        &core,
+        core,
         "ai-computer-toolkit-screen-capture",
         stream_properties,
     )
@@ -320,4 +359,46 @@ const fn failure(
     pixels_may_have_been_consumed: bool,
 ) -> PipeWireCaptureFailure {
     PipeWireCaptureFailure::new(code, stage, pixels_may_have_been_consumed)
+}
+
+#[cfg(test)]
+mod rerun_probe {
+    use super::*;
+    use std::{
+        sync::mpsc,
+        time::{Duration, Instant},
+    };
+
+    /// 探针：主循环必须支持顺序多次 run/quit，快照通道才能复用同一连接。
+    #[test]
+    fn main_loop_supports_sequential_run_cycles() {
+        PIPEWIRE_INITIALIZED.call_once(pw::init);
+        let (sender, receiver) = mpsc::channel::<bool>();
+        let worker = std::thread::Builder::new()
+            .name("pw-rerun-probe".to_owned())
+            .spawn(move || {
+                let main_loop = pw::main_loop::MainLoopRc::new(None).expect("main loop");
+                for round in 0..3 {
+                    let quit = main_loop.clone();
+                    let timer = main_loop.loop_().add_timer(move |_| quit.quit());
+                    timer
+                        .update_timer(Some(Duration::from_millis(50)), None)
+                        .into_result()
+                        .expect("arm timer");
+                    let started = Instant::now();
+                    main_loop.run();
+                    assert!(
+                        started.elapsed() < Duration::from_secs(3),
+                        "round {round} must return promptly"
+                    );
+                }
+                let _ = sender.send(true);
+            })
+            .expect("spawn probe");
+        assert!(
+            matches!(receiver.recv_timeout(Duration::from_secs(15)), Ok(true)),
+            "main loop re-run appears unsupported or hung"
+        );
+        let _ = worker.join();
+    }
 }
