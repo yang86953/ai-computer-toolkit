@@ -37,7 +37,7 @@ Windows 使用当前活动交互桌面；不绕过锁屏、安全桌面或权限
 
 | 工具 | 用途 |
 |---|---|
-| `computer_connect` | 显式授权后连接，返回 sessionId |
+| `computer_connect` | 显式授权后连接，返回 sessionId；可选 `authorizationMode=session` 与 `rememberAuthorization` |
 | `computer_status` | 本客户端会话状态，不自动连接 |
 | `computer_observe` | 返回 PNG、frameId、尺寸和截图坐标信息 |
 | `computer_interact` | 截图坐标移动/点击、按键、ASCII 短批次；同一 broker 请求执行并截图 |
@@ -45,8 +45,19 @@ Windows 使用当前活动交互桌面；不绕过锁屏、安全桌面或权限
 | `computer_pointer` | 相对移动、点击、滚轮和完整拖拽；之后截图 |
 | `computer_run` | 一次调用内由服务端循环「补帧 → 送一批 → 读回新帧」，连续跑多批；回读关键帧有界 |
 | `computer_disconnect` | close → 验证空 sessions → shutdown |
+| `computer_authorization` | 查看或撤销本工具记住的桌面授权（status/forget） |
 
 调用顺序：`connect → observe → 看图确认目标 → interact/keys/pointer → 核验返回图 → disconnect`。`confirmed`、`foregroundConsent`、`strictIsolation` 只表达已有用户授权，不能用于自行授予权限。此路线要求显式 `strictIsolation=false`。
+
+### 一次授权持续复用
+
+`computer_connect` 始终要求完整显式确认三元组，这是唯一确认点。两个显式开启的复用模式：
+
+- `authorizationMode=session`：connect 处的一次确认覆盖整条会话。之后 `observe`/`interact`/`keys`/`pointer`/`run` 可省略确认字段并继承已授予作用域；显式传入 `confirmed=false` 或 `strictIsolation=true` 仍被拒绝，继承不能覆盖明确拒绝。缺省（`operation`）保持逐操作显式确认。
+- `rememberAuthorization=true`（仅 Linux Portal）：按系统原生 `persist_mode=2` 记住授权并保存单次 restore token（当前用户私有状态目录、原子替换、跨进程互斥），下次连接自动尝试恢复同一用户授权并轮换新 token。token 不出现在任何结果、日志或文件名中，响应只含 `restoreTokenRetained` 等脱敏事实。Portal 无法恢复时按官方语义回退正常选择弹窗，工具包不自动点击、失败不重复弹窗。Windows 无此机制，请求时在任何派发前返回 `DESKTOP_AUTHORIZATION_PERSISTENCE_UNSUPPORTED`。
+- `computer_authorization`：`action=status` 查看是否已保存可恢复授权（脱敏）；`action=forget` 清除本地保存的凭据并停止本客户端全部 live 会话。本地忘记不撤销系统 Portal 侧授权记录（`revokesSystemPortalRecords=false`），后者需在桌面环境权限管理中单独处理。
+
+详细协议语义见 [`contracts/v1/linux-desktop-session-broker-v1.md`](../contracts/v1/linux-desktop-session-broker-v1.md)。
 
 ### 长流程：`computer_run`
 

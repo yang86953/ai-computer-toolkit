@@ -19,8 +19,8 @@ fn request(id: i64, method: &str, params: Value) -> Value {
     json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params })
 }
 
-/// 表单内必须包含的八个工具，顺序即公开顺序。
-const EXPECTED_TOOLS: [&str; 8] = [
+/// 表单内必须包含的九个工具，顺序即公开顺序。
+const EXPECTED_TOOLS: [&str; 9] = [
     "computer_connect",
     "computer_status",
     "computer_observe",
@@ -29,6 +29,7 @@ const EXPECTED_TOOLS: [&str; 8] = [
     "computer_pointer",
     "computer_run",
     "computer_disconnect",
+    "computer_authorization",
 ];
 
 #[test]
@@ -92,19 +93,27 @@ fn run_batches_share_the_interaction_input_contract() {
 }
 
 #[test]
-fn run_requires_foreground_authorization_and_batches() {
+fn run_requires_session_and_batches_but_not_consent_fields() {
     let schema = input_schema("computer_run").expect("schema");
     let required = schema["required"].as_array().expect("required");
-    for key in [
-        "sessionId",
-        "confirmed",
-        "foregroundConsent",
-        "strictIsolation",
-        "batches",
-    ] {
+    for key in ["sessionId", "batches"] {
         assert!(
             required.iter().any(|entry| entry == key),
             "computer_run must require {key}"
+        );
+    }
+    // 确认字段改为声明可选：session 授权会话可省略，显式传值仍被校验。
+    for key in ["confirmed", "foregroundConsent", "strictIsolation"] {
+        assert!(
+            !required.iter().any(|entry| entry == key),
+            "computer_run must not hard-require {key}"
+        );
+        assert!(
+            schema["properties"]
+                .as_object()
+                .expect("properties")
+                .contains_key(key),
+            "{key} stays declared for explicit confirmation"
         );
     }
     // 长流程不接收调用方帧：帧必须由服务端在每批前自己补。
@@ -118,7 +127,31 @@ fn run_requires_foreground_authorization_and_batches() {
 }
 
 #[test]
-fn input_tools_publish_foreground_authorization() {
+fn input_tools_publish_optional_foreground_authorization() {
+    // connect 仍要求一次性显式确认；其余工具声明字段但不再强制。
+    let connect = input_schema("computer_connect").expect("schema");
+    for key in ["confirmed", "foregroundConsent", "strictIsolation"] {
+        assert!(
+            connect["required"]
+                .as_array()
+                .expect("required")
+                .iter()
+                .any(|entry| entry == key),
+            "computer_connect must require {key}"
+        );
+    }
+    assert_eq!(
+        connect["properties"]["authorizationMode"]["enum"],
+        json!(["operation", "session"]),
+        "connect must publish the authorization mode enum"
+    );
+    assert!(
+        connect["properties"]
+            .as_object()
+            .expect("properties")
+            .contains_key("rememberAuthorization"),
+        "connect must publish rememberAuthorization"
+    );
     for name in [
         "computer_observe",
         "computer_interact",
@@ -128,14 +161,65 @@ fn input_tools_publish_foreground_authorization() {
     ] {
         let schema = input_schema(name).expect("schema");
         let required = schema["required"].as_array().expect("required");
-        assert!(
-            required.iter().any(|entry| entry == "confirmed"),
-            "{name} must require confirmed authorization"
-        );
-        assert!(
-            required.iter().any(|entry| entry == "strictIsolation"),
-            "{name} must require an explicit strictIsolation=false"
-        );
+        for key in ["confirmed", "strictIsolation"] {
+            assert!(
+                !required.iter().any(|entry| entry == key),
+                "{name} must allow omitting {key} in session mode"
+            );
+            assert!(
+                schema["properties"]
+                    .as_object()
+                    .expect("properties")
+                    .contains_key(key),
+                "{name} keeps {key} declared for explicit calls"
+            );
+        }
+    }
+}
+
+#[test]
+fn authorization_basis_matrix_matches_broker_inheritance_rules() {
+    use super::desktop::authorization_basis_probe as basis;
+    fn ok(result: Result<&'static str, &'static str>) -> &'static str {
+        match result {
+            Ok(value) => value,
+            Err(code) => panic!("expected basis, got {code}"),
+        }
+    }
+    // 全显式放行；connect 之外的部分显式按 session 会话继承。
+    assert_eq!(
+        ok(basis(
+            Some(true),
+            Some(true),
+            Some(false),
+            true,
+            false,
+            true
+        )),
+        "explicit"
+    );
+    assert_eq!(
+        ok(basis(Some(true), None, Some(false), true, true, true)),
+        "inherited"
+    );
+    assert_eq!(ok(basis(None, None, None, false, true, true)), "inherited");
+    // 显式拒绝优先闭合，session 会话也不能覆盖。
+    for (confirmed, foreground, strict, write) in [
+        (Some(false), Some(true), Some(false), true),
+        (Some(true), Some(true), Some(true), true),
+        (Some(true), Some(false), Some(false), true),
+    ] {
+        let Err(code) = basis(confirmed, foreground, strict, write, true, true) else {
+            panic!("explicit refusal must be rejected even in session mode");
+        };
+        assert_eq!(code, "CONSENT_REQUIRED");
+    }
+    // 省略字段在未连接或非 session 会话下保持显式要求。
+    for (scoped, connected) in [(false, true), (true, false), (false, false)] {
+        let Err(code) = basis(None, None, None, true, scoped, connected) else {
+            panic!("omitted fields must not pass without a session-scoped live broker");
+        };
+        assert_eq!(code, "CONSENT_REQUIRED");
     }
 }
 
@@ -268,6 +352,8 @@ fn connect_without_authorization_is_refused_before_any_broker() {
         json!({ "confirmed": true, "foregroundConsent": true }),
         // strictIsolation=true 表示要求后台隔离，此路线必须拒绝而不是降级。
         json!({ "confirmed": true, "foregroundConsent": true, "strictIsolation": true }),
+        // session 模式不是隐式授权：connect 仍要求完整显式确认。
+        json!({ "authorizationMode": "session" }),
     ] {
         let mut session = Session::new();
         session.handle(&request(1, "initialize", json!({})));
@@ -286,6 +372,39 @@ fn connect_without_authorization_is_refused_before_any_broker() {
         );
         session.dispose();
     }
+}
+
+#[test]
+fn authorization_tool_rejects_unknown_actions_before_any_broker() {
+    let mut session = Session::new();
+    session.handle(&request(1, "initialize", json!({})));
+    session.handle(&json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }));
+    for arguments in [
+        json!({}),
+        json!({ "action": "revoke" }),
+        json!({ "action": 7 }),
+    ] {
+        let responses = session.handle(&request(
+            12,
+            "tools/call",
+            json!({
+                "name": "computer_authorization",
+                "arguments": arguments
+            }),
+        ));
+        assert_eq!(
+            responses[0]["result"]["isError"], true,
+            "must refuse {arguments}"
+        );
+        let text = responses[0]["result"]["content"][0]["text"]
+            .as_str()
+            .expect("text payload");
+        assert!(
+            text.contains("INVALID_ARGUMENT"),
+            "unknown action must fail closed, got {text}"
+        );
+    }
+    session.dispose();
 }
 
 #[test]

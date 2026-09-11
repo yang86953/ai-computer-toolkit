@@ -24,22 +24,13 @@ impl<P: DesktopSessionPort> Broker<P> {
                 change_detection,
                 ..
             } => {
-                let isolation = if *strict_isolation {
-                    IsolationRequirement::Strict
-                } else {
-                    IsolationRequirement::Standard
-                };
+                let consent = super::capture_consent(*confirmed, *strict_isolation);
                 let observed = match change_detection {
-                    Some(options) => self.module.observe_with_changes(
-                        session_id,
-                        *confirmed,
-                        isolation,
-                        input,
-                        Some(options),
-                    ),
-                    None => self
-                        .module
-                        .observe(session_id, *confirmed, isolation, input),
+                    Some(options) => {
+                        self.module
+                            .observe_with_changes(session_id, consent, input, Some(options))
+                    }
+                    None => self.module.observe(session_id, consent, input),
                 }?;
                 let mut data = observed_value(
                     &observed.frame,
@@ -61,14 +52,11 @@ impl<P: DesktopSessionPort> Broker<P> {
                 observation,
                 ..
             } => {
-                let isolation = if *strict_isolation {
-                    IsolationRequirement::Strict
-                } else {
-                    IsolationRequirement::Standard
-                };
+                let consent =
+                    super::input_consent(*confirmed, *foreground_consent, *strict_isolation);
                 if let Some(value) = observation {
                     self.module
-                        .preflight_observation(session_id, *confirmed, isolation, value)
+                        .preflight_observation(session_id, consent, value)
                         .map_err(|mut error| {
                             if !error.details.is_object() {
                                 error.details = json!({});
@@ -81,14 +69,7 @@ impl<P: DesktopSessionPort> Broker<P> {
                 let cancellation = self.cancellations.prepare_input(request.request_nonce());
                 let report = self
                     .module
-                    .interact(
-                        session_id,
-                        *confirmed,
-                        *foreground_consent,
-                        isolation,
-                        input,
-                        &cancellation,
-                    )
+                    .interact(session_id, consent, input, &cancellation)
                     .map_err(|mut error| {
                         if observation.is_some() {
                             if !error.details.is_object() {
@@ -108,8 +89,7 @@ impl<P: DesktopSessionPort> Broker<P> {
                             "Cancelled before post-input observation.",
                         ))
                     } else {
-                        self.module
-                            .observe(session_id, *confirmed, isolation, value)
+                        self.module.observe(session_id, consent, value)
                     }
                     .map_err(|mut error| {
                         if !error.details.is_object() {

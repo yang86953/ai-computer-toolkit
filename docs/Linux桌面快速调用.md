@@ -31,3 +31,23 @@ target/debug/ai-computer-toolkit session-call desktop --input request.json
 `open` 仍需用户明确授权和系统 Portal 选择；不要重建已由 MCP 持有的第二个 broker。
 操作结果不明时先观察，不能自动重新连接并重放输入。结束时显式关闭会话、核对空会话后关闭宿主。
 本页不搬用旧主机性能数字，也不把某种终端的存活记录泛化为所有宿主保证。
+
+## 一次授权持续复用与撤销
+
+`open` 可选 `authorizationScope=session`：该次确认覆盖整条会话，后续 `observe`/`input-key`/
+`input-pointer`/`interact`/`observe-subscribe`/`observe-next` 可省略确认字段并继承已授予作用域
+（显式拒绝仍被拒绝）。可选 `rememberAuthorization=true`（仅 Linux Portal）按 `persist_mode=2`
+记住授权：下一次连接自动尝试恢复；token 保存在当前用户私有状态目录并在每次成功 Start 后轮换，
+绝不进入结果、日志或文件名。查询与撤销：
+
+```bash
+# 查看是否已保存可恢复授权（脱敏，不含任何凭据内容）：
+echo '{"contractVersion":"act/linux-desktop-session-broker/v1","brokerEpoch":"<epoch>","requestNonce":"<32位小写hex>","operation":"authorization-status"}' > status.json
+target/debug/ai-computer-toolkit session-call desktop --input status.json
+
+# 撤销：清除本工具保存的凭据并停止该客户端全部 live 会话：
+# 把 operation 换成 forget-authorization 即可。
+```
+
+本地忘记不撤销系统 Portal 侧的授权记录，后者需在桌面环境权限管理中单独处理；
+语义与边界见[版本化参考](../contracts/v1/linux-desktop-session-broker-v1.md)。

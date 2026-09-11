@@ -14,15 +14,18 @@ const AUTH: [&str; 3] = ["confirmed", "foregroundConsent", "strictIsolation"];
 const SESSION_ID_PATTERN: &str = "^s2:i:[0-9a-f]{16}$";
 const FRAME_ID_PATTERN: &str = "^[0-9a-f]{32}$";
 
+/// 省略确认字段的统一说明：只在 session 授权会话内允许继承。
+const OMITTED_CONSENT: &str = " 连接时用 authorizationMode=session 可让整条会话继承一次确认，届时可省略这些字段；显式传 false 仍会被拒绝。";
+
 /// 所有工具共用的前台语义提示，避免逐工具重复措辞。
 const NOTICE: &str =
     " 操作真实前台桌面；不保证焦点、输入法或应用完成。确认标志仅表达用户已有授权。";
 
 /// 构造带固定注解的工具条目。
-fn tool(name: &str, description: &str, input_schema: Value, read_only: bool) -> Value {
+fn tool(name: &str, description: impl Into<String>, input_schema: Value, read_only: bool) -> Value {
     json!({
         "name": format!("computer_{name}"),
-        "description": format!("{description}{NOTICE}"),
+        "description": format!("{}{NOTICE}", description.into()),
         "inputSchema": input_schema,
         "annotations": {
             "readOnlyHint": read_only,
@@ -155,12 +158,18 @@ pub fn tool_catalog() -> Vec<Value> {
     vec![
         tool(
             "connect",
-            "连接本客户端独占的桌面会话；不自动授权、不接管其他客户端。连接后先 observe。",
+            "连接本客户端独占的桌面会话；不自动授权、不接管其他客户端。连接后先 observe。authorizationMode=session 表示 connect 处的一次确认覆盖整条会话，之后各工具可省略确认字段；rememberAuthorization=true（仅 Linux Portal）按系统原生 persist 机制记住授权，下次连接自动尝试恢复，可用 computer_authorization action=forget 撤销。",
             object(
                 json!({
                     "confirmed": consent("用户已确认本次前台桌面操作"),
                     "foregroundConsent": consent("用户已同意发送前台输入"),
                     "strictIsolation": consent("必须为 false：此路线不提供后台隔离"),
+                    "authorizationMode": {
+                        "type": "string",
+                        "enum": ["operation", "session"],
+                        "description": "operation（缺省）逐操作显式确认；session 一次确认覆盖整条会话"
+                    },
+                    "rememberAuthorization": consent("用户选择记住授权：跨连接复用同一授权并在下次连接自动尝试恢复（仅 Linux Portal 支持）"),
                     "timeoutMs": integer(10_000, 300_000, "连接超时，毫秒"),
                 }),
                 &AUTH,
@@ -183,13 +192,15 @@ pub fn tool_catalog() -> Vec<Value> {
                     "strictIsolation": consent("必须为 false：此路线不提供后台隔离"),
                     "maxDimension": integer(256, 2560, "返回图最长边像素"),
                 }),
-                &["sessionId", "confirmed", "strictIsolation"],
+                &["sessionId"],
             ),
             true,
         ),
         tool(
             "interact",
-            "直接鼠标移动/点击、快捷键与小批次输入，执行后直接返回截图。键鼠只送达持有焦点的窗口：发键前先点一下目标窗口，别在别的窗口打字。frameId 必须为本会话最新 observe；输入一旦送出旧帧即失效，被预检拒绝则不消耗帧。steps 内 wait 合计必须小于 timeoutMs（默认 3000ms），按键与文本不计入该预算，超限整批拒收。text 是 ASCII 键盘输入，会受输入法影响。",
+            format!(
+                "直接鼠标移动/点击、快捷键与小批次输入，执行后直接返回截图。键鼠只送达持有焦点的窗口：发键前先点一下目标窗口，别在别的窗口打字。frameId 必须为本会话最新 observe；输入一旦送出旧帧即失效，被预检拒绝则不消耗帧。steps 内 wait 合计必须小于 timeoutMs（默认 3000ms），按键与文本不计入该预算，超限整批拒收。text 是 ASCII 键盘输入，会受输入法影响。{OMITTED_CONSENT}"
+            ),
             object(
                 json!({
                     "sessionId": session_id_property(),
@@ -206,20 +217,15 @@ pub fn tool_catalog() -> Vec<Value> {
                     "timeoutMs": integer(1, 30_000, "输入超时，毫秒"),
                     "maxDimension": integer(256, 2560, "返回图最长边像素"),
                 }),
-                &[
-                    "sessionId",
-                    "frameId",
-                    "confirmed",
-                    "foregroundConsent",
-                    "strictIsolation",
-                    "steps",
-                ],
+                &["sessionId", "frameId", "steps"],
             ),
             false,
         ),
         tool(
             "keys",
-            "发送完整按键或快捷键（例如 left-shift+f5、numpad-1），随后返回截图。按键只送达持有焦点的窗口，先用 interact 点一下目标窗口；依当前截图核对焦点，不自动切换输入法。",
+            format!(
+                "发送完整按键或快捷键（例如 left-shift+f5、numpad-1），随后返回截图。按键只送达持有焦点的窗口，先用 interact 点一下目标窗口；依当前截图核对焦点，不自动切换输入法。{OMITTED_CONSENT}"
+            ),
             object(
                 json!({
                     "sessionId": session_id_property(),
@@ -236,20 +242,15 @@ pub fn tool_catalog() -> Vec<Value> {
                     },
                     "maxDimension": integer(256, 2560, "返回图最长边像素"),
                 }),
-                &[
-                    "sessionId",
-                    "frameId",
-                    "confirmed",
-                    "foregroundConsent",
-                    "strictIsolation",
-                    "keys",
-                ],
+                &["sessionId", "frameId", "keys"],
             ),
             false,
         ),
         tool(
             "pointer",
-            "相对鼠标移动/拖拽/滚轮，随后返回截图。delta 为 relative-logical-px，不是预览像素；先用 interact move 定位起点。每次完整释放。",
+            format!(
+                "相对鼠标移动/拖拽/滚轮，随后返回截图。delta 为 relative-logical-px，不是预览像素；先用 interact move 定位起点。每次完整释放。{OMITTED_CONSENT}"
+            ),
             object(
                 json!({
                     "sessionId": session_id_property(),
@@ -266,20 +267,15 @@ pub fn tool_catalog() -> Vec<Value> {
                     "timeoutMs": integer(1, 30_000, "输入超时，毫秒"),
                     "maxDimension": integer(256, 2560, "返回图最长边像素"),
                 }),
-                &[
-                    "sessionId",
-                    "frameId",
-                    "confirmed",
-                    "foregroundConsent",
-                    "strictIsolation",
-                    "steps",
-                ],
+                &["sessionId", "frameId", "steps"],
             ),
             false,
         ),
         tool(
             "run",
-            "长流程批量执行：一次调用内由服务端自己完成「取新帧 → 送一批输入 → 读回新帧」的循环，可连续跑多批，不必每批回来一次。每批仍绑定送出当时的最新帧，绝不复用旧帧；调用方不需要先 observe，也不必逐批给 frameId。出错默认停止后续批次，并回读该批已发生的效果。返回逐批回执与有界关键帧；长流程用本工具，单批小步才用 interact。",
+            format!(
+                "长流程批量执行：一次调用内由服务端自己完成「取新帧 → 送一批 → 读回新帧」的循环，可连续跑多批，不必每批回来一次。每批仍绑定送出当时的最新帧，绝不复用旧帧；调用方不需要先 observe，也不必逐批给 frameId。出错默认停止后续批次，并回读该批已发生的效果。返回逐批回执与有界关键帧；长流程用本工具，单批小步才用 interact。{OMITTED_CONSENT}"
+            ),
             object(
                 json!({
                     "sessionId": session_id_property(),
@@ -298,13 +294,7 @@ pub fn tool_catalog() -> Vec<Value> {
                     "totalTimeoutMs": integer(1_000, 600_000, "整次调用总预算，毫秒；默认 45 秒"),
                     "maxDimension": integer(256, 2560, "返回图最长边像素"),
                 }),
-                &[
-                    "sessionId",
-                    "confirmed",
-                    "foregroundConsent",
-                    "strictIsolation",
-                    "batches",
-                ],
+                &["sessionId", "batches"],
             ),
             false,
         ),
@@ -314,6 +304,21 @@ pub fn tool_catalog() -> Vec<Value> {
             object(
                 json!({ "sessionId": session_id_property() }),
                 &["sessionId"],
+            ),
+            false,
+        ),
+        tool(
+            "authorization",
+            "查看或撤销本工具记住的桌面授权：action=status 返回是否已保存可恢复授权（不含任何凭据内容）；action=forget 清除本地保存的授权凭据并停止本客户端全部 live 会话。忘记只撤销本工具保存的凭据，系统 Portal 侧的授权记录需在桌面环境权限管理中单独撤销。",
+            object(
+                json!({
+                    "action": {
+                        "type": "string",
+                        "enum": ["status", "forget"],
+                        "description": "status 查看脱敏状态；forget 撤销本工具保存的授权"
+                    },
+                }),
+                &["action"],
             ),
             false,
         ),

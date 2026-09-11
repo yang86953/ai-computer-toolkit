@@ -9,6 +9,7 @@ pub(crate) mod desktop_entry_launch;
 pub(crate) mod desktop_frame_pipewire;
 pub(crate) mod desktop_frame_subscription;
 pub(crate) mod desktop_input_eis;
+pub(crate) mod desktop_portal_authorization_store;
 pub(crate) mod desktop_session_host_activity_logind;
 pub(crate) mod desktop_session_portal;
 #[cfg(feature = "linux-mpris-candidate")]

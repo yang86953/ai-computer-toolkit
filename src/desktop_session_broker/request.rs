@@ -1,6 +1,14 @@
 //! 桌面 broker 请求、身份与重放验证。
 use super::*;
 
+/// open 的授权作用域；缺省 `operation` 保持逐操作显式确认兼容。
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum AuthorizationScopeDto {
+    Operation,
+    Session,
+}
+
 /// 严格请求只允许同一 broker epoch 内的生命周期与会话级输入操作。
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "operation", rename_all = "kebab-case", deny_unknown_fields)]
@@ -19,8 +27,38 @@ pub(super) enum BrokerRequest {
         strict_isolation: bool,
         #[serde(rename = "timeoutMs")]
         timeout_ms: u32,
+        /// 显式启用一次授权覆盖整条会话；缺省保持逐操作显式确认。
+        #[serde(
+            default,
+            rename = "authorizationScope",
+            skip_serializing_if = "Option::is_none"
+        )]
+        authorization_scope: Option<AuthorizationScopeDto>,
+        /// 请求按平台原生机制记住授权（Linux Portal persist_mode=2）。
+        #[serde(
+            default,
+            rename = "rememberAuthorization",
+            skip_serializing_if = "Option::is_none"
+        )]
+        remember_authorization: Option<bool>,
     },
     Sessions {
+        #[serde(rename = "contractVersion")]
+        contract_version: String,
+        #[serde(rename = "brokerEpoch")]
+        broker_epoch: String,
+        #[serde(rename = "requestNonce")]
+        request_nonce: String,
+    },
+    AuthorizationStatus {
+        #[serde(rename = "contractVersion")]
+        contract_version: String,
+        #[serde(rename = "brokerEpoch")]
+        broker_epoch: String,
+        #[serde(rename = "requestNonce")]
+        request_nonce: String,
+    },
+    ForgetAuthorization {
         #[serde(rename = "contractVersion")]
         contract_version: String,
         #[serde(rename = "brokerEpoch")]
@@ -57,11 +95,20 @@ pub(super) enum BrokerRequest {
         request_nonce: String,
         #[serde(rename = "sessionId")]
         session_id: String,
-        confirmed: bool,
-        #[serde(rename = "foregroundConsent")]
-        foreground_consent: bool,
-        #[serde(rename = "strictIsolation")]
-        strict_isolation: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        confirmed: Option<bool>,
+        #[serde(
+            default,
+            rename = "foregroundConsent",
+            skip_serializing_if = "Option::is_none"
+        )]
+        foreground_consent: Option<bool>,
+        #[serde(
+            default,
+            rename = "strictIsolation",
+            skip_serializing_if = "Option::is_none"
+        )]
+        strict_isolation: Option<bool>,
         input: Value,
     },
     InputPointer {
@@ -73,11 +120,20 @@ pub(super) enum BrokerRequest {
         request_nonce: String,
         #[serde(rename = "sessionId")]
         session_id: String,
-        confirmed: bool,
-        #[serde(rename = "foregroundConsent")]
-        foreground_consent: bool,
-        #[serde(rename = "strictIsolation")]
-        strict_isolation: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        confirmed: Option<bool>,
+        #[serde(
+            default,
+            rename = "foregroundConsent",
+            skip_serializing_if = "Option::is_none"
+        )]
+        foreground_consent: Option<bool>,
+        #[serde(
+            default,
+            rename = "strictIsolation",
+            skip_serializing_if = "Option::is_none"
+        )]
+        strict_isolation: Option<bool>,
         input: Value,
     },
     Interact {
@@ -92,11 +148,20 @@ pub(super) enum BrokerRequest {
         request_nonce: String,
         #[serde(rename = "sessionId")]
         session_id: String,
-        confirmed: bool,
-        #[serde(rename = "foregroundConsent")]
-        foreground_consent: bool,
-        #[serde(rename = "strictIsolation")]
-        strict_isolation: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        confirmed: Option<bool>,
+        #[serde(
+            default,
+            rename = "foregroundConsent",
+            skip_serializing_if = "Option::is_none"
+        )]
+        foreground_consent: Option<bool>,
+        #[serde(
+            default,
+            rename = "strictIsolation",
+            skip_serializing_if = "Option::is_none"
+        )]
+        strict_isolation: Option<bool>,
         input: Value,
     },
     Observe {
@@ -114,9 +179,14 @@ pub(super) enum BrokerRequest {
         request_nonce: String,
         #[serde(rename = "sessionId")]
         session_id: String,
-        confirmed: bool,
-        #[serde(rename = "strictIsolation")]
-        strict_isolation: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        confirmed: Option<bool>,
+        #[serde(
+            default,
+            rename = "strictIsolation",
+            skip_serializing_if = "Option::is_none"
+        )]
+        strict_isolation: Option<bool>,
         input: Value,
     },
     ObserveSubscribe {
@@ -128,9 +198,14 @@ pub(super) enum BrokerRequest {
         request_nonce: String,
         #[serde(rename = "sessionId")]
         session_id: String,
-        confirmed: bool,
-        #[serde(rename = "strictIsolation")]
-        strict_isolation: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        confirmed: Option<bool>,
+        #[serde(
+            default,
+            rename = "strictIsolation",
+            skip_serializing_if = "Option::is_none"
+        )]
+        strict_isolation: Option<bool>,
         input: Value,
     },
     ObserveNext {
@@ -142,9 +217,14 @@ pub(super) enum BrokerRequest {
         request_nonce: String,
         #[serde(rename = "sessionId")]
         session_id: String,
-        confirmed: bool,
-        #[serde(rename = "strictIsolation")]
-        strict_isolation: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        confirmed: Option<bool>,
+        #[serde(
+            default,
+            rename = "strictIsolation",
+            skip_serializing_if = "Option::is_none"
+        )]
+        strict_isolation: Option<bool>,
         input: Value,
     },
     ObserveUnsubscribe {
@@ -167,9 +247,14 @@ pub(super) enum BrokerRequest {
         request_nonce: String,
         #[serde(rename = "sessionId")]
         session_id: String,
-        confirmed: bool,
-        #[serde(rename = "strictIsolation")]
-        strict_isolation: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        confirmed: Option<bool>,
+        #[serde(
+            default,
+            rename = "strictIsolation",
+            skip_serializing_if = "Option::is_none"
+        )]
+        strict_isolation: Option<bool>,
         input: Value,
     },
     InputCancel {
@@ -199,6 +284,12 @@ impl BrokerRequest {
                 contract_version, ..
             }
             | Self::Sessions {
+                contract_version, ..
+            }
+            | Self::AuthorizationStatus {
+                contract_version, ..
+            }
+            | Self::ForgetAuthorization {
                 contract_version, ..
             }
             | Self::Inspect {
@@ -244,6 +335,8 @@ impl BrokerRequest {
         match self {
             Self::Open { broker_epoch, .. }
             | Self::Sessions { broker_epoch, .. }
+            | Self::AuthorizationStatus { broker_epoch, .. }
+            | Self::ForgetAuthorization { broker_epoch, .. }
             | Self::Inspect { broker_epoch, .. }
             | Self::Close { broker_epoch, .. }
             | Self::InputKey { broker_epoch, .. }
@@ -263,6 +356,8 @@ impl BrokerRequest {
         match self {
             Self::Open { request_nonce, .. }
             | Self::Sessions { request_nonce, .. }
+            | Self::AuthorizationStatus { request_nonce, .. }
+            | Self::ForgetAuthorization { request_nonce, .. }
             | Self::Inspect { request_nonce, .. }
             | Self::Close { request_nonce, .. }
             | Self::InputKey { request_nonce, .. }
@@ -282,6 +377,8 @@ impl BrokerRequest {
         match self {
             Self::Open { .. } => "open",
             Self::Sessions { .. } => "sessions",
+            Self::AuthorizationStatus { .. } => "authorization-status",
+            Self::ForgetAuthorization { .. } => "forget-authorization",
             Self::Inspect { .. } => "inspect",
             Self::Close { .. } => "close",
             Self::InputKey { .. } => "input-key",
@@ -317,7 +414,10 @@ impl BrokerRequest {
     pub(super) const fn retry_safe_on_success(&self) -> bool {
         matches!(
             self,
-            Self::Sessions { .. } | Self::Inspect { .. } | Self::InputCancel { .. }
+            Self::Sessions { .. }
+                | Self::AuthorizationStatus { .. }
+                | Self::Inspect { .. }
+                | Self::InputCancel { .. }
         )
     }
 

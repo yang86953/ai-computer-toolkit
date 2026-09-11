@@ -64,11 +64,10 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
     pub(crate) fn subscribe_observation(
         &mut self,
         session_id: &str,
-        confirmed: bool,
-        isolation: IsolationRequirement,
+        consent: DesktopConsent,
         value: &Value,
     ) -> AppResult<Value> {
-        validate_capture_permissions(confirmed, isolation)?;
+        self.resolve_capture_consent(session_id, consent)?;
         let input: SubscribeInput = parse(value)?;
         if !(1000..=300_000).contains(&input.duration_ms) {
             return Err(AppControlError::new(
@@ -92,11 +91,10 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
     pub(crate) fn next_observation(
         &mut self,
         session_id: &str,
-        confirmed: bool,
-        isolation: IsolationRequirement,
+        consent: DesktopConsent,
         value: &Value,
     ) -> AppResult<Value> {
-        validate_capture_permissions(confirmed, isolation)?;
+        self.resolve_capture_consent(session_id, consent)?;
         let input: NextInput = parse(value)?;
         check_id(&input.subscription_id)?;
         if input.wait_ms > 1000 || input.after_sequence > 9_007_199_254_740_991 {

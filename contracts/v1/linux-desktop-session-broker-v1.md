@@ -65,19 +65,64 @@ stdout 仍只归原 owner 线程。reader 只能在严格 epoch/nonce/语义校�
 `open` 必须同时携带 `confirmed=true` 与 `foregroundConsent=true`，并拒绝
 `strictIsolation=true`。它执行 `CreateSession`、键盘/指针 `SelectDevices`、同会话
 `SelectSources`、`Start`、EIS sender 握手、键盘及相对指针 seat/device 绑定与 `OpenPipeWireRemote`；打开操作
-本身不发送输入、不消费像素。Adapter 不请求 `persist_mode`，丢弃且不保存 restore token。
+本身不发送输入、不消费像素。可选 `authorizationScope=session` 把 open 处的一次确认
+扩展为整条会话的授权作用域（缺省 `operation` 保持逐操作显式确认）；可选
+`rememberAuthorization=true` 只在 Linux Portal 后端受支持，其他后端在任何 Portal
+派发前以 `DESKTOP_AUTHORIZATION_PERSISTENCE_UNSUPPORTED` 失败闭合。
 
-`input-key` 只接受同一 broker 仍持有的精确 live `s2:i`，并要求 `confirmed=true`、
-`foregroundConsent=true`、`strictIsolation=false`。输入由
+`input-key` 只接受同一 broker 仍持有的精确 live `s2:i`。缺省作用域下要求
+`confirmed=true`、`foregroundConsent=true`、`strictIsolation=false`；`session`
+作用域的会话可以省略这三个字段并继承 open 处已授予的作用域，但任何显式拒绝
+（`confirmed=false`、`strictIsolation=true` 等）仍按原错误码闭合，不能被继承覆盖。
+输入由
 [`ui.input.key@3`](../v3/key-input.md) 冻结：只允许 provider-neutral 命名键、同请求配平状态和
 有界 deadline，不接受文本或原生 keycode。每个 EIS 按下/释放分属独立 frame；成功仅证明事件
 flush 到 EIS socket，`effectConfirmed=false`，禁止自动重试。
 
-`input-pointer` 服从相同的精确会话、确认、前景同意与非 strict 门禁。输入由
+`input-pointer` 服从相同的精确会话、确认（含省略继承）与非 strict 门禁。输入由
 [`ui.input.pointer@3`](../v3/pointer-input.md) 冻结，只允许 `relative-logical-px` 相对移动、
 左/右/中键状态、单击/双击、横纵 discrete scroll 与有界拖拽；不接受绝对坐标、窗口命中、
 Linux button code 或设备身份。成功只证明 EIS flush，固定
 `effectConfirmed=false`、`finalPointerPositionConfirmed=false`，不声称应用消费或最终绝对位置。
+
+`observe`、`capture-frame`、`observe-subscribe` 与 `observe-next` 适用同样的省略继承规则：
+缺省作用域必须显式 `confirmed=true` 且非 strict；session 会话可省略并继承。省略字段而会话
+不存在时返回 `STALE_SESSION`，不凭省略字段放行任何输入或像素。
+
+## 一次授权、记住授权与撤销
+
+`authorizationScope=session` 表示调用方显式选择「一次确认覆盖整条会话」：open 仍是唯一
+确认点，后续同一 live 会话的全部受支持桌面操作（观察、键鼠、`interact`、订阅与长流程批次）
+不必重复确认字段。继承只发生在字段被省略时；显式传入的拒绝字段优先闭合。CLI socket 模式、
+stdio 模式与 MCP `computer_connect` 使用同一授权事实，不靠外部包装代填。
+
+`rememberAuthorization=true` 在 Linux 上按 Portal 原生机制记住授权：
+
+- Adapter 对 RemoteDesktop `SelectDevices` 传 `persist_mode=2`（直到显式撤销）；已有已保存
+  token 时同时传 `restore_token` 自动尝试恢复。组合 RemoteDesktop+ScreenCast 会话的持久化
+  只走 RemoteDesktop，`ScreenCast.SelectSources` 不携带持久化选项。
+- restore token 单次有效；`Start` 成功返回下一枚，Adapter 立即在同一跨进程互斥内轮换保存。
+  保存位于当前用户私有状态目录（`XDG_STATE_HOME` 或 `~/.local/state` 下的
+  `ai-computer-toolkit/`，0700 目录、0600 文件、同目录 staging 原子替换、O_NOFOLLOW 与
+  属主/组权限校验）。同 token 的并发连接由 flock 串行，锁覆盖恢复、授权与轮换全过程，
+  期限为 open 的剩余 deadline；超时返回 `DESKTOP_AUTHORIZATION_BUSY`（retrySafe），不重复
+  消费同一枚 token。
+- token 绝不进入 JSON、MCP 结果、日志、任务、源码或文件名。公开事实只有脱敏布尔：
+  会话视图的 `authorization.persistence.requested/restoredFromSaved/restoreTokenRetained`
+  与顶层 `restoreTokenRetained`；保存失败或 Portal 未授出持久化时如实报告
+  `restoreTokenRetained=false`（附 `note`），不宣称已记住。轮换失败会作废可能已被消费的
+  旧 token，下一次连接重新走正常授权。
+- Portal 无法恢复已存授权时按官方语义回退为正常选择弹窗；本工具不自动点击系统同意，
+  失败或取消也不自动重复弹窗或重放输入。接口支持不等于具体后端已实现免提示恢复，
+  实机行为以桌面环境为准。
+
+`authorization-status` 返回脱敏状态：`savedAuthorizationState` ∈ `saved`/`absent`/
+`unreadable`（存储未通过私有性校验时拒绝使用）与 `savedAuthorizationBackend`；不返回任何
+凭据内容。`forget-authorization` 清除本工具保存的凭据并停止本客户端 broker 内全部 live
+会话，回执 `liveSessionsClosed/liveSessionsFailedToClose` 与
+`revokesSystemPortalRecords=false`：本地忘记只撤销本工具保存的内容，系统 Portal 自身的
+授权记录需在桌面环境权限管理中单独撤销。两个操作与 `sessions` 一样只绑定当前 epoch 的
+身份字段，不携带 session 或原生身份。
 
 `input-cancel` 只携带自己的 `requestNonce` 与目标 `targetRequestNonce`，不携带 session、输入、
 确认或原生身份。cancel-before-target 安装当前 epoch 内 tombstone，后到输入在 provider 前返回
@@ -121,7 +166,7 @@ broker，socket 模式则拒绝该连接。正常 socket shutdown 只清理由�
 
 ## 请求账本与满载收尾
 
-普通收据容量为 1024 条。耗尽后，只为安全收尾额外保留独立配额：`input-cancel` 16 条、`close` 8 条（与最大活跃 lease 数一致）、`sessions` 8 条、`shutdown` 1 条；总收据最多 1057 条。各配额互不挤占，查询满载不能耗尽关闭/退出额度；输入类和 open/observe/capture 等普通新请求继续返回 `BROKER_REQUEST_LEDGER_FULL`，没有额外副作用。错误 close 同样保留收据并占用 close 配额，因此调用方仍须绑定先前发现的精确会话。
+普通收据容量为 1024 条。耗尽后，只为安全收尾额外保留独立配额：`input-cancel` 16 条、`close` 8 条（与最大活跃 lease 数一致）、`sessions` 与 `authorization-status` 合计 8 条、`forget-authorization` 8 条、`shutdown` 1 条；总收据最多 1073 条。各配额互不挤占，查询满载不能耗尽关闭/退出额度；输入类和 open/observe/capture 等普通新请求继续返回 `BROKER_REQUEST_LEDGER_FULL`，没有额外副作用。错误 close 同样保留收据并占用 close 配额，因此调用方仍须绑定先前发现的精确会话。
 
 校验与旧 nonce 冲突检查先于配额分配；同 nonce/同语义重放不再次执行，也不消耗新配额。reader 的早期取消语义表使用相同有界配额，不能因收尾扩容遗忘旧请求或接受冲突取消。满载后的 sessions 是新 nonce 下的当前查询；重放旧 sessions 只得到旧收据，不能代替关闭后的核验。
 

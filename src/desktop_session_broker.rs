@@ -19,9 +19,15 @@ use crate::{
         desktop_session_identity,
         desktop_session_input_cancellation::DesktopInputCancellationRegistry,
     },
-    domain::{AppControlError, IsolationRequirement},
-    modules::desktop_session::{DesktopSessionModule, DesktopSessionPort, DesktopSessionView},
+    domain::AppControlError,
+    modules::desktop_session::{
+        DesktopAuthorizationScope, DesktopConsent, DesktopSessionAuthorization,
+        DesktopSessionModule, DesktopSessionPort, DesktopSessionView,
+    },
 };
+
+#[cfg(test)]
+use crate::modules::desktop_session::DesktopAuthorizationPersistence;
 
 #[cfg(target_os = "windows")]
 use crate::adapters::desktop_session_windows::SystemDesktopSessionPort;
@@ -56,6 +62,7 @@ struct LedgerReserve {
     queries: usize,
     shutdowns: usize,
     subscription_stops: usize,
+    authorization_forgets: usize,
 }
 
 impl LedgerReserve {
@@ -69,13 +76,17 @@ impl LedgerReserve {
                 &mut self.closes,
                 crate::modules::desktop_session::MAXIMUM_LIVE_SESSIONS,
             ),
-            BrokerRequest::Sessions { .. } => (
+            BrokerRequest::Sessions { .. } | BrokerRequest::AuthorizationStatus { .. } => (
                 &mut self.queries,
                 crate::modules::desktop_session::MAXIMUM_LIVE_SESSIONS,
             ),
             BrokerRequest::Shutdown { .. } => (&mut self.shutdowns, 1),
             BrokerRequest::ObserveUnsubscribe { .. } => (
                 &mut self.subscription_stops,
+                crate::modules::desktop_session::MAXIMUM_LIVE_SESSIONS,
+            ),
+            BrokerRequest::ForgetAuthorization { .. } => (
+                &mut self.authorization_forgets,
                 crate::modules::desktop_session::MAXIMUM_LIVE_SESSIONS,
             ),
             _ => return false,
@@ -132,6 +143,8 @@ impl<P: DesktopSessionPort> Broker<P> {
             "subscriptionDelivery": "latest-pull",
             "maxTrackedPixels": crate::components::desktop_frame_changes::MAX_TRACKED_PIXELS,
             "transport": "json-lines-stdio",
+            "authorizationModes": ["operation", "session"],
+            "persistentAuthorizationSupported": P::PERSISTENT_AUTHORIZATION_SUPPORTED,
             "restoreTokenRetained": false,
             "inputEventsSent": 0,
             "pixelsConsumed": 0,
@@ -226,12 +239,7 @@ impl<P: DesktopSessionPort> Broker<P> {
                 ..
             } => self.module.subscribe_observation(
                 session_id,
-                *confirmed,
-                if *strict_isolation {
-                    IsolationRequirement::Strict
-                } else {
-                    IsolationRequirement::Standard
-                },
+                capture_consent(*confirmed, *strict_isolation),
                 input,
             ),
             BrokerRequest::ObserveNext {
@@ -242,12 +250,7 @@ impl<P: DesktopSessionPort> Broker<P> {
                 ..
             } => self.module.next_observation(
                 session_id,
-                *confirmed,
-                if *strict_isolation {
-                    IsolationRequirement::Strict
-                } else {
-                    IsolationRequirement::Standard
-                },
+                capture_consent(*confirmed, *strict_isolation),
                 input,
             ),
             BrokerRequest::ObserveUnsubscribe {
@@ -258,17 +261,29 @@ impl<P: DesktopSessionPort> Broker<P> {
                 foreground_consent,
                 strict_isolation,
                 timeout_ms,
+                authorization_scope,
+                remember_authorization,
                 ..
             } => {
+                let authorization = DesktopSessionAuthorization {
+                    scope: match authorization_scope {
+                        Some(request::AuthorizationScopeDto::Session) => {
+                            DesktopAuthorizationScope::Session
+                        }
+                        _ => DesktopAuthorizationScope::PerOperation,
+                    },
+                    remember: remember_authorization.unwrap_or(false),
+                };
                 let view = self.module.open(
                     *confirmed,
                     *foreground_consent,
                     if *strict_isolation {
-                        IsolationRequirement::Strict
+                        crate::domain::IsolationRequirement::Strict
                     } else {
-                        IsolationRequirement::Standard
+                        crate::domain::IsolationRequirement::Standard
                     },
                     Duration::from_millis(u64::from(*timeout_ms)),
+                    authorization,
                 )?;
                 Ok(session_view(&view))
             }
@@ -280,6 +295,26 @@ impl<P: DesktopSessionPort> Broker<P> {
                     .map(session_view)
                     .collect::<Vec<_>>(),
             })),
+            BrokerRequest::AuthorizationStatus { .. } => {
+                let saved = self.module.saved_authorization();
+                Ok(json!({
+                    "persistentAuthorizationSupported": P::PERSISTENT_AUTHORIZATION_SUPPORTED,
+                    "savedAuthorizationState": saved.state().as_str(),
+                    "savedAuthorizationBackend": saved.backend(),
+                }))
+            }
+            BrokerRequest::ForgetAuthorization { .. } => {
+                let report = self.module.forget_authorization()?;
+                Ok(json!({
+                    "hadSavedAuthorization": report.had_saved(),
+                    "savedAuthorizationCleared": report.cleared(),
+                    "liveSessionsClosed": report.sessions_closed(),
+                    "liveSessionsFailedToClose": report.close_failures(),
+                    // 本地忘记只清除本工具保存的凭据；系统 Portal 的授权
+                    // 记录仍由桌面环境权限管理持有，不谎称全系统已撤销。
+                    "revokesSystemPortalRecords": false,
+                }))
+            }
             BrokerRequest::Inspect { session_id, .. } => {
                 Ok(session_view(&self.module.inspect(session_id)?))
             }
@@ -302,13 +337,7 @@ impl<P: DesktopSessionPort> Broker<P> {
                 let cancellation = self.cancellations.prepare_input(request.request_nonce());
                 let report = self.module.send_keyboard(
                     session_id,
-                    *confirmed,
-                    *foreground_consent,
-                    if *strict_isolation {
-                        IsolationRequirement::Strict
-                    } else {
-                        IsolationRequirement::Standard
-                    },
+                    input_consent(*confirmed, *foreground_consent, *strict_isolation),
                     input,
                     &cancellation,
                 )?;
@@ -332,13 +361,7 @@ impl<P: DesktopSessionPort> Broker<P> {
                 let cancellation = self.cancellations.prepare_input(request.request_nonce());
                 let report = self.module.send_pointer(
                     session_id,
-                    *confirmed,
-                    *foreground_consent,
-                    if *strict_isolation {
-                        IsolationRequirement::Strict
-                    } else {
-                        IsolationRequirement::Standard
-                    },
+                    input_consent(*confirmed, *foreground_consent, *strict_isolation),
                     input,
                     &cancellation,
                 )?;
@@ -362,12 +385,7 @@ impl<P: DesktopSessionPort> Broker<P> {
             } => {
                 let report = self.module.capture_frame(
                     session_id,
-                    *confirmed,
-                    if *strict_isolation {
-                        IsolationRequirement::Strict
-                    } else {
-                        IsolationRequirement::Standard
-                    },
+                    capture_consent(*confirmed, *strict_isolation),
                     input,
                 )?;
                 let mut result = json!({
@@ -414,8 +432,31 @@ impl<P: DesktopSessionPort> Broker<P> {
     }
 }
 
+/// 输入类请求的确认三元组；`None` 字段由模块按 session 授权继承解析。
+fn input_consent(
+    confirmed: Option<bool>,
+    foreground_consent: Option<bool>,
+    strict_isolation: Option<bool>,
+) -> DesktopConsent {
+    DesktopConsent {
+        confirmed,
+        foreground_consent,
+        strict_isolation,
+    }
+}
+
+/// 截图/观察类请求的确认字段。
+fn capture_consent(confirmed: Option<bool>, strict_isolation: Option<bool>) -> DesktopConsent {
+    DesktopConsent {
+        confirmed,
+        foreground_consent: None,
+        strict_isolation,
+    }
+}
+
 fn session_view(view: &DesktopSessionView) -> Value {
     let facts = view.facts();
+    let persistence = facts.authorization_persistence();
     let mut data = json!({
         "sessionId": view.session_id(),
         "targetKind": "desktop-session",
@@ -431,12 +472,23 @@ fn session_view(view: &DesktopSessionView) -> Value {
         },
         "eisHandshakeComplete": true,
         "pipeWireRemoteObtained": true,
-        "restoreTokenRetained": false,
+        "authorization": {
+            "mode": view.authorization().scope.as_str(),
+            "persistence": {
+                "requested": persistence.requested,
+                "restoredFromSaved": persistence.restored_from_saved,
+                "restoreTokenRetained": persistence.token_retained,
+            },
+        },
+        "restoreTokenRetained": persistence.token_retained,
         "inputEventsSent": view.input_events_sent(),
         "framesCaptured": view.frames_captured(),
         "pixelsConsumed": view.pixels_consumed(),
     });
     data["backend"] = json!(facts.backend());
+    if let Some(note) = persistence.note {
+        data["authorization"]["persistence"]["note"] = json!(note);
+    }
     if facts.backend() != "portal-eis" {
         let object = data.as_object_mut().unwrap();
         object.remove("providerVersions");
@@ -893,6 +945,7 @@ mod tests {
         fn open(
             &self,
             _: Duration,
+            _: DesktopAuthorizationPersistence,
         ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
         {
             self.opens.fetch_add(1, Ordering::Relaxed);
@@ -969,6 +1022,7 @@ mod tests {
         fn open(
             &self,
             _: Duration,
+            _: DesktopAuthorizationPersistence,
         ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
         {
             Ok((
@@ -1004,6 +1058,8 @@ mod tests {
             foreground_consent: true,
             strict_isolation: false,
             timeout_ms: 120_000,
+            authorization_scope: None,
+            remember_authorization: None,
         }
     }
 
@@ -1185,6 +1241,166 @@ mod tests {
         assert_eq!(closes.load(Ordering::Relaxed), 1);
     }
 
+    fn scoped_open_request(
+        nonce: &str,
+        scope: Option<&str>,
+        remember: Option<bool>,
+    ) -> BrokerRequest {
+        serde_json::from_value(json!({
+            "contractVersion": CONTRACT_VERSION, "brokerEpoch": EPOCH,
+            "requestNonce": nonce, "operation": "open",
+            "confirmed": true, "foregroundConsent": true, "strictIsolation": false,
+            "timeoutMs": 120_000,
+            "authorizationScope": scope,
+            "rememberAuthorization": remember,
+        }))
+        .unwrap_or_else(|error| panic!("scoped open fixture: {error}"))
+    }
+
+    fn key_request(
+        nonce: &str,
+        session_id: &str,
+        consent: Option<(bool, bool, bool)>,
+    ) -> BrokerRequest {
+        let mut request = json!({
+            "contractVersion": CONTRACT_VERSION, "brokerEpoch": EPOCH,
+            "requestNonce": nonce, "operation": "input-key",
+            "sessionId": session_id,
+            "input": {"steps": [{"type": "key", "key": "enter"}]},
+        });
+        if let Some((confirmed, foreground, strict)) = consent {
+            request["confirmed"] = json!(confirmed);
+            request["foregroundConsent"] = json!(foreground);
+            request["strictIsolation"] = json!(strict);
+        }
+        serde_json::from_value(request).unwrap_or_else(|error| panic!("key fixture: {error}"))
+    }
+
+    #[test]
+    fn session_scope_open_inherits_omitted_consent_for_input() {
+        let schema: Value = serde_json::from_str(include_str!(
+            "../contracts/v1/linux-desktop-session-broker-v1.schema.json"
+        ))
+        .unwrap();
+        let (mut broker, _, _) = broker();
+        let (opened, _) = broker.handle(scoped_open_request(
+            "31313131313131313131313131313131",
+            Some("session"),
+            None,
+        ));
+        jsonschema::draft202012::validate(&schema, &opened).unwrap();
+        let session_id = opened["data"]["sessionId"].as_str().unwrap().to_owned();
+        assert_eq!(opened["data"]["authorization"]["mode"], "session");
+        assert_eq!(opened["data"]["restoreTokenRetained"], false);
+        // 省略全部确认字段：继承 open 处的一次确认。
+        let (inherited, _) = broker.handle(key_request(
+            "32323232323232323232323232323232",
+            &session_id,
+            None,
+        ));
+        jsonschema::draft202012::validate(&schema, &inherited).unwrap();
+        assert_eq!(inherited["completed"], true, "{inherited}");
+        // 显式拒绝不能被继承覆盖。
+        let (refused, _) = broker.handle(key_request(
+            "33333333333333333333333333333333",
+            &session_id,
+            Some((false, true, false)),
+        ));
+        assert_eq!(refused["error"]["code"], "CONFIRMATION_REQUIRED");
+        assert_eq!(refused["error"]["details"]["inputAttempted"], false);
+        // 缺省（逐操作）作用域保持旧显式要求。
+        let (plain, _) = broker.handle(open_request("34343434343434343434343434343434"));
+        let plain_id = plain["data"]["sessionId"].as_str().unwrap().to_owned();
+        assert_eq!(plain["data"]["authorization"]["mode"], "operation");
+        let (omitted, _) = broker.handle(key_request(
+            "35353535353535353535353535353535",
+            &plain_id,
+            None,
+        ));
+        assert_eq!(omitted["error"]["code"], "CONFIRMATION_REQUIRED");
+        assert_eq!(
+            omitted["error"]["details"]["confirmationFieldsOmitted"],
+            true
+        );
+        let (explicit, _) = broker.handle(key_request(
+            "36363636363636363636363636363636",
+            &plain_id,
+            Some((true, true, false)),
+        ));
+        assert_eq!(explicit["completed"], true, "{explicit}");
+    }
+
+    #[test]
+    fn remember_on_unsupported_backend_is_refused_before_portal_dispatch() {
+        let (mut broker, opens, _) = broker();
+        let (refused, _) = broker.handle(scoped_open_request(
+            "37373737373737373737373737373737",
+            Some("session"),
+            Some(true),
+        ));
+        assert_eq!(
+            refused["error"]["code"],
+            "DESKTOP_AUTHORIZATION_PERSISTENCE_UNSUPPORTED"
+        );
+        assert_eq!(refused["error"]["details"]["portalRequestIssued"], false);
+        assert_eq!(opens.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn authorization_status_and_forget_round_trip_and_close_live_sessions() {
+        let schema: Value = serde_json::from_str(include_str!(
+            "../contracts/v1/linux-desktop-session-broker-v1.schema.json"
+        ))
+        .unwrap();
+        let (mut broker, _, closes) = broker();
+        let (opened, _) = broker.handle(open_request("38383838383838383838383838383838"));
+        let session_id = opened["data"]["sessionId"].as_str().unwrap().to_owned();
+        let (status, _) = broker.handle(simple_request("authorization-status", 3900));
+        jsonschema::draft202012::validate(&schema, &status).unwrap();
+        assert_eq!(status["completed"], true, "{status}");
+        assert_eq!(status["data"]["persistentAuthorizationSupported"], false);
+        assert_eq!(status["data"]["savedAuthorizationState"], "unsupported");
+        assert_eq!(status["retrySafe"], true);
+        let (forget, _) = broker.handle(simple_request("forget-authorization", 3910));
+        jsonschema::draft202012::validate(&schema, &forget).unwrap();
+        assert_eq!(forget["completed"], true, "{forget}");
+        assert_eq!(forget["data"]["hadSavedAuthorization"], false);
+        assert_eq!(forget["data"]["savedAuthorizationCleared"], true);
+        assert_eq!(forget["data"]["liveSessionsClosed"], 1);
+        assert_eq!(forget["data"]["liveSessionsFailedToClose"], 0);
+        assert_eq!(forget["data"]["revokesSystemPortalRecords"], false);
+        // 撤销停止本客户端 live 会话：原会话立即 stale。
+        let (stale, _) = broker.handle(BrokerRequest::Inspect {
+            contract_version: CONTRACT_VERSION.to_owned(),
+            broker_epoch: EPOCH.to_owned(),
+            request_nonce: "39393939393939393939393939393939".to_owned(),
+            session_id,
+        });
+        assert_eq!(stale["error"]["code"], "STALE_SESSION");
+        assert_eq!(closes.load(Ordering::Relaxed), 1);
+        // 相同 nonce 重放得到原响应；重放不重复收尾。
+        let (replayed, _) = broker.handle(simple_request("forget-authorization", 3910));
+        assert_eq!(forget, replayed);
+        assert_eq!(closes.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn session_views_keep_restore_token_material_out_of_public_frames() {
+        let (mut broker, _, _) = broker();
+        let (opened, _) = broker.handle(open_request("40404040404040404040404040404040"));
+        let (listed, _) = broker.handle(simple_request("sessions", 4100));
+        // 公开帧只包含脱敏布尔与计数；任何 token 形态的字符串都不应出现。
+        let serialized = listed.to_string();
+        assert_eq!(opened["data"]["restoreTokenRetained"], false);
+        assert!(serialized.contains("authorization"));
+        for forbidden in ["restoreToken\":", "restore_token", "token\":"] {
+            assert!(
+                !serialized.contains(forbidden),
+                "public frame must not carry token material: {serialized}"
+            );
+        }
+    }
+
     #[test]
     fn open_inspect_close_uses_same_live_owner_generation() {
         let (mut broker, opens, closes) = broker();
@@ -1205,9 +1421,9 @@ mod tests {
             broker_epoch: EPOCH.to_owned(),
             request_nonce: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_owned(),
             session_id: session_id.clone(),
-            confirmed: true,
-            foreground_consent: true,
-            strict_isolation: false,
+            confirmed: Some(true),
+            foreground_consent: Some(true),
+            strict_isolation: Some(false),
             input: json!({"steps": [{"type": "key", "key": "enter"}]}),
         };
         let (input, _) = broker.handle(input_request.clone());
@@ -1222,9 +1438,9 @@ mod tests {
             broker_epoch: EPOCH.to_owned(),
             request_nonce: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_owned(),
             session_id: session_id.clone(),
-            confirmed: true,
-            foreground_consent: true,
-            strict_isolation: false,
+            confirmed: Some(true),
+            foreground_consent: Some(true),
+            strict_isolation: Some(false),
             input: json!({
                 "coordinateSpace": "relative-logical-px",
                 "steps": [{"type": "move", "delta": {"x": 8, "y": -3}}]
@@ -1252,8 +1468,8 @@ mod tests {
             broker_epoch: EPOCH.to_owned(),
             request_nonce: "cccccccccccccccccccccccccccccccc".to_owned(),
             session_id: session_id.clone(),
-            confirmed: true,
-            strict_isolation: false,
+            confirmed: Some(true),
+            strict_isolation: Some(false),
             input: json!({"path": destination.to_string_lossy(), "timeoutMs": 1000}),
         };
         let (capture, _) = broker.handle(capture_request.clone());
@@ -1316,9 +1532,9 @@ mod tests {
             broker_epoch: EPOCH.to_owned(),
             request_nonce: "30303030303030303030303030303030".to_owned(),
             session_id,
-            confirmed: true,
-            foreground_consent: true,
-            strict_isolation: false,
+            confirmed: Some(true),
+            foreground_consent: Some(true),
+            strict_isolation: Some(false),
             input: json!({"steps": [{"type": "key", "key": "enter"}]}),
         });
         assert_eq!(cancelled["error"]["code"], "CANCELLED");
@@ -1351,9 +1567,9 @@ mod tests {
             broker_epoch: EPOCH.to_owned(),
             request_nonce: "52525252525252525252525252525252".to_owned(),
             session_id,
-            confirmed: true,
-            foreground_consent: true,
-            strict_isolation: false,
+            confirmed: Some(true),
+            foreground_consent: Some(true),
+            strict_isolation: Some(false),
             input: json!({
                 "coordinateSpace": "relative-logical-px",
                 "steps": [{"type": "move", "delta": {"x": 1, "y": 1}}]
@@ -1507,6 +1723,7 @@ mod tests {
         fn open(
             &self,
             _: Duration,
+            _: DesktopAuthorizationPersistence,
         ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
         {
             Ok((

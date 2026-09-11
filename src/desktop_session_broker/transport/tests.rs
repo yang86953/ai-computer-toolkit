@@ -139,6 +139,7 @@ impl DesktopSessionPort for TestPort {
     fn open(
         &self,
         _: Duration,
+        _: DesktopAuthorizationPersistence,
     ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
     {
         self.opens.fetch_add(1, Ordering::AcqRel);

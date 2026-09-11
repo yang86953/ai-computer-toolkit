@@ -30,6 +30,7 @@ impl DesktopSessionPort for Port {
     fn open(
         &self,
         _: Duration,
+        _: DesktopAuthorizationPersistence,
     ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
     {
         Ok((

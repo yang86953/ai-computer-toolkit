@@ -59,7 +59,7 @@ fn binary_discovers_one_catalog_and_refuses_unauthorized_desktop() {
     assert!(output.status.success());
     let catalog: Value = serde_json::from_slice(&output.stdout).unwrap();
     // 清单是封闭集合：新增或删除工具都必须在这里显式改数，避免悄悄换掉公开面。
-    assert_eq!(catalog["tools"].as_array().unwrap().len(), 8);
+    assert_eq!(catalog["tools"].as_array().unwrap().len(), 9);
     let mut c = Client::new();
     assert!(c.rpc(0, "tools/list", json!({})).get("error").is_some());
     assert!(c.rpc(1,"initialize",json!({"protocolVersion":"2025-03-26"}))["result"]["capabilities"]["tools"].is_object());

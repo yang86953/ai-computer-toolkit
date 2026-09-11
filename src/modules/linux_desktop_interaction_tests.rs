@@ -16,6 +16,7 @@ impl DesktopSessionPort for Port {
     fn open(
         &self,
         _: Duration,
+        _: DesktopAuthorizationPersistence,
     ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
     {
         Ok((
@@ -86,6 +87,7 @@ fn fixture() -> (DesktopSessionModule<Port>, String, Arc<Mutex<Trace>>) {
             true,
             IsolationRequirement::Standard,
             Duration::from_secs(10),
+            DesktopSessionAuthorization::default(),
         )
         .unwrap()
         .session_id()
@@ -110,9 +112,7 @@ fn run(
 ) -> AppResult<InteractionReport> {
     module.interact(
         id,
-        true,
-        true,
-        IsolationRequirement::Standard,
+        DesktopConsent::explicit(true, true, false),
         &value,
         &DesktopInputCancellation::new(),
     )
@@ -139,9 +139,7 @@ fn confirmation_precedes_input_parsing_and_observation_lookup() {
     let e = m
         .interact(
             &id,
-            false,
-            false,
-            IsolationRequirement::Strict,
+            DesktopConsent::explicit(false, false, true),
             &json!({"bad":true}),
             &DesktopInputCancellation::new(),
         )
@@ -220,9 +218,7 @@ fn cancellation_during_wait_does_not_send_later_input() {
     let e = m
         .interact(
             &id,
-            true,
-            true,
-            IsolationRequirement::Standard,
+            DesktopConsent::explicit(true, true, false),
             &json!({"steps":[{"type":"wait","ms":300},{"type":"text","text":"never"}]}),
             &cancel,
         )

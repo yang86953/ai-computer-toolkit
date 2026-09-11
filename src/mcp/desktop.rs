@@ -42,6 +42,71 @@ pub struct ToolOutcome {
     pub is_error: bool,
 }
 
+/// 一次工具调用的授权来源：显式确认字段或 session 会话继承。
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AuthorizationBasis {
+    /// 调用方显式给出全套确认字段并全部通过校验。
+    Explicit,
+    /// 字段被省略且当前会话以 authorizationMode=session 打开。
+    Inherited,
+}
+
+impl AuthorizationBasis {
+    /// 输入类请求要下发给 broker 的确认字段；继承时省略，由 broker 侧同一事实校验。
+    fn input_fields(self) -> Value {
+        match self {
+            Self::Explicit => json!({
+                "confirmed": true,
+                "foregroundConsent": true,
+                "strictIsolation": false,
+            }),
+            Self::Inherited => json!({}),
+        }
+    }
+
+    /// 截图/观察类请求的确认字段。
+    fn capture_fields(self) -> Value {
+        match self {
+            Self::Explicit => json!({
+                "confirmed": true,
+                "strictIsolation": false,
+            }),
+            Self::Inherited => json!({}),
+        }
+    }
+}
+
+/// 校验显式/继承的确认字段组合；不含会话状态，便于独立回归。
+///
+/// 规则与 broker 模块一致：显式拒绝优先闭合；字段省略只允许继承自
+/// session 授权会话；部分显式 + 部分省略同样要求 session 会话。
+fn authorization_basis(
+    confirmed: Option<bool>,
+    foreground: Option<bool>,
+    strict: Option<bool>,
+    write: bool,
+    session_scoped: bool,
+    connected: bool,
+) -> Result<AuthorizationBasis, BrokerFailure> {
+    if confirmed == Some(false) || strict == Some(true) || (write && foreground == Some(false)) {
+        return Err(BrokerFailure::failed(
+            "CONSENT_REQUIRED",
+            "Desktop foreground requires existing user authorization with strictIsolation=false.",
+        ));
+    }
+    let complete = confirmed.is_some() && strict.is_some() && (!write || foreground.is_some());
+    if complete {
+        return Ok(AuthorizationBasis::Explicit);
+    }
+    if session_scoped && connected {
+        return Ok(AuthorizationBasis::Inherited);
+    }
+    Err(BrokerFailure::failed(
+        "CONSENT_REQUIRED",
+        "Connect with authorizationMode=session to inherit one confirmation per session, or pass confirmed/foregroundConsent=true with strictIsolation=false explicitly.",
+    ))
+}
+
 impl ToolOutcome {
     /// 纯文本结果。
     fn text(value: &Value) -> Self {
@@ -75,11 +140,37 @@ impl ToolOutcome {
     }
 }
 
+/// 测试探针：暴露授权基判定矩阵给清单回归，不触碰会话状态。
+#[cfg(test)]
+pub(crate) fn authorization_basis_probe(
+    confirmed: Option<bool>,
+    foreground: Option<bool>,
+    strict: Option<bool>,
+    write: bool,
+    session_scoped: bool,
+    connected: bool,
+) -> Result<&'static str, &'static str> {
+    match authorization_basis(
+        confirmed,
+        foreground,
+        strict,
+        write,
+        session_scoped,
+        connected,
+    ) {
+        Ok(AuthorizationBasis::Explicit) => Ok("explicit"),
+        Ok(AuthorizationBasis::Inherited) => Ok("inherited"),
+        Err(_) => Err("CONSENT_REQUIRED"),
+    }
+}
+
 /// 一个 MCP 客户端独占的桌面会话。
 pub struct Desktop {
     broker: Option<Broker>,
     session: Option<String>,
     frame: Option<String>,
+    /// 当前会话是否以 authorizationMode=session 打开（省略确认字段的依据）。
+    session_scoped: bool,
     directory: PathBuf,
     cancellation: crate::components::desktop_session_input_cancellation::DesktopInputCancellation,
 }
@@ -119,6 +210,7 @@ impl Desktop {
             broker: None,
             session: None,
             frame: None,
+            session_scoped: false,
             directory,
             cancellation: Default::default(),
         })
@@ -162,6 +254,14 @@ impl Desktop {
                         "Unknown tool argument.",
                     ));
                 };
+                if let Some(allowed) = spec.get("enum").and_then(Value::as_array) {
+                    if !allowed.contains(value) {
+                        return Err(BrokerFailure::failed(
+                            "INVALID_ARGUMENT",
+                            "Tool argument is outside the declared enum.",
+                        ));
+                    }
+                }
                 let valid = match spec["type"].as_str() {
                     Some("integer") => value.as_u64().is_some_and(|n| {
                         n >= spec["minimum"].as_u64().unwrap_or(0)
@@ -200,20 +300,21 @@ impl Desktop {
                 )
             }
             "computer_disconnect" => self.disconnect(&arguments),
+            "computer_authorization" => self.authorization(&arguments),
             "computer_observe" => {
-                self.require_authorization(&arguments, false)?;
+                let basis = self.require_authorization(&arguments, false)?;
                 self.require_session(&arguments)?;
-                self.observe(&arguments)
+                self.observe(&arguments, basis)
             }
             "computer_interact" | "computer_keys" | "computer_pointer" => {
-                self.require_authorization(&arguments, true)?;
+                let basis = self.require_authorization(&arguments, true)?;
                 self.require_session(&arguments)?;
-                self.input(name, &arguments)
+                self.input(name, &arguments, basis)
             }
             "computer_run" => {
-                self.require_authorization(&arguments, true)?;
+                let basis = self.require_authorization(&arguments, true)?;
                 self.require_session(&arguments)?;
-                self.run(&arguments)
+                self.run(&arguments, basis)
             }
             _ => Err(BrokerFailure::failed(
                 "INVALID_ARGUMENT",
@@ -223,21 +324,22 @@ impl Desktop {
     }
 
     /// 采集/输入共用的授权检查；授权不足时不触达桌面。
+    ///
+    /// connect 总是要求完整显式确认（一次确认点）；其余工具按
+    /// [`authorization_basis`] 允许 session 会话继承省略字段。
     fn require_authorization(
         &self,
         arguments: &serde_json::Map<String, Value>,
         write: bool,
-    ) -> Result<(), BrokerFailure> {
-        let confirmed = arguments.get("confirmed").and_then(Value::as_bool) == Some(true);
-        let isolated = arguments.get("strictIsolation").and_then(Value::as_bool) != Some(false);
-        let foreground = arguments.get("foregroundConsent").and_then(Value::as_bool) == Some(true);
-        if !confirmed || isolated || (write && !foreground) {
-            return Err(BrokerFailure::failed(
-                "CONSENT_REQUIRED",
-                "Desktop foreground requires existing user authorization with strictIsolation=false.",
-            ));
-        }
-        Ok(())
+    ) -> Result<AuthorizationBasis, BrokerFailure> {
+        authorization_basis(
+            arguments.get("confirmed").and_then(Value::as_bool),
+            arguments.get("foregroundConsent").and_then(Value::as_bool),
+            arguments.get("strictIsolation").and_then(Value::as_bool),
+            write,
+            self.session_scoped,
+            self.broker.is_some(),
+        )
     }
 
     /// 校验调用方只使用本客户端返回的会话标识。
@@ -299,16 +401,29 @@ impl Desktop {
             .get("timeoutMs")
             .and_then(Value::as_u64)
             .unwrap_or(30_000);
+        let session_scope =
+            arguments.get("authorizationMode").and_then(Value::as_str) == Some("session");
+        let remember = arguments
+            .get("rememberAuthorization")
+            .and_then(Value::as_bool)
+            == Some(true);
         let mut broker = Broker::start(&program)?;
         broker.set_cancellation(self.cancellation.clone());
+        let mut open = json!({
+            "confirmed": true,
+            "foregroundConsent": true,
+            "strictIsolation": false,
+            "timeoutMs": timeout_ms,
+        });
+        if session_scope {
+            open["authorizationScope"] = json!("session");
+        }
+        if remember {
+            open["rememberAuthorization"] = json!(true);
+        }
         let response = broker.call(
             "open",
-            json!({
-                "confirmed": true,
-                "foregroundConsent": true,
-                "strictIsolation": false,
-                "timeoutMs": timeout_ms,
-            }),
+            open,
             Duration::from_millis(timeout_ms) + Duration::from_secs(5),
         );
         match response {
@@ -337,6 +452,11 @@ impl Desktop {
                     ));
                 }
                 self.session = Some(session);
+                self.session_scoped = data
+                    .get("authorization")
+                    .and_then(|value| value.get("mode"))
+                    == Some(&json!("session"))
+                    || session_scope;
                 self.broker = Some(broker);
                 Ok(ToolOutcome::text(&data))
             }
@@ -345,6 +465,59 @@ impl Desktop {
                 Err(failure)
             }
         }
+    }
+
+    /// 查看或撤销本工具记住的桌面授权；与 CLI/broker 共用同一授权事实。
+    fn authorization(
+        &mut self,
+        arguments: &serde_json::Map<String, Value>,
+    ) -> Result<ToolOutcome, BrokerFailure> {
+        let action = arguments
+            .get("action")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let operation = match action {
+            "status" => "authorization-status",
+            "forget" => "forget-authorization",
+            _ => {
+                return Err(BrokerFailure::failed(
+                    "INVALID_ARGUMENT",
+                    "computer_authorization action must be 'status' or 'forget'.",
+                ));
+            }
+        };
+        let response = match self.broker.as_mut() {
+            Some(broker) => broker.call(operation, json!({}), Duration::from_secs(20))?,
+            None => {
+                // 未连接时临时拉起 broker 读取/清除共享的用户级保存授权。
+                let program = std::env::current_exe().map_err(|error| {
+                    BrokerFailure::failed("BROKER_START_FAILED", error.to_string())
+                })?;
+                let program = program.to_string_lossy().to_string();
+                let mut broker = Broker::start(&program)?;
+                let response = broker.call(operation, json!({}), Duration::from_secs(20));
+                let response = match response {
+                    Ok(response) => response,
+                    Err(failure) => {
+                        broker.stop();
+                        return Err(failure);
+                    }
+                };
+                broker.stop();
+                response
+            }
+        };
+        if operation == "forget-authorization" {
+            // 撤销同时停止本客户端 live 会话：重置本地会话状态并释放 broker。
+            self.session = None;
+            self.frame = None;
+            self.session_scoped = false;
+            if let Some(mut broker) = self.broker.take() {
+                broker.stop();
+            }
+        }
+        let data = response.get("data").cloned().unwrap_or(json!({}));
+        Ok(ToolOutcome::text(&data))
     }
 
     /// 关闭会话、读回空 sessions 并释放 broker。
@@ -388,6 +561,7 @@ impl Desktop {
         })();
         self.session = None;
         self.frame = None;
+        self.session_scoped = false;
         broker.stop();
         result
     }
@@ -396,6 +570,7 @@ impl Desktop {
     fn observe(
         &mut self,
         arguments: &serde_json::Map<String, Value>,
+        basis: AuthorizationBasis,
     ) -> Result<ToolOutcome, BrokerFailure> {
         self.frame = None;
         let capture = self.capture_fields(arguments);
@@ -406,12 +581,13 @@ impl Desktop {
             .ok_or_else(|| BrokerFailure::failed("BROKER_CLOSED", "No active broker."))?;
         let response = broker.call(
             "observe",
-            json!({
-                "sessionId": session,
-                "confirmed": true,
-                "strictIsolation": false,
-                "input": capture,
-            }),
+            with_extra(
+                json!({
+                    "sessionId": session,
+                    "input": capture,
+                }),
+                basis.capture_fields(),
+            ),
             Duration::from_secs(70),
         )?;
         self.image_result(&response, &capture)
@@ -422,6 +598,7 @@ impl Desktop {
         &mut self,
         name: &str,
         arguments: &serde_json::Map<String, Value>,
+        basis: AuthorizationBasis,
     ) -> Result<ToolOutcome, BrokerFailure> {
         self.require_frame(arguments)?;
         let frame = arguments
@@ -453,17 +630,17 @@ impl Desktop {
         if name == "computer_pointer" {
             let interaction = match broker.call(
                 "input-pointer",
-                json!({
-                    "sessionId": session,
-                    "confirmed": true,
-                    "foregroundConsent": true,
-                    "strictIsolation": false,
-                    "input": {
-                        "coordinateSpace": super::tools::relative_coordinate_space(),
-                        "steps": steps,
-                        "timeoutMs": timeout_ms,
-                    },
-                }),
+                with_extra(
+                    json!({
+                        "sessionId": session,
+                        "input": {
+                            "coordinateSpace": super::tools::relative_coordinate_space(),
+                            "steps": steps,
+                            "timeoutMs": timeout_ms,
+                        },
+                    }),
+                    basis.input_fields(),
+                ),
                 Duration::from_millis(timeout_ms) + Duration::from_secs(5),
             ) {
                 Ok(interaction) => interaction,
@@ -475,12 +652,13 @@ impl Desktop {
             let interaction = interaction.get("data").cloned().unwrap_or(json!({}));
             let response = match broker.call(
                 "observe",
-                json!({
-                    "sessionId": session,
-                    "confirmed": true,
-                    "strictIsolation": false,
-                    "input": capture,
-                }),
+                with_extra(
+                    json!({
+                        "sessionId": session,
+                        "input": capture,
+                    }),
+                    basis.capture_fields(),
+                ),
                 Duration::from_secs(70),
             ) {
                 Ok(response) => response,
@@ -515,14 +693,14 @@ impl Desktop {
         }
         let response = match broker.call(
             "interact",
-            json!({
-                "sessionId": session,
-                "confirmed": true,
-                "foregroundConsent": true,
-                "strictIsolation": false,
-                "input": { "frameId": frame, "steps": steps, "timeoutMs": timeout_ms },
-                "observation": capture,
-            }),
+            with_extra(
+                json!({
+                    "sessionId": session,
+                    "input": { "frameId": frame, "steps": steps, "timeoutMs": timeout_ms },
+                    "observation": capture,
+                }),
+                basis.input_fields(),
+            ),
             Duration::from_millis(timeout_ms) + Duration::from_secs(70),
         ) {
             Ok(response) => response,
@@ -541,6 +719,7 @@ impl Desktop {
     fn run(
         &mut self,
         arguments: &serde_json::Map<String, Value>,
+        basis: AuthorizationBasis,
     ) -> Result<ToolOutcome, BrokerFailure> {
         let batches = arguments
             .get("batches")
@@ -577,7 +756,7 @@ impl Desktop {
 
         // 起始帧由 run 自己补：调用方不必先 observe，也不必逐批给 frameId。
         self.frame = None;
-        let mut frame = self.observe_frame(&session, arguments)?;
+        let mut frame = self.observe_frame(&session, arguments, basis)?;
         let mut records: Vec<Value> = Vec::new();
         let mut frames: Vec<(usize, Vec<u8>)> = Vec::new();
         let mut stopped: Option<Value> = None;
@@ -609,14 +788,14 @@ impl Desktop {
                 .ok_or_else(|| BrokerFailure::failed("BROKER_CLOSED", "No active broker."))?;
             let response = broker.call(
                 "interact",
-                json!({
-                    "sessionId": session,
-                    "confirmed": true,
-                    "foregroundConsent": true,
-                    "strictIsolation": false,
-                    "input": { "frameId": frame, "steps": steps, "timeoutMs": timeout_ms },
-                    "observation": capture,
-                }),
+                with_extra(
+                    json!({
+                        "sessionId": session,
+                        "input": { "frameId": frame, "steps": steps, "timeoutMs": timeout_ms },
+                        "observation": capture,
+                    }),
+                    basis.input_fields(),
+                ),
                 Duration::from_millis(timeout_ms) + Duration::from_secs(70),
             );
             let response = match response {
@@ -640,7 +819,7 @@ impl Desktop {
                         }));
                         break;
                     }
-                    frame = self.observe_frame(&session, arguments)?;
+                    frame = self.observe_frame(&session, arguments, basis)?;
                     continue;
                 }
             };
@@ -678,7 +857,7 @@ impl Desktop {
                 }
                 None => {
                     self.frame = None;
-                    frame = self.observe_frame(&session, arguments)?;
+                    frame = self.observe_frame(&session, arguments, basis)?;
                 }
             }
         }
@@ -715,6 +894,7 @@ impl Desktop {
         &mut self,
         session: &str,
         arguments: &serde_json::Map<String, Value>,
+        basis: AuthorizationBasis,
     ) -> Result<String, BrokerFailure> {
         let capture = self.capture_fields(arguments);
         let path = capture
@@ -728,12 +908,13 @@ impl Desktop {
             .ok_or_else(|| BrokerFailure::failed("BROKER_CLOSED", "No active broker."))?;
         let response = broker.call(
             "observe",
-            json!({
-                "sessionId": session,
-                "confirmed": true,
-                "strictIsolation": false,
-                "input": capture,
-            }),
+            with_extra(
+                json!({
+                    "sessionId": session,
+                    "input": capture,
+                }),
+                basis.capture_fields(),
+            ),
             Duration::from_secs(70),
         );
         let _ = fs::remove_file(&path);
@@ -813,6 +994,7 @@ impl Desktop {
     pub fn dispose(&mut self) {
         self.session = None;
         self.frame = None;
+        self.session_scoped = false;
         if let Some(mut broker) = self.broker.take() {
             broker.stop();
         }
@@ -826,6 +1008,16 @@ fn wants_frame(index: usize, total: usize, capture_every: u64) -> bool {
         return true;
     }
     capture_every > 0 && (index as u64 + 1) % capture_every == 0
+}
+
+/// 把额外字段合并进 broker 请求对象；继承授权时 extra 为空对象即完全省略。
+fn with_extra(mut request: Value, extra: Value) -> Value {
+    if let (Some(target), Some(fields)) = (request.as_object_mut(), extra.as_object()) {
+        for (key, value) in fields {
+            target.insert(key.clone(), value.clone());
+        }
+    }
+    request
 }
 
 /// 预检拒绝时把帧还给会话：broker 明确报告没有投递事件，观察结论仍然成立。

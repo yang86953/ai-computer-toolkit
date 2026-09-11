@@ -28,6 +28,190 @@ mod interaction;
 #[path = "desktop_subscription.rs"]
 mod subscription;
 
+/// open 请求显式选择的授权作用域。
+///
+/// `Session` 表示 connect/open 处的一次确认覆盖整条会话；`PerOperation` 保持
+/// 逐操作显式确认的旧模式（缺省兼容）。显式拒绝不能被任何作用域继承覆盖。
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum DesktopAuthorizationScope {
+    #[default]
+    PerOperation,
+    Session,
+}
+
+impl DesktopAuthorizationScope {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::PerOperation => "operation",
+            Self::Session => "session",
+        }
+    }
+}
+
+/// open 请求携带的完整授权意图。
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct DesktopSessionAuthorization {
+    pub(crate) scope: DesktopAuthorizationScope,
+    /// 请求按平台原生机制记住授权（Linux Portal persist_mode=2 + restore token）。
+    pub(crate) remember: bool,
+}
+
+/// Adapter 报告的持久化授权事实；只有脱敏布尔与原因，绝不携带 token。
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct DesktopAuthorizationPersistenceState {
+    /// 本次 open 是否请求了记住授权。
+    pub(crate) requested: bool,
+    /// 本次 open 是否消费了已保存授权（向 Portal 提交了 restore token）。
+    pub(crate) restored_from_saved: bool,
+    /// 本次 open 后本地是否持有可用 restore token。
+    pub(crate) token_retained: bool,
+    /// 请求记住但未保存成功的原因；None 表示无异常或未请求。
+    pub(crate) note: Option<&'static str>,
+}
+
+/// 传给 Adapter 的持久化意图；Adapter 只在 Remember 时读写自有存储。
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum DesktopAuthorizationPersistence {
+    #[default]
+    None,
+    Remember,
+}
+
+/// 单次操作请求携带的显式确认字段；`None` 字段在 session 授权下继承已授予作用域。
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct DesktopConsent {
+    pub(crate) confirmed: Option<bool>,
+    pub(crate) foreground_consent: Option<bool>,
+    pub(crate) strict_isolation: Option<bool>,
+}
+
+impl DesktopConsent {
+    /// 全显式构造（旧调用与测试用）：三个字段都有确定值。
+    #[cfg(test)]
+    pub(crate) const fn explicit(confirmed: bool, foreground: bool, strict: bool) -> Self {
+        Self {
+            confirmed: Some(confirmed),
+            foreground_consent: Some(foreground),
+            strict_isolation: Some(strict),
+        }
+    }
+
+    fn isolation_of(strict: bool) -> IsolationRequirement {
+        if strict {
+            IsolationRequirement::Strict
+        } else {
+            IsolationRequirement::Standard
+        }
+    }
+}
+
+/// 本工具保存授权的脱敏状态；不区分具体 token 内容。
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum DesktopSavedAuthorizationState {
+    /// 平台后端不支持记住授权（如 Windows）。
+    Unsupported,
+    /// 没有保存任何授权。
+    Absent,
+    /// 持有一条可尝试恢复的已保存授权。
+    Saved,
+    /// 存储存在但未通过私有性校验，拒绝使用。
+    Unreadable,
+}
+
+impl DesktopSavedAuthorizationState {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Unsupported => "unsupported",
+            Self::Absent => "absent",
+            Self::Saved => "saved",
+            Self::Unreadable => "unreadable",
+        }
+    }
+}
+
+/// 查询本工具保存授权得到的脱敏事实。
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct DesktopSavedAuthorization {
+    state: DesktopSavedAuthorizationState,
+    backend: &'static str,
+}
+
+impl DesktopSavedAuthorization {
+    pub(crate) const fn unsupported() -> Self {
+        Self {
+            state: DesktopSavedAuthorizationState::Unsupported,
+            backend: "none",
+        }
+    }
+
+    pub(crate) const fn of(state: DesktopSavedAuthorizationState, backend: &'static str) -> Self {
+        Self { state, backend }
+    }
+
+    pub(crate) const fn state(&self) -> DesktopSavedAuthorizationState {
+        self.state
+    }
+
+    pub(crate) const fn backend(&self) -> &'static str {
+        self.backend
+    }
+}
+
+/// 清除本工具保存授权的结果事实。
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct DesktopSavedAuthorizationForget {
+    had_saved: bool,
+    cleared: bool,
+}
+
+impl DesktopSavedAuthorizationForget {
+    pub(crate) const fn nothing_to_clear() -> Self {
+        Self {
+            had_saved: false,
+            cleared: true,
+        }
+    }
+
+    pub(crate) const fn outcome(had_saved: bool, cleared: bool) -> Self {
+        Self { had_saved, cleared }
+    }
+
+    pub(crate) const fn had_saved(&self) -> bool {
+        self.had_saved
+    }
+
+    pub(crate) const fn cleared(&self) -> bool {
+        self.cleared
+    }
+}
+
+/// 撤销入口的完整报告：清除保存凭据并停止本客户端 live 会话。
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct DesktopAuthorizationForgetReport {
+    had_saved: bool,
+    cleared: bool,
+    sessions_closed: usize,
+    close_failures: usize,
+}
+
+impl DesktopAuthorizationForgetReport {
+    pub(crate) const fn had_saved(&self) -> bool {
+        self.had_saved
+    }
+
+    pub(crate) const fn cleared(&self) -> bool {
+        self.cleared
+    }
+
+    pub(crate) const fn sessions_closed(&self) -> usize {
+        self.sessions_closed
+    }
+
+    pub(crate) const fn close_failures(&self) -> usize {
+        self.close_failures
+    }
+}
+
 /// 保存 Portal/EIS 建立后允许跨层公开的 provider-neutral 事实。
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct DesktopSessionFacts {
@@ -37,6 +221,7 @@ pub(crate) struct DesktopSessionFacts {
     authorized_device_classes: Vec<&'static str>,
     stream_count: usize,
     mapping_id_count: usize,
+    authorization_persistence: DesktopAuthorizationPersistenceState,
 }
 
 impl DesktopSessionFacts {
@@ -55,7 +240,21 @@ impl DesktopSessionFacts {
             authorized_device_classes,
             stream_count,
             mapping_id_count,
+            authorization_persistence: DesktopAuthorizationPersistenceState::default(),
         }
+    }
+
+    /// 附加 Adapter 报告的持久化授权事实（仅 Linux Portal Remember 路径设置）。
+    pub(crate) fn with_persistence(
+        mut self,
+        persistence: DesktopAuthorizationPersistenceState,
+    ) -> Self {
+        self.authorization_persistence = persistence;
+        self
+    }
+
+    pub(crate) const fn authorization_persistence(&self) -> DesktopAuthorizationPersistenceState {
+        self.authorization_persistence
     }
 
     pub(crate) const fn remote_desktop_version(&self) -> u32 {
@@ -87,6 +286,7 @@ impl DesktopSessionFacts {
             authorized_device_classes: vec!["keyboard", "pointer"],
             stream_count,
             mapping_id_count: 1,
+            authorization_persistence: DesktopAuthorizationPersistenceState::default(),
         }
     }
 
@@ -426,10 +626,26 @@ impl DesktopPointerDispatchFacts {
 
 /// Module 面向平台 Adapter 的窄端口，不暴露 D-Bus、EIS 或 FD 类型。
 pub(crate) trait DesktopSessionPort {
+    /// 平台是否支持跨进程记住授权；Windows 沿用 OS 自身边界，保持 false。
+    const PERSISTENT_AUTHORIZATION_SUPPORTED: bool = false;
+
     fn open(
         &self,
         timeout: Duration,
+        persistence: DesktopAuthorizationPersistence,
     ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>;
+
+    /// 读取本工具保存授权的脱敏状态；默认平台无存储。
+    fn saved_authorization(&self) -> DesktopSavedAuthorization {
+        DesktopSavedAuthorization::unsupported()
+    }
+
+    /// 清除本工具保存的授权凭据；默认平台没有任何可清除内容。
+    fn forget_saved_authorization(
+        &self,
+    ) -> Result<DesktopSavedAuthorizationForget, DesktopSessionPortFailure> {
+        Ok(DesktopSavedAuthorizationForget::nothing_to_clear())
+    }
 }
 
 /// 保存可返回给 System 的 live 会话只读投影。
@@ -437,6 +653,7 @@ pub(crate) trait DesktopSessionPort {
 pub(crate) struct DesktopSessionView {
     session_id: String,
     facts: DesktopSessionFacts,
+    authorization: DesktopSessionAuthorization,
     input_events_sent: usize,
     frames_captured: usize,
     pixels_consumed: u64,
@@ -449,6 +666,10 @@ impl DesktopSessionView {
 
     pub(crate) const fn facts(&self) -> &DesktopSessionFacts {
         &self.facts
+    }
+
+    pub(crate) const fn authorization(&self) -> DesktopSessionAuthorization {
+        self.authorization
     }
 
     pub(crate) const fn input_events_sent(&self) -> usize {
@@ -603,6 +824,7 @@ struct DesktopSessionEntry {
     view: DesktopSessionView,
     lease: Box<dyn DesktopSessionLease>,
     observation: Option<interaction::Observation>,
+    authorization: DesktopSessionAuthorization,
 }
 
 /// 拥有同一进程代际内全部 live Portal 桌面会话。
@@ -626,9 +848,22 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
         foreground_consent: bool,
         isolation_requirement: IsolationRequirement,
         timeout: Duration,
+        authorization: DesktopSessionAuthorization,
     ) -> AppResult<DesktopSessionView> {
         validate_open_permissions(confirmed, foreground_consent, isolation_requirement)?;
         validate_open_timeout(timeout)?;
+        if authorization.remember && !P::PERSISTENT_AUTHORIZATION_SUPPORTED {
+            // 平台没有可用的原生记住授权机制时如实拒绝，不静默降级也不伪造。
+            return Err(AppControlError::with_details(
+                "DESKTOP_AUTHORIZATION_PERSISTENCE_UNSUPPORTED",
+                "Remembering desktop authorization requires the Linux Portal backend.",
+                json!({
+                    "portalRequestIssued": false,
+                    "retrySafe": false,
+                    "fallback": "none",
+                }),
+            ));
+        }
         if self.sessions.len() >= MAXIMUM_LIVE_SESSIONS {
             return Err(AppControlError::with_details(
                 "RESOURCE_EXHAUSTED",
@@ -642,7 +877,12 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
         }
         // 在发出可见 Portal 请求前生成公开身份，避免成功后随机源失败。
         let session_id = desktop_session_identity::new_session_target()?;
-        let (lease, facts) = self.port.open(timeout).map_err(port_error)?;
+        let persistence = if authorization.remember {
+            DesktopAuthorizationPersistence::Remember
+        } else {
+            DesktopAuthorizationPersistence::None
+        };
+        let (lease, facts) = self.port.open(timeout, persistence).map_err(port_error)?;
         if !facts.is_valid_l1_projection() {
             return match lease.close() {
                 Ok(()) => Err(AppControlError::new(
@@ -664,6 +904,7 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
         let view = DesktopSessionView {
             session_id: session_id.clone(),
             facts,
+            authorization,
             input_events_sent: 0,
             frames_captured: 0,
             pixels_consumed: 0,
@@ -674,9 +915,37 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
                 view: view.clone(),
                 lease,
                 observation: None,
+                authorization,
             },
         );
         Ok(view)
+    }
+
+    /// 读取本工具保存授权的脱敏状态。
+    pub(crate) fn saved_authorization(&self) -> DesktopSavedAuthorization {
+        self.port.saved_authorization()
+    }
+
+    /// 清除本工具保存的授权凭据，并停止本 Module 持有的全部 live 会话。
+    pub(crate) fn forget_authorization(&mut self) -> AppResult<DesktopAuthorizationForgetReport> {
+        let mut ids = self.sessions.keys().cloned().collect::<Vec<_>>();
+        ids.sort();
+        let mut sessions_closed = 0;
+        let mut close_failures = 0;
+        for id in ids {
+            if self.close(&id).is_ok() {
+                sessions_closed += 1;
+            } else {
+                close_failures += 1;
+            }
+        }
+        let forget = self.port.forget_saved_authorization().map_err(port_error)?;
+        Ok(DesktopAuthorizationForgetReport {
+            had_saved: forget.had_saved(),
+            cleared: forget.cleared(),
+            sessions_closed,
+            close_failures,
+        })
     }
 
     /// 列出本 Module 代际仍由工具持有的 live 会话。
@@ -703,13 +972,11 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
     pub(crate) fn send_keyboard(
         &mut self,
         session_id: &str,
-        confirmed: bool,
-        foreground_consent: bool,
-        isolation_requirement: IsolationRequirement,
+        consent: DesktopConsent,
         value: &Value,
         cancellation: &DesktopInputCancellation,
     ) -> AppResult<DesktopKeyboardReport> {
-        validate_input_permissions(confirmed, foreground_consent, isolation_requirement)?;
+        self.resolve_input_consent(session_id, consent)?;
         let input = desktop_session_keyboard_input::parse(value)?;
         validate_session_target(session_id)?;
         let dispatch = {
@@ -750,13 +1017,11 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
     pub(crate) fn send_pointer(
         &mut self,
         session_id: &str,
-        confirmed: bool,
-        foreground_consent: bool,
-        isolation_requirement: IsolationRequirement,
+        consent: DesktopConsent,
         value: &Value,
         cancellation: &DesktopInputCancellation,
     ) -> AppResult<DesktopPointerReport> {
-        validate_input_permissions(confirmed, foreground_consent, isolation_requirement)?;
+        self.resolve_input_consent(session_id, consent)?;
         let input = desktop_session_pointer_input::parse(value)?;
         validate_session_target(session_id)?;
         let dispatch = {
@@ -798,11 +1063,10 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
     pub(crate) fn capture_frame(
         &mut self,
         session_id: &str,
-        confirmed: bool,
-        isolation_requirement: IsolationRequirement,
+        consent: DesktopConsent,
         value: &Value,
     ) -> AppResult<DesktopFrameCaptureReport> {
-        validate_capture_permissions(confirmed, isolation_requirement)?;
+        self.resolve_capture_consent(session_id, consent)?;
         let input = desktop_session_frame_capture::parse_input(value)?;
         validate_session_target(session_id)?;
         if !self.sessions.contains_key(session_id) {
@@ -868,6 +1132,93 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
         Ok(DesktopSessionCloseReport {
             session_id: session_id.to_owned(),
         })
+    }
+
+    /// 解析输入类操作的确认字段。
+    ///
+    /// 全显式请求保持旧门禁语义；任何省略字段只能来自 session 授权继承，
+    /// 显式拒绝先于继承闭合，不能被已授予作用域覆盖。
+    fn resolve_input_consent(&self, session_id: &str, consent: DesktopConsent) -> AppResult<()> {
+        let DesktopConsent {
+            confirmed,
+            foreground_consent,
+            strict_isolation,
+        } = consent;
+        if let (Some(confirmed), Some(foreground), Some(strict)) =
+            (confirmed, foreground_consent, strict_isolation)
+        {
+            validate_input_permissions(
+                confirmed,
+                foreground,
+                DesktopConsent::isolation_of(strict),
+            )?;
+            return Ok(());
+        }
+        if let Some(confirmed) = confirmed {
+            validate_input_permissions(confirmed, true, IsolationRequirement::Standard)?;
+        }
+        if let Some(strict) = strict_isolation {
+            validate_input_permissions(true, true, DesktopConsent::isolation_of(strict))?;
+        }
+        if let Some(foreground) = foreground_consent {
+            validate_input_permissions(true, foreground, IsolationRequirement::Standard)?;
+        }
+        self.inherit_session_consent(session_id, true)
+    }
+
+    /// 解析截图/观察类操作的确认字段；规则与输入一致，只缺前景同意维度。
+    fn resolve_capture_consent(&self, session_id: &str, consent: DesktopConsent) -> AppResult<()> {
+        let DesktopConsent {
+            confirmed,
+            strict_isolation,
+            ..
+        } = consent;
+        if let (Some(confirmed), Some(strict)) = (confirmed, strict_isolation) {
+            validate_capture_permissions(confirmed, DesktopConsent::isolation_of(strict))?;
+            return Ok(());
+        }
+        if let Some(confirmed) = confirmed {
+            validate_capture_permissions(confirmed, IsolationRequirement::Standard)?;
+        }
+        if let Some(strict) = strict_isolation {
+            validate_capture_permissions(true, DesktopConsent::isolation_of(strict))?;
+        }
+        self.inherit_session_consent(session_id, false)
+    }
+
+    /// 省略字段只能从仍持有的 session 授权会话继承；其余情况保持显式要求。
+    fn inherit_session_consent(&self, session_id: &str, input: bool) -> AppResult<()> {
+        validate_session_target(session_id)?;
+        match self
+            .sessions
+            .get(session_id)
+            .map(|entry| entry.authorization.scope)
+        {
+            None => Err(stale_session_error()),
+            Some(DesktopAuthorizationScope::Session) => Ok(()),
+            Some(DesktopAuthorizationScope::PerOperation) => Err(if input {
+                AppControlError::with_details(
+                    "CONFIRMATION_REQUIRED",
+                    "Desktop-session input requires explicit confirmation fields unless the session was opened with authorizationScope=session.",
+                    json!({
+                        "inputAttempted": false,
+                        "confirmationFieldsOmitted": true,
+                        "fallback": "none",
+                    }),
+                )
+            } else {
+                AppControlError::with_details(
+                    "CONFIRMATION_REQUIRED",
+                    "Screen capture requires explicit confirmation fields unless the session was opened with authorizationScope=session.",
+                    json!({
+                        "pixelsConsumed": false,
+                        "outputTouched": false,
+                        "confirmationFieldsOmitted": true,
+                        "fallback": "none",
+                    }),
+                )
+            }),
+        }
     }
 }
 
@@ -1229,6 +1580,7 @@ mod tests {
         fn open(
             &self,
             _: Duration,
+            _: DesktopAuthorizationPersistence,
         ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
         {
             self.opens.fetch_add(1, Ordering::Relaxed);
@@ -1280,6 +1632,7 @@ mod tests {
                 true,
                 IsolationRequirement::Standard,
                 Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
             )
             .unwrap_or_else(|error| panic!("desktop session open failed: {error}"));
         assert!(opened.session_id().starts_with("s2:i:"));
@@ -1311,14 +1664,13 @@ mod tests {
                 true,
                 IsolationRequirement::Standard,
                 Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
             )
             .unwrap_or_else(|error| panic!("desktop session open failed: {error}"));
         let report = module
             .send_keyboard(
                 opened.session_id(),
-                true,
-                true,
-                IsolationRequirement::Standard,
+                DesktopConsent::explicit(true, true, false),
                 &json!({"steps": [{"type": "key", "key": "enter"}]}),
                 &DesktopInputCancellation::new(),
             )
@@ -1347,14 +1699,13 @@ mod tests {
                 true,
                 IsolationRequirement::Standard,
                 Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
             )
             .unwrap_or_else(|error| panic!("desktop session open failed: {error}"));
         let report = module
             .send_pointer(
                 opened.session_id(),
-                true,
-                true,
-                IsolationRequirement::Standard,
+                DesktopConsent::explicit(true, true, false),
                 &json!({
                     "coordinateSpace": "relative-logical-px",
                     "steps": [{"type": "move", "delta": {"x": 12, "y": -4}}]
@@ -1388,6 +1739,7 @@ mod tests {
                 true,
                 IsolationRequirement::Standard,
                 Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
             )
             .unwrap_or_else(|error| panic!("desktop session open failed: {error}"));
         let directory = std::env::temp_dir().join(format!(
@@ -1401,8 +1753,7 @@ mod tests {
         let report = module
             .capture_frame(
                 opened.session_id(),
-                true,
-                IsolationRequirement::Standard,
+                DesktopConsent::explicit(true, true, false),
                 &json!({"path": destination.to_string_lossy(), "timeoutMs": 1000}),
             )
             .unwrap_or_else(|error| panic!("desktop frame capture failed: {error}"));
@@ -1435,6 +1786,7 @@ mod tests {
                 true,
                 IsolationRequirement::Standard,
                 Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
             )
             .unwrap_or_else(|error| panic!("desktop session open failed: {error}"));
         let cancellation = DesktopInputCancellation::new();
@@ -1442,9 +1794,7 @@ mod tests {
         let error = required_error(
             module.send_keyboard(
                 opened.session_id(),
-                true,
-                true,
-                IsolationRequirement::Standard,
+                DesktopConsent::explicit(true, true, false),
                 &json!({"steps": [{"type": "key", "key": "enter"}]}),
                 &cancellation,
             ),
@@ -1469,6 +1819,7 @@ mod tests {
                 true,
                 IsolationRequirement::Standard,
                 Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
             )
             .unwrap_or_else(|error| panic!("desktop session open failed: {error}"));
         let error = required_error(
@@ -1494,6 +1845,7 @@ mod tests {
                     true,
                     IsolationRequirement::Standard,
                     Duration::from_secs(120),
+                    DesktopSessionAuthorization::default(),
                 )
                 .unwrap_or_else(|error| panic!("first desktop session open failed: {error}"));
             let _second = module
@@ -1502,6 +1854,7 @@ mod tests {
                     true,
                     IsolationRequirement::Standard,
                     Duration::from_secs(120),
+                    DesktopSessionAuthorization::default(),
                 )
                 .unwrap_or_else(|error| panic!("second desktop session open failed: {error}"));
         }
@@ -1518,6 +1871,7 @@ mod tests {
                 true,
                 IsolationRequirement::Standard,
                 Duration::from_secs(9),
+                DesktopSessionAuthorization::default(),
             ),
             "short timeout must fail",
         );
@@ -1540,6 +1894,7 @@ mod tests {
                 true,
                 IsolationRequirement::Standard,
                 Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
             ),
             "missing confirmation must fail",
         );
@@ -1550,6 +1905,7 @@ mod tests {
                 false,
                 IsolationRequirement::Standard,
                 Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
             ),
             "missing foreground consent must fail",
         );
@@ -1560,6 +1916,7 @@ mod tests {
                 true,
                 IsolationRequirement::Strict,
                 Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
             ),
             "strict isolation must reject visible Portal flow",
         );
@@ -1576,5 +1933,335 @@ mod tests {
         assert_eq!(error.details["sessionCleanupConfirmed"], true);
         assert_eq!(error.details["retrySafe"], false);
         assert_eq!(error.details["automaticRetryProhibited"], true);
+    }
+
+    fn session_authorization() -> DesktopSessionAuthorization {
+        DesktopSessionAuthorization {
+            scope: DesktopAuthorizationScope::Session,
+            remember: false,
+        }
+    }
+
+    #[test]
+    fn session_scope_inherits_consent_for_input_and_capture() {
+        let (port, opens, _) = fake(false);
+        let mut module = DesktopSessionModule::new(port);
+        let opened = module
+            .open(
+                true,
+                true,
+                IsolationRequirement::Standard,
+                Duration::from_secs(120),
+                session_authorization(),
+            )
+            .unwrap_or_else(|error| panic!("session-scope open failed: {error}"));
+        assert_eq!(
+            opened.authorization().scope,
+            DesktopAuthorizationScope::Session
+        );
+        // 省略全部确认字段：输入继承 open 处的一次确认。
+        module
+            .send_keyboard(
+                opened.session_id(),
+                DesktopConsent::default(),
+                &json!({"steps": [{"type": "key", "key": "enter"}]}),
+                &DesktopInputCancellation::new(),
+            )
+            .unwrap_or_else(|error| panic!("inherited keyboard dispatch failed: {error}"));
+        // 部分显式（confirmed=true、省略其余）同样允许继承剩余字段。
+        module
+            .send_pointer(
+                opened.session_id(),
+                DesktopConsent {
+                    confirmed: Some(true),
+                    ..DesktopConsent::default()
+                },
+                &json!({
+                    "coordinateSpace": "relative-logical-px",
+                    "steps": [{"type": "move", "delta": {"x": 1, "y": 1}}]
+                }),
+                &DesktopInputCancellation::new(),
+            )
+            .unwrap_or_else(|error| panic!("partial explicit pointer dispatch failed: {error}"));
+        // 显式拒绝不能被已授予作用域覆盖。
+        let refused = required_error(
+            module.send_keyboard(
+                opened.session_id(),
+                DesktopConsent::explicit(false, true, false),
+                &json!({"steps": [{"type": "key", "key": "enter"}]}),
+                &DesktopInputCancellation::new(),
+            ),
+            "explicit refusal must not be overridden by session scope",
+        );
+        assert_eq!(refused.code, "CONFIRMATION_REQUIRED");
+        assert_eq!(refused.details["inputAttempted"], false);
+        let strict = required_error(
+            module.send_keyboard(
+                opened.session_id(),
+                DesktopConsent::explicit(true, true, true),
+                &json!({"steps": [{"type": "key", "key": "enter"}]}),
+                &DesktopInputCancellation::new(),
+            ),
+            "explicit strict isolation must not be overridden by session scope",
+        );
+        assert_eq!(strict.code, "ISOLATION_REQUIRED");
+        assert_eq!(strict.details["inputAttempted"], false);
+        assert_eq!(opens.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn per_operation_scope_still_requires_explicit_confirmation_fields() {
+        let (port, opens, _) = fake(false);
+        let mut module = DesktopSessionModule::new(port);
+        let opened = module
+            .open(
+                true,
+                true,
+                IsolationRequirement::Standard,
+                Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
+            )
+            .unwrap_or_else(|error| panic!("open failed: {error}"));
+        let omitted = required_error(
+            module.send_keyboard(
+                opened.session_id(),
+                DesktopConsent::default(),
+                &json!({"steps": [{"type": "key", "key": "enter"}]}),
+                &DesktopInputCancellation::new(),
+            ),
+            "omitted fields must not inherit in per-operation mode",
+        );
+        assert_eq!(omitted.code, "CONFIRMATION_REQUIRED");
+        assert_eq!(omitted.details["inputAttempted"], false);
+        assert_eq!(omitted.details["confirmationFieldsOmitted"], true);
+        let omitted_capture = required_error(
+            module.capture_frame(
+                opened.session_id(),
+                DesktopConsent::default(),
+                &json!({"path": "/tmp/act-omitted-consent.png"}),
+            ),
+            "omitted capture fields must not inherit in per-operation mode",
+        );
+        assert_eq!(omitted_capture.code, "CONFIRMATION_REQUIRED");
+        assert_eq!(omitted_capture.details["confirmationFieldsOmitted"], true);
+        // 全显式仍可用（旧调用兼容）。
+        module
+            .send_keyboard(
+                opened.session_id(),
+                DesktopConsent::explicit(true, true, false),
+                &json!({"steps": [{"type": "key", "key": "enter"}]}),
+                &DesktopInputCancellation::new(),
+            )
+            .unwrap_or_else(|error| panic!("explicit dispatch failed: {error}"));
+        assert_eq!(opens.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn omitted_fields_without_live_session_report_stale_target() {
+        let (port, _, _) = fake(false);
+        let mut module = DesktopSessionModule::new(port);
+        let error = required_error(
+            module.send_keyboard(
+                "s2:i:0123456789abcdef",
+                DesktopConsent::default(),
+                &json!({"steps": [{"type": "key", "key": "enter"}]}),
+                &DesktopInputCancellation::new(),
+            ),
+            "omitted consent without a live session must be stale",
+        );
+        assert_eq!(error.code, "STALE_SESSION");
+    }
+
+    #[test]
+    fn remember_on_unsupported_backend_fails_before_provider_access() {
+        let (port, opens, _) = fake(false);
+        let mut module = DesktopSessionModule::new(port);
+        let error = required_error(
+            module.open(
+                true,
+                true,
+                IsolationRequirement::Standard,
+                Duration::from_secs(120),
+                DesktopSessionAuthorization {
+                    scope: DesktopAuthorizationScope::Session,
+                    remember: true,
+                },
+            ),
+            "remember must fail on backends without native persistence",
+        );
+        assert_eq!(error.code, "DESKTOP_AUTHORIZATION_PERSISTENCE_UNSUPPORTED");
+        assert_eq!(error.details["portalRequestIssued"], false);
+        assert_eq!(opens.load(Ordering::Relaxed), 0);
+    }
+
+    /// 模拟支持持久化的端口：保存/轮换 fake token，用于验证模块报告的脱敏事实。
+    struct RememberingPort {
+        grants_token: bool,
+        saved: std::sync::Mutex<Option<String>>,
+    }
+
+    impl DesktopSessionPort for RememberingPort {
+        const PERSISTENT_AUTHORIZATION_SUPPORTED: bool = true;
+
+        fn open(
+            &self,
+            _: Duration,
+            persistence: DesktopAuthorizationPersistence,
+        ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
+        {
+            let mut state = DesktopAuthorizationPersistenceState::default();
+            if persistence == DesktopAuthorizationPersistence::Remember {
+                state.requested = true;
+                let saved = self
+                    .saved
+                    .lock()
+                    .unwrap_or_else(|poison| poison.into_inner())
+                    .clone();
+                state.restored_from_saved = saved.is_some();
+                if self.grants_token {
+                    *self
+                        .saved
+                        .lock()
+                        .unwrap_or_else(|poison| poison.into_inner()) =
+                        Some("fake-portal-restore-token".to_owned());
+                    state.token_retained = true;
+                } else {
+                    state.note = Some("portal-did-not-grant-persistence");
+                }
+            }
+            let closes = Arc::new(AtomicUsize::new(0));
+            Ok((
+                Box::new(FakeLease {
+                    closes,
+                    close_fails: false,
+                }),
+                valid_facts().with_persistence(state),
+            ))
+        }
+
+        fn saved_authorization(&self) -> DesktopSavedAuthorization {
+            let state = if self
+                .saved
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner())
+                .is_some()
+            {
+                DesktopSavedAuthorizationState::Saved
+            } else {
+                DesktopSavedAuthorizationState::Absent
+            };
+            DesktopSavedAuthorization::of(state, "fake-store")
+        }
+
+        fn forget_saved_authorization(
+            &self,
+        ) -> Result<DesktopSavedAuthorizationForget, DesktopSessionPortFailure> {
+            let mut saved = self
+                .saved
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner());
+            let had = saved.is_some();
+            *saved = None;
+            Ok(DesktopSavedAuthorizationForget::outcome(had, true))
+        }
+    }
+
+    #[test]
+    fn remembered_authorization_reports_desensitized_retention_facts() {
+        let port = RememberingPort {
+            grants_token: true,
+            saved: std::sync::Mutex::new(None),
+        };
+        let mut module = DesktopSessionModule::new(port);
+        let remember = DesktopSessionAuthorization {
+            scope: DesktopAuthorizationScope::Session,
+            remember: true,
+        };
+        let first = module
+            .open(
+                true,
+                true,
+                IsolationRequirement::Standard,
+                Duration::from_secs(120),
+                remember,
+            )
+            .unwrap_or_else(|error| panic!("first remembered open failed: {error}"));
+        let retention = first.facts().authorization_persistence();
+        assert!(retention.requested);
+        assert!(!retention.restored_from_saved);
+        assert!(retention.token_retained);
+        assert_eq!(
+            module.saved_authorization().state(),
+            DesktopSavedAuthorizationState::Saved
+        );
+        // 第二次连接消费已保存授权并轮换出新 token。
+        let second = module
+            .open(
+                true,
+                true,
+                IsolationRequirement::Standard,
+                Duration::from_secs(120),
+                remember,
+            )
+            .unwrap_or_else(|error| panic!("second remembered open failed: {error}"));
+        let rotation = second.facts().authorization_persistence();
+        assert!(rotation.restored_from_saved);
+        assert!(rotation.token_retained);
+        // 未请求记住时 Adapter 不读写存储，事实保持缺省。
+        let plain = module
+            .open(
+                true,
+                true,
+                IsolationRequirement::Standard,
+                Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
+            )
+            .unwrap_or_else(|error| panic!("plain open failed: {error}"));
+        assert_eq!(
+            plain.facts().authorization_persistence(),
+            DesktopAuthorizationPersistenceState::default()
+        );
+        // 撤销入口：清除保存凭据并停止本 Module 的 live 会话。
+        let report = module
+            .forget_authorization()
+            .unwrap_or_else(|error| panic!("forget authorization failed: {error}"));
+        assert!(report.had_saved());
+        assert!(report.cleared());
+        assert_eq!(report.sessions_closed(), 3);
+        assert_eq!(report.close_failures(), 0);
+        assert!(module.sessions().is_empty());
+        assert_eq!(
+            module.saved_authorization().state(),
+            DesktopSavedAuthorizationState::Absent
+        );
+    }
+
+    #[test]
+    fn ungranted_persistence_reports_honest_note() {
+        let port = RememberingPort {
+            grants_token: false,
+            saved: std::sync::Mutex::new(None),
+        };
+        let mut module = DesktopSessionModule::new(port);
+        let opened = module
+            .open(
+                true,
+                true,
+                IsolationRequirement::Standard,
+                Duration::from_secs(120),
+                DesktopSessionAuthorization {
+                    scope: DesktopAuthorizationScope::Session,
+                    remember: true,
+                },
+            )
+            .unwrap_or_else(|error| panic!("open without granted persistence failed: {error}"));
+        let retention = opened.facts().authorization_persistence();
+        assert!(retention.requested);
+        assert!(!retention.token_retained);
+        assert_eq!(retention.note, Some("portal-did-not-grant-persistence"));
+        assert_eq!(
+            module.saved_authorization().state(),
+            DesktopSavedAuthorizationState::Absent
+        );
     }
 }

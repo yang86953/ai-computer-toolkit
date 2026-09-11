@@ -27,6 +27,9 @@ use crate::{
     adapters::linux::{
         desktop_frame_pipewire::{self, PipeWireStreamTarget},
         desktop_input_eis::DesktopEisInput,
+        desktop_portal_authorization_store::{
+            PortalAuthorizationStore, PortalAuthorizationStoreError,
+        },
         desktop_session_host_activity_logind::SystemLoginSessionMonitor,
     },
     components::{
@@ -38,9 +41,11 @@ use crate::{
         keyboard_input_contract::KeyboardInput,
     },
     modules::desktop_session::{
-        DesktopKeyboardDispatchFacts, DesktopPointerDispatchFacts, DesktopSessionFacts,
-        DesktopSessionFrameFailure, DesktopSessionInputFailure, DesktopSessionLease,
-        DesktopSessionPort, DesktopSessionPortFailure,
+        DesktopAuthorizationPersistence, DesktopAuthorizationPersistenceState,
+        DesktopKeyboardDispatchFacts, DesktopPointerDispatchFacts, DesktopSavedAuthorization,
+        DesktopSavedAuthorizationForget, DesktopSessionFacts, DesktopSessionFrameFailure,
+        DesktopSessionInputFailure, DesktopSessionLease, DesktopSessionPort,
+        DesktopSessionPortFailure,
     },
 };
 
@@ -59,6 +64,8 @@ const DEVICE_KEYBOARD: u32 = 1;
 const DEVICE_POINTER: u32 = 2;
 const REQUESTED_DEVICES: u32 = DEVICE_KEYBOARD | DEVICE_POINTER;
 const SOURCE_MONITOR: u32 = 1;
+/// RemoteDesktop SelectDevices 的 persist_mode=2：授权保留直到显式撤销。
+const PERSIST_UNTIL_REVOKED: u32 = 2;
 static NEXT_REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
 /// 生产 Module 使用的无状态 Portal Adapter。
@@ -66,14 +73,42 @@ static NEXT_REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 pub(crate) struct SystemDesktopSessionPortal;
 
 impl DesktopSessionPort for SystemDesktopSessionPortal {
+    const PERSISTENT_AUTHORIZATION_SUPPORTED: bool = true;
+
     fn open(
         &self,
         timeout: Duration,
+        persistence: DesktopAuthorizationPersistence,
     ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
     {
-        async_io::block_on(open_live_session(timeout))
+        async_io::block_on(open_live_session(timeout, persistence))
             .map(|(lease, facts)| (Box::new(lease) as Box<dyn DesktopSessionLease>, facts))
     }
+
+    fn saved_authorization(&self) -> DesktopSavedAuthorization {
+        match PortalAuthorizationStore::open_default() {
+            Ok(store) => store.status(),
+            Err(_) => DesktopSavedAuthorization::of(
+                crate::modules::desktop_session::DesktopSavedAuthorizationState::Unreadable,
+                "xdg-portal-restore-token",
+            ),
+        }
+    }
+
+    fn forget_saved_authorization(
+        &self,
+    ) -> Result<DesktopSavedAuthorizationForget, DesktopSessionPortFailure> {
+        let store = PortalAuthorizationStore::open_default()
+            .map_err(|_| authorization_store_failure("DESKTOP_AUTHORIZATION_STORE_UNUSABLE"))?;
+        store
+            .forget()
+            .map_err(|_| authorization_store_failure("DESKTOP_AUTHORIZATION_FORGET_FAILED"))
+    }
+}
+
+/// 记住授权的存储失败统一为打开前失败；retrySafe 由 before_session 语义给出。
+fn authorization_store_failure(code: &'static str) -> DesktopSessionPortFailure {
+    DesktopSessionPortFailure::before_session(code, "authorization-store")
 }
 
 /// 原生资源只存在于 Adapter 内部，不进入 Module 或 JSON 边界。
@@ -671,12 +706,64 @@ struct SessionLease {
     closed_confirmed: bool,
 }
 
+/// 记住授权时传给 SelectDevices 的持久化意图与已保存 token。
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct DevicePersistence {
+    /// 请求 persist_mode=2。
+    remember: bool,
+    /// 向 Portal 提交的已保存 restore token（恢复尝试）。
+    restore_token: Option<String>,
+}
+
+/// 记住授权的完整计划：持有存储引用与恢复 token，锁由调用方保管。
+struct RememberedAuthorizationPlan {
+    store: PortalAuthorizationStore,
+    restore_token: Option<String>,
+}
+
+impl RememberedAuthorizationPlan {
+    fn device_persistence(&self) -> DevicePersistence {
+        DevicePersistence {
+            remember: true,
+            restore_token: self.restore_token.clone(),
+        }
+    }
+}
+
 /// 完成真实零输入、零像素的打开序列，并保留 live lease。
+///
+/// `Remember` 持久化意图会先取得跨进程互斥并读取已保存 token：同一枚
+/// 单次 token 不会被并发连接重复消费；token 只在 Adapter 内部流转。
 async fn open_live_session(
     timeout: Duration,
+    persistence: DesktopAuthorizationPersistence,
 ) -> Result<(PortalDesktopSessionLease, DesktopSessionFacts), DesktopSessionPortFailure> {
     verify_wayland_session().map_err(PortalFailure::before_session)?;
     let deadline = Deadline::new(timeout);
+    // 持有到 open 序列结束：guard 在栈上存活即保持互斥，不读它的值。
+    let _authorization_lock;
+    let mut remembered_plan: Option<RememberedAuthorizationPlan> = None;
+    if persistence == DesktopAuthorizationPersistence::Remember {
+        let store = PortalAuthorizationStore::open_default()
+            .map_err(|_| authorization_store_failure("DESKTOP_AUTHORIZATION_STORE_UNUSABLE"))?;
+        // 锁覆盖整个恢复/授权序列与 token 轮换，进程异常终止时由内核释放。
+        _authorization_lock =
+            store
+                .lock_exclusive(deadline.expires)
+                .map_err(|error| match error {
+                    PortalAuthorizationStoreError::LockBusy => {
+                        authorization_store_failure("DESKTOP_AUTHORIZATION_BUSY")
+                    }
+                    _ => authorization_store_failure("DESKTOP_AUTHORIZATION_STORE_UNUSABLE"),
+                })?;
+        let restore_token = store
+            .read_token()
+            .map_err(|_| authorization_store_failure("DESKTOP_AUTHORIZATION_STORE_UNUSABLE"))?;
+        remembered_plan = Some(RememberedAuthorizationPlan {
+            store,
+            restore_token,
+        });
+    }
     let connection = connect_user_bus()
         .await
         .map_err(PortalFailure::before_session)?;
@@ -723,6 +810,7 @@ async fn open_live_session(
             &mut owner_changes,
             &deadline,
             versions,
+            remembered_plan.as_ref(),
         )
         .await;
         let live = match live {
@@ -755,13 +843,24 @@ async fn establish_live_evidence(
     owner_changes: &mut MessageStream,
     deadline: &Deadline,
     versions: (u32, u32),
+    remembered: Option<&RememberedAuthorizationPlan>,
 ) -> Result<LiveEvidence, PortalFailure> {
     let LiveEvidenceDependencies {
         remote,
         screen_cast,
         host_session,
     } = dependencies;
-    select_devices(connection, remote, sender, session, owner_changes, deadline).await?;
+    let device_persistence = remembered.map(|plan| plan.device_persistence());
+    select_devices(
+        connection,
+        remote,
+        sender,
+        session,
+        owner_changes,
+        deadline,
+        device_persistence.as_ref(),
+    )
+    .await?;
     select_sources(
         connection,
         screen_cast,
@@ -773,6 +872,8 @@ async fn establish_live_evidence(
     .await?;
     let start = start_session(connection, remote, sender, session, owner_changes, deadline).await?;
     let projection = project_start(start, versions.0, versions.1)?;
+    // Start 成功即轮换保存：即使后续 EIS/PipeWire 阶段失败，新授权仍可恢复。
+    let persistence_state = retain_restore_token(remembered, projection.restore_token.as_deref());
     let eis_fd = connect_to_eis(remote, session).await?;
     let input_timeout = deadline.remaining("eis-handshake")?;
     let mut input =
@@ -784,7 +885,7 @@ async fn establish_live_evidence(
     Ok(LiveEvidence {
         subscription: None,
         subscription_totals: (0, 0),
-        facts: projection.facts,
+        facts: projection.facts.with_persistence(persistence_state),
         input,
         host_session,
         pipe_wire_remote: Some(OwnedFd::from(pipe_wire_remote)),
@@ -792,11 +893,57 @@ async fn establish_live_evidence(
     })
 }
 
+/// 按 Portal Start 响应保存/轮换 restore token，并投影脱敏持久化事实。
+///
+/// token 单次有效：Start 成功返回下一枚；未请求记住、Portal 未授出或保存
+/// 失败时如实报告未持久化，绝不伪造可恢复状态，token 也不离开本函数。
+fn retain_restore_token(
+    remembered: Option<&RememberedAuthorizationPlan>,
+    granted_token: Option<&str>,
+) -> DesktopAuthorizationPersistenceState {
+    let Some(plan) = remembered else {
+        return DesktopAuthorizationPersistenceState::default();
+    };
+    let mut state = DesktopAuthorizationPersistenceState {
+        requested: true,
+        restored_from_saved: plan.restore_token.is_some(),
+        token_retained: false,
+        note: None,
+    };
+    match granted_token.filter(|token| {
+        !token.is_empty()
+            && token.len() <= 4096
+            && token.bytes().all(|byte| (0x20..0x7f).contains(&byte))
+    }) {
+        Some(token) => match plan.store.save_token(token) {
+            Ok(()) => {
+                state.token_retained = true;
+            }
+            Err(_) => {
+                // 旧 token 可能已被本次恢复消费；保存失败时作废记录，避免下次
+                // 拿已消费 token 冒充可恢复授权。
+                let _ = plan.store.discard_token();
+                state.note = Some("store-write-failed");
+            }
+        },
+        None => {
+            state.note = Some("portal-did-not-grant-persistence");
+            // Portal 未授出持久化；旧 token 若已消费同样不再可信。
+            if state.restored_from_saved {
+                let _ = plan.store.discard_token();
+            }
+        }
+    }
+    state
+}
+
 #[derive(Debug, Eq, PartialEq)]
 struct StartProjection {
     facts: DesktopSessionFacts,
     stream_target: PipeWireStreamTarget,
     capture_mapping_id: Option<String>,
+    /// Start 返回的下一枚单次 restore token；只在 Adapter 内部流转。
+    restore_token: Option<String>,
 }
 
 fn project_start(
@@ -825,7 +972,7 @@ fn project_start(
     if mapping_id_count == 0 {
         return Err(PortalFailure::new("MAPPING_ID_MISSING", "start"));
     }
-    let _restore_token_was_discarded = start.restore_token.is_some();
+    let restore_token = start.restore_token;
     let first_stream = start
         .streams
         .first()
@@ -849,6 +996,7 @@ fn project_start(
             mapping_id_count,
         ),
         stream_target,
+        restore_token,
     })
 }
 
@@ -1043,6 +1191,27 @@ async fn create_session(
     }
 }
 
+/// 构造 SelectDevices 的 options；持久化意图只在显式记住授权时出现。
+fn device_selection_options<'a>(
+    handle_token: &'a str,
+    persistence: Option<&'a DevicePersistence>,
+) -> HashMap<&'static str, ZValue<'a>> {
+    let mut options = HashMap::<&'static str, ZValue<'a>>::new();
+    options.insert("handle_token", ZValue::from(handle_token));
+    options.insert("types", ZValue::from(REQUESTED_DEVICES));
+    if let Some(persistence) = persistence
+        && persistence.remember
+    {
+        // 组合 RemoteDesktop+ScreenCast 会话的持久化只走 RemoteDesktop；
+        // ScreenCast.SelectSources 不接受持久化选项。
+        options.insert("persist_mode", ZValue::from(PERSIST_UNTIL_REVOKED));
+        if let Some(token) = persistence.restore_token.as_deref() {
+            options.insert("restore_token", ZValue::from(token));
+        }
+    }
+    options
+}
+
 async fn select_devices(
     connection: &zbus::Connection,
     remote: &Proxy<'_>,
@@ -1050,11 +1219,10 @@ async fn select_devices(
     session: &OwnedObjectPath,
     owner_changes: &mut MessageStream,
     deadline: &Deadline,
+    persistence: Option<&DevicePersistence>,
 ) -> Result<(), PortalFailure> {
     let mut pending = PendingRequest::prepare(connection, sender, "select-devices").await?;
-    let mut options = HashMap::<&str, ZValue<'_>>::new();
-    options.insert("handle_token", ZValue::from(pending.token()));
-    options.insert("types", ZValue::from(REQUESTED_DEVICES));
+    let options = device_selection_options(pending.token(), persistence);
     let returned = remote
         .call_with_flags::<_, _, OwnedObjectPath>(
             "SelectDevices",
@@ -1413,7 +1581,7 @@ mod tests {
     }
 
     #[test]
-    fn start_projection_discards_restore_token_and_native_identities() {
+    fn start_projection_carries_restore_token_without_native_identities() {
         let result = project_start(
             StartResponse {
                 devices: REQUESTED_DEVICES,
@@ -1424,7 +1592,7 @@ mod tests {
                         pipewire_serial: None,
                     },
                 )],
-                restore_token: Some("discard-me".to_owned()),
+                restore_token: Some("rotate-me".to_owned()),
             },
             2,
             5,
@@ -1439,6 +1607,70 @@ mod tests {
         assert_eq!(result.facts.stream_count(), 1);
         assert_eq!(result.facts.mapping_id_count(), 1);
         assert_eq!(result.stream_target, PipeWireStreamTarget::NodeId(9001));
+        // token 只在 Adapter 内部流转；公开事实保持缺省（不含 token）。
+        assert_eq!(result.restore_token.as_deref(), Some("rotate-me"));
+        assert_eq!(
+            result.facts.authorization_persistence(),
+            DesktopAuthorizationPersistenceState::default()
+        );
+    }
+
+    #[test]
+    fn device_options_request_persistence_only_for_remembered_authorization() {
+        let plain = device_selection_options("act-handle", None);
+        assert_eq!(plain.len(), 2);
+        assert!(plain.contains_key("handle_token"));
+        assert!(plain.contains_key("types"));
+        assert!(!plain.contains_key("persist_mode"));
+        assert!(!plain.contains_key("restore_token"));
+
+        let fresh_remembered = DevicePersistence {
+            remember: true,
+            restore_token: None,
+        };
+        let fresh_remember = device_selection_options("act-handle", Some(&fresh_remembered));
+        assert_eq!(fresh_remember.len(), 3);
+        assert!(fresh_remember.contains_key("persist_mode"));
+        assert!(!fresh_remember.contains_key("restore_token"));
+
+        let remembered = DevicePersistence {
+            remember: true,
+            restore_token: Some("saved-token".to_owned()),
+        };
+        let restore = device_selection_options("act-handle", Some(&remembered));
+        assert_eq!(restore.len(), 4);
+        assert!(restore.contains_key("persist_mode"));
+        assert!(restore.contains_key("restore_token"));
+    }
+
+    #[test]
+    fn retention_reports_desensitized_facts_without_exposing_tokens() {
+        let directory = std::env::temp_dir().join(format!(
+            "act-portal-retention-{}-{}",
+            std::process::id(),
+            NEXT_REQUEST_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let store = PortalAuthorizationStore::open_at(directory.clone());
+        let plan = RememberedAuthorizationPlan {
+            store,
+            restore_token: None,
+        };
+        // Portal 未授出持久化：如实报告未保存。
+        let denied = retain_restore_token(Some(&plan), None);
+        assert!(denied.requested);
+        assert!(!denied.restored_from_saved);
+        assert!(!denied.token_retained);
+        assert_eq!(denied.note, Some("portal-did-not-grant-persistence"));
+        // 授出并保存：轮换成功，token 不出现在任何公开事实里。
+        let retained = retain_restore_token(Some(&plan), Some("next-single-use-token"));
+        assert!(retained.requested);
+        assert!(retained.token_retained);
+        assert_eq!(retained.note, None);
+        // 未请求记住：保持缺省，不触碰存储。
+        let skipped = retain_restore_token(None, Some("some-token"));
+        assert_eq!(skipped, DesktopAuthorizationPersistenceState::default());
+        let _ = std::fs::remove_file(directory.join("portal-restore-token"));
+        let _ = std::fs::remove_dir(&directory);
     }
 
     #[test]

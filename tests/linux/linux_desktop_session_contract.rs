@@ -86,6 +86,14 @@ fn broker_schema_accepts_strict_public_frames_and_rejects_native_fields()
         "timeoutMs": 120000
     });
     assert_valid(&broker, &open)?;
+    // 一次授权会话模式与记住授权意图是合法请求形态。
+    let mut scoped = open.clone();
+    scoped["authorizationScope"] = json!("session");
+    scoped["rememberAuthorization"] = json!(true);
+    assert_valid(&broker, &scoped)?;
+    let mut bad_scope = scoped.clone();
+    bad_scope["authorizationScope"] = json!("forever");
+    assert!(assert_valid(&broker, &bad_scope).is_err());
     let mut leaked = open;
     leaked["portalSessionPath"] = json!("/org/freedesktop/private");
     assert!(assert_valid(&broker, &leaked).is_err());
@@ -115,6 +123,18 @@ fn broker_schema_accepts_strict_public_frames_and_rejects_native_fields()
         }
     });
     assert_valid(&broker, &key)?;
+    // session 授权会话可以省略确认字段。
+    let mut omitted = key.clone();
+    omitted.as_object_mut().expect("object").remove("confirmed");
+    omitted
+        .as_object_mut()
+        .expect("object")
+        .remove("foregroundConsent");
+    omitted
+        .as_object_mut()
+        .expect("object")
+        .remove("strictIsolation");
+    assert_valid(&broker, &omitted)?;
     let mut native = key.clone();
     native["input"]["steps"][1]["linuxKeyCode"] = json!(30);
     assert!(assert_valid(&broker, &native).is_err());
@@ -174,6 +194,67 @@ fn broker_schema_accepts_strict_public_frames_and_rejects_native_fields()
     let mut native_capture = capture;
     native_capture["pipeWireNodeId"] = json!(42);
     assert!(assert_valid(&broker, &native_capture).is_err());
+    // 授权状态与撤销入口也是契约内请求；不得携带多余字段。
+    for operation in ["authorization-status", "forget-authorization"] {
+        let status = json!({
+            "contractVersion": CONTRACT,
+            "brokerEpoch": EPOCH_PATTERN_NONCE,
+            "requestNonce": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "operation": operation,
+        });
+        assert_valid(&broker, &status)?;
+        let mut native_status = status;
+        native_status["restoreToken"] = json!("secret-material");
+        assert!(assert_valid(&broker, &native_status).is_err());
+    }
+    // session 投影必须携带脱敏授权事实；token 值不属于公开形状。
+    let response_with_session = |data: Value| {
+        json!({
+            "contractVersion": CONTRACT,
+            "messageType": "response",
+            "brokerEpoch": EPOCH_PATTERN_NONCE,
+            "requestNonce": "51515151515151515151515151515151",
+            "operation": "inspect",
+            "transportAccepted": true,
+            "businessAccepted": true,
+            "outcome": "completed",
+            "completed": true,
+            "retrySafe": true,
+            "automaticRetryProhibited": false,
+            "acceptedMayHaveOccurred": true,
+            "data": data,
+            "error": null,
+        })
+    };
+    let session_with_persistence = json!({
+        "sessionId": "s2:i:0123456789abcdef",
+        "targetKind": "desktop-session",
+        "live": true,
+        "authorizedDeviceClasses": ["keyboard", "pointer"],
+        "streamMetadata": {"streamCount": 1, "mappingIdCount": 1},
+        "providerVersions": {"remoteDesktop": 2, "screenCast": 5},
+        "eisHandshakeComplete": true,
+        "pipeWireRemoteObtained": true,
+        "authorization": {
+            "mode": "session",
+            "persistence": {
+                "requested": true,
+                "restoredFromSaved": true,
+                "restoreTokenRetained": true,
+            },
+        },
+        "restoreTokenRetained": true,
+        "inputEventsSent": 0,
+        "framesCaptured": 0,
+        "pixelsConsumed": 0
+    });
+    assert_valid(
+        &broker,
+        &response_with_session(session_with_persistence.clone()),
+    )?;
+    let mut leaking = session_with_persistence;
+    leaking["authorization"]["persistence"]["restoreToken"] = json!("secret");
+    assert!(assert_valid(&broker, &response_with_session(leaking)).is_err());
     Ok(())
 }
 
@@ -290,8 +371,18 @@ fn real_launcher_stays_live_and_gates_open_before_portal_access()
     let broker_schema = schema(include_str!(
         "../../contracts/v1/linux-desktop-session-broker-v1.schema.json"
     ))?;
+    // 隔离状态目录：授权查询不得读写测试机用户的真实保存凭据。
+    let state_root = std::env::temp_dir().join(format!(
+        "act-launcher-state-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&state_root)?;
     let mut child = Command::new(env!("CARGO_BIN_EXE_ai-computer-toolkit"))
         .args(["session-host", "desktop"])
+        .env("XDG_STATE_HOME", &state_root)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -303,6 +394,8 @@ fn real_launcher_stays_live_and_gates_open_before_portal_access()
     let ready = read_frame(&mut output)?;
     assert_valid(&broker_schema, &ready)?;
     assert_eq!(ready["messageType"], "broker-ready");
+    assert_eq!(ready["persistentAuthorizationSupported"], true);
+    assert_eq!(ready["authorizationModes"], json!(["operation", "session"]));
     let epoch = ready["brokerEpoch"]
         .as_str()
         .ok_or("ready frame must include brokerEpoch")?;
@@ -325,6 +418,29 @@ fn real_launcher_stays_live_and_gates_open_before_portal_access()
     assert_eq!(gated["error"]["code"], "CONFIRMATION_REQUIRED");
     assert_eq!(gated["error"]["details"]["portalRequestIssued"], false);
 
+    // session 模式不是隐式授权：确认不足同样在 Portal 之前闭合。
+    write_frame(
+        &mut input,
+        &json!({
+            "contractVersion": CONTRACT,
+            "brokerEpoch": epoch,
+            "requestNonce": "45454545454545454545454545454545",
+            "operation": "open",
+            "confirmed": false,
+            "foregroundConsent": true,
+            "strictIsolation": false,
+            "timeoutMs": 120000,
+            "authorizationScope": "session"
+        }),
+    )?;
+    let scoped_gated = read_frame(&mut output)?;
+    assert_valid(&broker_schema, &scoped_gated)?;
+    assert_eq!(scoped_gated["error"]["code"], "CONFIRMATION_REQUIRED");
+    assert_eq!(
+        scoped_gated["error"]["details"]["portalRequestIssued"],
+        false
+    );
+
     write_frame(
         &mut input,
         &json!({
@@ -343,6 +459,23 @@ fn real_launcher_stays_live_and_gates_open_before_portal_access()
     assert_valid(&broker_schema, &input_gated)?;
     assert_eq!(input_gated["error"]["code"], "CONFIRMATION_REQUIRED");
     assert_eq!(input_gated["error"]["details"]["inputAttempted"], false);
+
+    // 无 live 会话时省略确认字段：无法继承，报告 STALE_SESSION 而非放行。
+    write_frame(
+        &mut input,
+        &json!({
+            "contractVersion": CONTRACT,
+            "brokerEpoch": epoch,
+            "requestNonce": "78787878787878787878787878787878",
+            "operation": "input-key",
+            "sessionId": "s2:i:0123456789abcdef",
+            "input": {"steps": [{"type": "key", "key": "enter"}]}
+        }),
+    )?;
+    let omitted_gated = read_frame(&mut output)?;
+    assert_valid(&broker_schema, &omitted_gated)?;
+    assert_eq!(omitted_gated["error"]["code"], "STALE_SESSION");
+    assert_eq!(omitted_gated["error"]["details"]["targetInvalidated"], true);
 
     write_frame(
         &mut input,
@@ -384,6 +517,43 @@ fn real_launcher_stays_live_and_gates_open_before_portal_access()
     assert_eq!(capture_gated["error"]["code"], "CONFIRMATION_REQUIRED");
     assert_eq!(capture_gated["error"]["details"]["pixelsConsumed"], false);
     assert_eq!(capture_gated["error"]["details"]["outputTouched"], false);
+
+    // 授权状态查询：脱敏事实，隔离目录下没有已保存授权。
+    write_frame(
+        &mut input,
+        &json!({
+            "contractVersion": CONTRACT,
+            "brokerEpoch": epoch,
+            "requestNonce": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "operation": "authorization-status"
+        }),
+    )?;
+    let status = read_frame(&mut output)?;
+    assert_valid(&broker_schema, &status)?;
+    assert_eq!(status["data"]["persistentAuthorizationSupported"], true);
+    assert_eq!(status["data"]["savedAuthorizationState"], "absent");
+    // 契约已拒绝任何携带凭据值的字段；这里再核对状态事实只有脱敏枚举与后端名。
+    assert_eq!(
+        status["data"]["savedAuthorizationBackend"],
+        "xdg-portal-restore-token"
+    );
+
+    // 撤销入口：无凭据可清时同样成功收尾，并如实声明不撤销系统 Portal 记录。
+    write_frame(
+        &mut input,
+        &json!({
+            "contractVersion": CONTRACT,
+            "brokerEpoch": epoch,
+            "requestNonce": "cccccccccccccccccccccccccccccccc",
+            "operation": "forget-authorization"
+        }),
+    )?;
+    let forgotten = read_frame(&mut output)?;
+    assert_valid(&broker_schema, &forgotten)?;
+    assert_eq!(forgotten["data"]["savedAuthorizationCleared"], true);
+    assert_eq!(forgotten["data"]["hadSavedAuthorization"], false);
+    assert_eq!(forgotten["data"]["liveSessionsClosed"], 0);
+    assert_eq!(forgotten["data"]["revokesSystemPortalRecords"], false);
 
     write_frame(
         &mut input,
@@ -427,6 +597,7 @@ fn real_launcher_stays_live_and_gates_open_before_portal_access()
     assert_eq!(shutdown["data"]["shutdownAccepted"], true);
     drop(input);
     assert!(child.wait()?.success());
+    let _ = std::fs::remove_dir_all(&state_root);
     Ok(())
 }
 

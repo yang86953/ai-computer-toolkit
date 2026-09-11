@@ -54,11 +54,10 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
     pub(crate) fn preflight_observation(
         &self,
         session_id: &str,
-        confirmed: bool,
-        isolation: IsolationRequirement,
+        consent: DesktopConsent,
         value: &Value,
     ) -> AppResult<()> {
-        validate_capture_permissions(confirmed, isolation)?;
+        self.resolve_capture_consent(session_id, consent)?;
         let input = desktop_session_frame_capture::parse_input(value)?;
         validate_session_target(session_id)?;
         if !self.sessions.contains_key(session_id) {
@@ -75,23 +74,21 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
     pub(crate) fn observe(
         &mut self,
         session_id: &str,
-        confirmed: bool,
-        isolation: IsolationRequirement,
+        consent: DesktopConsent,
         value: &Value,
     ) -> AppResult<ObservedFrame> {
-        self.observe_with_changes(session_id, confirmed, isolation, value, None)
+        self.observe_with_changes(session_id, consent, value, None)
     }
 
     /// 可选差分只比较调用方明确引用的最近基准，失败后不沿用旧定位。
     pub(crate) fn observe_with_changes(
         &mut self,
         session_id: &str,
-        confirmed: bool,
-        isolation: IsolationRequirement,
+        consent: DesktopConsent,
         value: &Value,
         change_detection: Option<&Value>,
     ) -> AppResult<ObservedFrame> {
-        validate_capture_permissions(confirmed, isolation)?;
+        self.resolve_capture_consent(session_id, consent)?;
         let options = change_detection.map(ChangeOptions::parse).transpose()?;
         desktop_session_frame_capture::parse_input(value)?;
         validate_session_target(session_id)?;
@@ -115,7 +112,7 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
                 == Some(&o.id)
         });
         let before = self.checked_mapping(session_id)?;
-        let mut frame = self.capture_frame(session_id, confirmed, isolation, value)?;
+        let mut frame = self.capture_frame(session_id, consent, value)?;
         let after = match self.checked_mapping(session_id) {
             Ok(mapping) => mapping,
             Err(mut error) => {
@@ -163,13 +160,11 @@ impl<P: DesktopSessionPort> DesktopSessionModule<P> {
     pub(crate) fn interact(
         &mut self,
         session_id: &str,
-        confirmed: bool,
-        foreground_consent: bool,
-        isolation: IsolationRequirement,
+        consent: DesktopConsent,
         value: &Value,
         cancellation: &DesktopInputCancellation,
     ) -> AppResult<InteractionReport> {
-        validate_input_permissions(confirmed, foreground_consent, isolation)?;
+        self.resolve_input_consent(session_id, consent)?;
         let plan = desktop_interaction::parse(value)?;
         validate_session_target(session_id)?;
         let current_mapping = if plan

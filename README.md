@@ -84,6 +84,7 @@ Supported protocol versions: `2024-11-05`, `2025-03-26`, `2025-06-18`.
 | `computer_pointer` | Relative movement, scroll and complete drags. |
 | `computer_run` | Run many input batches in one call; the server refreshes the frame between batches. |
 | `computer_disconnect` | Close the session, read back empty `sessions`, release the broker. |
+| `computer_authorization` | View or revoke the desktop authorization this tool remembered. |
 
 Operate as `connect → observe → confirm the target in the image →
 interact/keys/pointer → verify the returned image → disconnect`. For long
@@ -107,6 +108,38 @@ The authoritative schema for every tool is the one returned by `tools/list`.
 user has already given. They are not a permission an agent can award itself.
 `strictIsolation=true` is rejected rather than downgraded.
 
+`computer_connect` (broker `open`) always requires the full explicit triple: it
+is the single confirmation point. Two opt-in modes reuse that authorization:
+
+- **Session scope** (`authorizationMode=session`): one confirmation at connect
+  covers the whole session. Later `observe`/`interact`/`keys`/`pointer`/`run`
+  calls may omit the consent fields and inherit the granted scope; explicit
+  refusals (`confirmed=false`, `strictIsolation=true`) are still rejected and
+  can never be overridden by inheritance. The default `operation` scope keeps
+  the per-call explicit confirmation unchanged.
+- **Remembered authorization** (`rememberAuthorization=true`, Linux Portal
+  only): the open requests the Portal-native `persist_mode=2` and stores the
+  returned single-use restore token in the user's private state directory
+  (`XDG_STATE_HOME/ai-computer-toolkit`, 0700/0600, atomic replace, flock
+  serialized across processes). The next connection automatically attempts to
+  restore the same user authorization and rotates in the new token. Tokens
+  never appear in JSON results, logs, tasks or file names; responses only
+  report desensitized facts (`restoreTokenRetained`, `restoredFromSaved`).
+  If the Portal cannot restore (permission withdrawn, monitor changed), it
+  follows its documented behavior and shows the normal selection dialog —
+  this tool never auto-clicks it and never re-prompts on failure.
+
+`computer_authorization` (broker `authorization-status` /
+`forget-authorization`) exposes the same facts: `status` reports whether a
+reusable authorization is saved (no credential material), and `forget` clears
+the locally saved credentials and stops this client's live sessions. Forgetting
+only revokes what this tool stored; the system Portal's own permission records
+must be revoked separately in the desktop environment's permission settings,
+and responses state this via `revokesSystemPortalRecords=false`. Windows has no
+Portal restore token; it keeps the OS authorization boundary and supports the
+session scope only — requesting `rememberAuthorization` there fails closed
+before any dispatch.
+
 ### Failure signals
 
 | Signal | Meaning |
@@ -114,6 +147,8 @@ user has already given. They are not a permission an agent can award itself.
 | `STALE_SESSION` | Not this client's session; connect first. |
 | `STALE_FRAME` | Observe again; frames are never reused. |
 | `CONSENT_REQUIRED` | Required authorization is absent. |
+| `DESKTOP_AUTHORIZATION_PERSISTENCE_UNSUPPORTED` | Remembering is Linux Portal-only. |
+| `DESKTOP_AUTHORIZATION_BUSY` | Another connection is restoring the saved authorization; retry later. |
 | `OUTCOME_UNKNOWN` | The effect may have occurred. Verify before acting. |
 | `OBSERVATION_FAILED_AFTER_INPUT` | Input was dispatched but its screenshot failed. |
 | `BUSY` | Another call is in flight. |

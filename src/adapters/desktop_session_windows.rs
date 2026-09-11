@@ -210,6 +210,9 @@ impl DesktopSessionPort for SystemDesktopSessionPort {
     fn open(
         &self,
         _: Duration,
+        // Windows 沿用操作系统自身授权边界：不支持本工具记住授权，
+        // remember 请求在 Module 层按平台能力先行拒绝。
+        _: crate::modules::desktop_session::DesktopAuthorizationPersistence,
     ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
     {
         let fail = |_: AppControlError| {
