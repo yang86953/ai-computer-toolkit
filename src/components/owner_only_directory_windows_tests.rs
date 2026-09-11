@@ -102,3 +102,52 @@ fn invalid_names_and_existing_files_are_rejected() {
         Err(OwnerOnlyDirectoryError::DirectoryUnavailable)
     );
 }
+
+// 验证 MCP 真实生成的捕获目录名通过同一生产创建、加固与回读管线。
+#[test]
+fn real_generated_capture_directory_names_pass_production_validation() {
+    // 创建自有真实父目录。
+    let fixture = FixtureDirectory::new("real-name");
+    // 覆盖当前进程号与最大 u32 进程号的真实生成名。
+    for pid in [std::process::id(), u32::MAX] {
+        // 经生产生成器取得真实单段名。
+        let name = crate::mcp::desktop::capture_directory_name(pid);
+        // 真实名必须落在组件 64 字节单段上限内。
+        assert!(name.len() <= 64, "generated name exceeds the bound: {name}");
+        // 完整生产管线：创建即安装受保护 DACL 并回读逐值验证。
+        let directory = ensure_owner_only_child(&fixture.path, &name)
+            .unwrap_or_else(|error| panic!("real generated name rejected: {error:?}"));
+        // 当前用户必须保留子项写入权限。
+        fs::write(directory.join("probe.png"), b"private")
+            .unwrap_or_else(|error| panic!("owner-only write failed: {error}"));
+        // 最终项目仍必须是真实非 reparse 目录。
+        assert_eq!(validate_real_directory(&directory), Ok(()));
+    }
+}
+
+// 验证 64/65/96 字节长度与路径、非法字符边界固定闭合。
+#[test]
+fn name_length_and_charset_boundaries_fail_closed() {
+    // 创建自有真实父目录。
+    let fixture = FixtureDirectory::new("boundaries");
+    // 64 字节固定字符集名称是单段上限内的合法边界。
+    let exact = "a".repeat(64);
+    assert_eq!(
+        ensure_owner_only_child(&fixture.path, &exact),
+        Ok(fixture.path.join(&exact))
+    );
+    // 65 与 96 字节超限名称必须以 InvalidName 拒绝。
+    for length in [65_usize, 96] {
+        assert_eq!(
+            ensure_owner_only_child(&fixture.path, &"a".repeat(length)),
+            Err(OwnerOnlyDirectoryError::InvalidName)
+        );
+    }
+    // 空名称、两种路径分隔符与其他非法字符同样拒绝。
+    for name in ["", "nested/journal", "colon:name", "dot.name", "space name"] {
+        assert_eq!(
+            ensure_owner_only_child(&fixture.path, name),
+            Err(OwnerOnlyDirectoryError::InvalidName)
+        );
+    }
+}

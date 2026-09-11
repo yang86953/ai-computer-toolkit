@@ -148,7 +148,7 @@ fn uncertified_media_launcher_route_is_rust_fail_closed() -> Result<(), Box<dyn 
     // 解析媒体控制迁移契约。
     let policy: Value = serde_json::from_str(include_str!(
         // 使用编译期固定路径。
-        "contracts/media-control-migration-policy.json"
+        "../contracts/media-control-migration-policy.json"
     ))?;
     // 嵌入生产 launcher 以防止 opaque 目标重新触发 C++。
     let launcher = include_str!("../../tools/windows/Invoke-ComputerControl.ps1");

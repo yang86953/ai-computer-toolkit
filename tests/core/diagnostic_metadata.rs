@@ -44,7 +44,7 @@ fn runtime_diagnostics_exclude_build_and_cpp_migration_metadata()
     // 解析字段归属策略清单。
     let policy: Value = serde_json::from_str(include_str!(
         // 使用编译期固定路径。
-        "contracts/runtime-diagnostic-metadata-policy-v1.json"
+        "../contracts/runtime-diagnostic-metadata-policy-v1.json"
     ))?;
     // 解析 Rust runtime doctor envelope。
     let schema: Value = serde_json::from_str(include_str!(

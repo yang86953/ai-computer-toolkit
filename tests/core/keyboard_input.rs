@@ -168,7 +168,7 @@ fn migration_policy_freezes_rust_route_and_release_lifecycle()
     // 解析仓库内版本化迁移清单。
     let policy: Value = serde_json::from_str(include_str!(
         // 使用编译期固定路径。
-        "contracts/foreground-input-migration-policy.json"
+        "../contracts/foreground-input-migration-policy.json"
     ))?;
     // 统一 capability 必须直接走 Rust app.apply。
     assert_eq!(policy["productionRoute"], "app.apply");

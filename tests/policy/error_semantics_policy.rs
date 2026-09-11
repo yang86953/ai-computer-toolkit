@@ -10,7 +10,7 @@ fn error_semantics_manifest_matches_public_error_envelope() -> Result<(), Box<dy
     // 解析版本化错误策略清单。
     let policy: Value = serde_json::from_str(include_str!(
         // 使用编译期固定路径。
-        "contracts/error-semantics-policy-v1.json"
+        "../contracts/error-semantics-policy-v1.json"
     ))?;
     // 解析公开错误 envelope schema。
     let schema: Value = serde_json::from_str(include_str!(

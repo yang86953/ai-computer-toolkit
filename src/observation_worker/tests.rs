@@ -146,8 +146,8 @@ fn accessibility_hresult_classification_keeps_stable_error_codes() {
 // 验证有界树读取只使用单次发现调用携带的缓存属性。
 #[test]
 fn bounded_tree_uses_cache_without_current_property_fallback() {
-    // 将当前实现作为架构门禁输入。
-    let source = include_str!("observation_worker.rs");
+    // 将当前实现作为架构门禁输入；生产文件在测试目录的父级。
+    let source = include_str!("../observation_worker.rs");
     // 从 cache request helper 开始隔离源码。
     let Some((_, after_cache_request)) = source.split_once("fn create_tree_cache_request(") else {
         // 测试源码结构变化时立即失败。

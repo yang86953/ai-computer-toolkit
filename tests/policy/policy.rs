@@ -761,7 +761,7 @@ fn strict_isolation_manifest_matches_runtime_contract() -> Result<(), Box<dyn st
     // 解析仓库内的策略清单。
     let manifest: Value = serde_json::from_str(include_str!(
         // 使用编译期固定路径避免运行目录漂移。
-        "contracts/strict-isolation-policy-v1.json"
+        "../contracts/strict-isolation-policy-v1.json"
     ))?;
     // 解析公开结果证据 schema。
     let schema: Value = serde_json::from_str(include_str!(

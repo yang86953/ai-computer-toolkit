@@ -465,3 +465,98 @@ fn status_without_connection_reports_no_sessions() {
     assert_eq!(responses[0]["result"]["isError"], false);
     session.dispose();
 }
+
+/// 取出工具文本负载并按 JSON 解析；目录失败与状态报告都是结构化 JSON。
+fn tool_json(response: &Value) -> Value {
+    let text = response["result"]["content"][0]["text"]
+        .as_str()
+        .expect("text payload");
+    serde_json::from_str(text).expect("structured tool payload")
+}
+
+#[test]
+fn capture_directory_failure_degrades_only_capture_tools() {
+    let mut session = Session::new();
+    session.handle(&request(1, "initialize", json!({})));
+    session.handle(&json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }));
+
+    // 按需初始化：未发生捕获前 status 明确报告未初始化，仍是成功结果。
+    let responses = session.handle(&request(2, "tools/call", json!({
+        "name": "computer_status",
+        "arguments": {}
+    })));
+    assert_eq!(responses[0]["result"]["isError"], false);
+    let status = tool_json(&responses[0]);
+    assert_eq!(status["captureDirectory"]["state"], "uninitialized");
+    assert_eq!(status["sessions"], json!([]));
+
+    // 模拟目录初始化失败：把采用的父目录换成普通文件。
+    let parent = std::env::temp_dir().join(format!(
+        "act-mcp-capture-parent-file-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos(),
+    ));
+    std::fs::write(&parent, b"not-a-directory").expect("parent fixture");
+    session.set_capture_parent_for_tests(parent.clone());
+    // 平台各自保留具体失败分类；不吞成泛化错误。
+    let expected_reason = if cfg!(target_os = "windows") {
+        "invalid-parent"
+    } else {
+        "create-directory-failed"
+    };
+
+    // 依赖目录的 observe 被拒绝：稳定 code + details 定位，不触达桌面。
+    let responses = session.handle(&request(3, "tools/call", json!({
+        "name": "computer_observe",
+        "arguments": {
+            "sessionId": "s2:i:0000000000000000",
+            "confirmed": true,
+            "strictIsolation": false
+        }
+    })));
+    assert_eq!(responses[0]["result"]["isError"], true);
+    let failure = tool_json(&responses[0]);
+    assert_eq!(failure["code"], "CAPTURE_DIRECTORY_UNAVAILABLE");
+    assert_eq!(failure["acceptedMayHaveOccurred"], false);
+    assert_eq!(failure["outcome"], "failed");
+    assert!(failure["details"]["stage"].is_string(), "stage must be present");
+    assert_eq!(failure["details"]["reason"], expected_reason);
+    assert_eq!(
+        failure["details"]["parent"].as_str(),
+        Some(parent.to_string_lossy().as_ref())
+    );
+
+    // 状态查询不连坐：仍成功并如实报告降级原因与采用的父目录。
+    let responses = session.handle(&request(4, "tools/call", json!({
+        "name": "computer_status",
+        "arguments": {}
+    })));
+    assert_eq!(responses[0]["result"]["isError"], false);
+    let status = tool_json(&responses[0]);
+    assert_eq!(status["captureDirectory"]["state"], "unavailable");
+    assert_eq!(status["captureDirectory"]["reason"], expected_reason);
+    assert!(status["captureDirectory"]["stage"].is_string());
+    assert_eq!(
+        status["captureDirectory"]["parent"].as_str(),
+        Some(parent.to_string_lossy().as_ref())
+    );
+    assert_eq!(status["sessions"], json!([]));
+
+    // disconnect 不因目录不可用连坐：外来会话仍按会话归属拒绝。
+    let responses = session.handle(&request(5, "tools/call", json!({
+        "name": "computer_disconnect",
+        "arguments": { "sessionId": "s2:i:0000000000000000" }
+    })));
+    let failure = tool_json(&responses[0]);
+    assert_eq!(
+        failure["code"], "STALE_SESSION",
+        "disconnect must keep session semantics"
+    );
+
+    // 失败状态下的清理路径不得 panic。
+    session.dispose();
+    let _ = std::fs::remove_file(&parent);
+}

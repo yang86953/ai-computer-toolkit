@@ -1,8 +1,9 @@
 //! MCP 工具到桌面会话的映射层。
 //!
-//! 本层持有本客户端独占的会话状态（broker、sessionId、最新 frameId、临时图像目录），
-//! 并把工具调用翻译为 broker 操作。授权布尔值只表达用户已有授权：这里不创造授权，
-//! 也不提供后台隔离路线。
+//! 本层持有本客户端独占的会话状态（broker、sessionId、最新 frameId、按需建立的
+//! 私有图像目录），并把工具调用翻译为 broker 操作。授权布尔值只表达用户已有授权：
+//! 这里不创造授权，也不提供后台隔离路线。捕获目录不可用只降级依赖它的动作，
+//! initialize、tools/list 与 computer_status 不依赖它。
 
 use std::{
     fs,
@@ -171,49 +172,220 @@ pub struct Desktop {
     frame: Option<String>,
     /// 当前会话是否以 authorizationMode=session 打开（省略确认字段的依据）。
     session_scoped: bool,
-    directory: PathBuf,
+    /// 私有捕获目录按需建立；失败保留稳定诊断供 computer_status 如实报告。
+    directory: CaptureDirectory,
     cancellation: crate::components::desktop_session_input_cancellation::DesktopInputCancellation,
 }
 
+/// 捕获目录采用的父目录来源标识；采用的父目录值在各状态里如实报告。
+const CAPTURE_PARENT_SOURCE: &str = "std::env::temp_dir()";
+
+/// 捕获目录失败的稳定诊断：分类与阶段可直接定位平台错误。
+///
+/// 只携带六类差异与路径事实，不包含 SID、SDDL、token 或任何凭据内容。
+#[derive(Clone, Copy)]
+struct CaptureDirectoryDiagnostic {
+    reason: &'static str,
+    stage: &'static str,
+}
+
+impl CaptureDirectoryDiagnostic {
+    /// 转为工具层失败；details 附带失败阶段、分类与采用的父目录。
+    ///
+    /// 父目录按采用值展示：TEMP 可能是 8.3 短路径别名（如指向自定义目录），
+    /// 调用方需要看到真实采用值才能定位环境问题。
+    fn broker_failure(&self, parent: &Path) -> BrokerFailure {
+        BrokerFailure {
+            code: "CAPTURE_DIRECTORY_UNAVAILABLE".to_owned(),
+            message: format!(
+                "Cannot establish the private capture directory (reason: {}, stage: {}); adopted parent: {}.",
+                self.reason,
+                self.stage,
+                parent.to_string_lossy(),
+            ),
+            outcome_unknown: false,
+            accepted_may_have_occurred: false,
+            details: json!({
+                "stage": self.stage,
+                "reason": self.reason,
+                "parent": parent.to_string_lossy(),
+            }),
+        }
+    }
+}
+
+/// 私有捕获目录的按需生命周期：父目录固定采用，状态按需推进。
+struct CaptureDirectory {
+    /// 采用的父目录（生产来自 std::env::temp_dir()）。
+    parent: PathBuf,
+    /// 目录当前状态。
+    state: CaptureDirectoryState,
+}
+
+/// 捕获目录在按需建立过程中的状态。
+enum CaptureDirectoryState {
+    /// 尚未尝试建立；initialize、tools/list 与 computer_status 都不依赖它。
+    Uninitialized,
+    /// 已创建并通过平台私有性验证的目录。
+    Ready(PathBuf),
+    /// 最近一次建立失败的诊断；下一次依赖动作会重试并刷新。
+    Failed(CaptureDirectoryDiagnostic),
+}
+
+impl CaptureDirectory {
+    /// 固定采用的父目录，从未初始化状态开始。
+    fn new(parent: PathBuf) -> Self {
+        Self {
+            parent,
+            state: CaptureDirectoryState::Uninitialized,
+        }
+    }
+
+    /// 确保目录已就绪；首次与失败后的调用都会真实建立并验证。
+    fn ensure_ready(&mut self) -> Result<(), BrokerFailure> {
+        if matches!(self.state, CaptureDirectoryState::Ready(_)) {
+            return Ok(());
+        }
+        let name = capture_directory_name(std::process::id());
+        match create_capture_directory(&self.parent, &name) {
+            Ok(path) => {
+                self.state = CaptureDirectoryState::Ready(path);
+                Ok(())
+            }
+            Err(diagnostic) => {
+                let failure = diagnostic.broker_failure(&self.parent);
+                self.state = CaptureDirectoryState::Failed(diagnostic);
+                Err(failure)
+            }
+        }
+    }
+
+    /// 已就绪目录路径；只应在授权与资源门通过后的捕获路径上调用。
+    fn ready_path(&self) -> Result<&Path, BrokerFailure> {
+        match &self.state {
+            CaptureDirectoryState::Ready(path) => Ok(path),
+            state @ (CaptureDirectoryState::Uninitialized
+            | CaptureDirectoryState::Failed(_)) => {
+                let diagnostic = match state {
+                    CaptureDirectoryState::Failed(diagnostic) => *diagnostic,
+                    _ => CaptureDirectoryDiagnostic {
+                        reason: "not-initialized",
+                        stage: "require-capture-directory",
+                    },
+                };
+                Err(diagnostic.broker_failure(&self.parent))
+            }
+        }
+    }
+
+    /// computer_status 用的诚实报告：未初始化、可用或降级原因与来源。
+    fn status_report(&self) -> Value {
+        let parent = self.parent.to_string_lossy();
+        match &self.state {
+            CaptureDirectoryState::Uninitialized => json!({
+                "state": "uninitialized",
+                "parentSource": CAPTURE_PARENT_SOURCE,
+            }),
+            CaptureDirectoryState::Ready(path) => json!({
+                "state": "ready",
+                "directory": path.to_string_lossy(),
+                "parent": parent,
+                "parentSource": CAPTURE_PARENT_SOURCE,
+            }),
+            CaptureDirectoryState::Failed(diagnostic) => json!({
+                "state": "unavailable",
+                "reason": diagnostic.reason,
+                "stage": diagnostic.stage,
+                "parent": parent,
+                "parentSource": CAPTURE_PARENT_SOURCE,
+            }),
+        }
+    }
+
+    /// 释放已建立的目录；未建立或失败状态不产生文件系统动作。
+    fn remove(&mut self) {
+        if let CaptureDirectoryState::Ready(path) =
+            std::mem::replace(&mut self.state, CaptureDirectoryState::Uninitialized)
+        {
+            let _ = fs::remove_dir_all(path);
+        }
+    }
+}
+
+/// 在采用父目录内建立验证过的私有捕获目录。
+///
+/// Windows 走 owner-only 组件：创建即安装受保护 DACL 并回读逐值验证；
+/// 六类错误差异完整保留，不吞成泛化授权或图像投递错误。
+#[cfg(target_os = "windows")]
+fn create_capture_directory(
+    parent: &Path,
+    name: &str,
+) -> Result<PathBuf, CaptureDirectoryDiagnostic> {
+    use crate::components::owner_only_directory_windows::{
+        OwnerOnlyDirectoryError, ensure_owner_only_child,
+    };
+    ensure_owner_only_child(parent, name).map_err(|error| match error {
+        OwnerOnlyDirectoryError::InvalidParent => CaptureDirectoryDiagnostic {
+            reason: "invalid-parent",
+            stage: "validate-parent",
+        },
+        OwnerOnlyDirectoryError::InvalidName => CaptureDirectoryDiagnostic {
+            reason: "invalid-name",
+            stage: "validate-name",
+        },
+        OwnerOnlyDirectoryError::SecurityUnavailable => CaptureDirectoryDiagnostic {
+            reason: "security-unavailable",
+            stage: "security-descriptor",
+        },
+        OwnerOnlyDirectoryError::DirectoryUnavailable => CaptureDirectoryDiagnostic {
+            reason: "directory-unavailable",
+            stage: "create-directory",
+        },
+        OwnerOnlyDirectoryError::DirectoryUntrusted => CaptureDirectoryDiagnostic {
+            reason: "directory-untrusted",
+            stage: "validate-created-directory",
+        },
+        OwnerOnlyDirectoryError::PermissionUnavailable => CaptureDirectoryDiagnostic {
+            reason: "permission-unavailable",
+            stage: "install-or-verify-permissions",
+        },
+    })
+}
+
+/// Unix 路线：0700 私有目录，父目录必须已存在。
+#[cfg(not(target_os = "windows"))]
+fn create_capture_directory(
+    parent: &Path,
+    name: &str,
+) -> Result<PathBuf, CaptureDirectoryDiagnostic> {
+    use std::os::unix::fs::DirBuilderExt;
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(parent.join(name))
+        .map(|_| parent.join(name))
+        .map_err(|_| CaptureDirectoryDiagnostic {
+            reason: "create-directory-failed",
+            stage: "create-directory",
+        })
+}
+
 impl Desktop {
-    /// 建立会话容器；此时不启动 broker、不打开 Portal。
-    pub fn new() -> Result<Self, BrokerFailure> {
-        let name = format!(
-            "computer-control-mcp-{}-{}",
-            std::process::id(),
-            unique_name()
-        );
-        #[cfg(target_os = "windows")]
-        let directory = crate::components::owner_only_directory_windows::ensure_owner_only_child(
-            &std::env::temp_dir(),
-            &name,
-        )
-        .map_err(|_| {
-            BrokerFailure::failed(
-                "IMAGE_DELIVERY_FAILED",
-                "Cannot create a private capture directory.",
-            )
-        })?;
-        #[cfg(not(target_os = "windows"))]
-        let directory = {
-            let path = std::env::temp_dir().join(name);
-            use std::os::unix::fs::DirBuilderExt;
-            fs::DirBuilder::new()
-                .mode(0o700)
-                .create(&path)
-                .map_err(|error| {
-                    BrokerFailure::failed("IMAGE_DELIVERY_FAILED", error.to_string())
-                })?;
-            path
-        };
-        Ok(Self {
+    /// 建立会话容器；此时不启动 broker、不打开 Portal，也不建立捕获目录。
+    pub fn new() -> Self {
+        Self {
             broker: None,
             session: None,
             frame: None,
             session_scoped: false,
-            directory,
+            directory: CaptureDirectory::new(std::env::temp_dir()),
             cancellation: Default::default(),
-        })
+        }
+    }
+
+    /// 测试注入：替换捕获目录父路径并回到未初始化状态，经真实调用边界驱动失败。
+    #[cfg(test)]
+    pub(crate) fn set_capture_parent_for_tests(&mut self, parent: PathBuf) {
+        self.directory = CaptureDirectory::new(parent);
     }
 
     pub(crate) fn set_cancellation(
@@ -283,11 +455,19 @@ impl Desktop {
         let flag = |key: &str| arguments.get(key).and_then(Value::as_bool) == Some(true);
         match name {
             "computer_status" => {
-                let data = match self.broker.as_mut() {
+                let mut data = match self.broker.as_mut() {
                     Some(broker) => broker.call("sessions", json!({}), Duration::from_secs(70))?,
                     None => json!({ "sessions": [] }),
                 };
-                let data = data.get("data").cloned().unwrap_or(data);
+                data = data.get("data").cloned().unwrap_or(data);
+                // 捕获目录是本客户端独占资源：如实报告未初始化、可用或降级原因，
+                // 目录不可用不让 status 连坐成失败。
+                if let Some(target) = data.as_object_mut() {
+                    target.insert(
+                        "captureDirectory".to_owned(),
+                        self.directory.status_report(),
+                    );
+                }
                 Ok(ToolOutcome::text(&data))
             }
             "computer_connect" => {
@@ -303,16 +483,19 @@ impl Desktop {
             "computer_authorization" => self.authorization(&arguments),
             "computer_observe" => {
                 let basis = self.require_authorization(&arguments, false)?;
+                self.require_capture_directory()?;
                 self.require_session(&arguments)?;
                 self.observe(&arguments, basis)
             }
             "computer_interact" | "computer_keys" | "computer_pointer" => {
                 let basis = self.require_authorization(&arguments, true)?;
+                self.require_capture_directory()?;
                 self.require_session(&arguments)?;
                 self.input(name, &arguments, basis)
             }
             "computer_run" => {
                 let basis = self.require_authorization(&arguments, true)?;
+                self.require_capture_directory()?;
                 self.require_session(&arguments)?;
                 self.run(&arguments, basis)
             }
@@ -340,6 +523,15 @@ impl Desktop {
             self.session_scoped,
             self.broker.is_some(),
         )
+    }
+
+    /// 捕获类动作的私有目录资源门：授权之后、会话归属之前按需建立。
+    ///
+    /// 目录不可用只拒绝依赖它的动作；status、disconnect、授权管理与
+    /// initialize/tools/list 都不受连坐。失败被记住并如实报告，
+    /// 下一次依赖动作会再次尝试建立。
+    fn require_capture_directory(&mut self) -> Result<(), BrokerFailure> {
+        self.directory.ensure_ready()
     }
 
     /// 校验调用方只使用本客户端返回的会话标识。
@@ -573,7 +765,7 @@ impl Desktop {
         basis: AuthorizationBasis,
     ) -> Result<ToolOutcome, BrokerFailure> {
         self.frame = None;
-        let capture = self.capture_fields(arguments);
+        let capture = self.capture_fields(arguments)?;
         let session = self.session.clone().unwrap_or_default();
         let broker = self
             .broker
@@ -610,7 +802,7 @@ impl Desktop {
         // 这一帧不该被消耗；只有输入可能已经送出时才作废旧帧。
         let keep_alive = frame.clone();
         self.frame = None;
-        let capture = self.capture_fields(arguments);
+        let capture = self.capture_fields(arguments)?;
         let session = self.session.clone().unwrap_or_default();
         let timeout_ms = arguments
             .get("timeoutMs")
@@ -776,7 +968,7 @@ impl Desktop {
                 .and_then(Value::as_u64)
                 .unwrap_or(3_000)
                 .clamp(1, 30_000);
-            let capture = self.capture_fields(arguments);
+            let capture = self.capture_fields(arguments)?;
             let path = capture
                 .get("path")
                 .and_then(Value::as_str)
@@ -896,7 +1088,7 @@ impl Desktop {
         arguments: &serde_json::Map<String, Value>,
         basis: AuthorizationBasis,
     ) -> Result<String, BrokerFailure> {
-        let capture = self.capture_fields(arguments);
+        let capture = self.capture_fields(arguments)?;
         let path = capture
             .get("path")
             .and_then(Value::as_str)
@@ -933,16 +1125,25 @@ impl Desktop {
     }
 
     /// 构造截图请求字段：私有临时文件 + 有界尺寸。
-    fn capture_fields(&self, arguments: &serde_json::Map<String, Value>) -> Value {
-        let path = self.directory.join(format!("{}.png", unique_name()));
-        json!({
+    ///
+    /// 路径来自已就绪的私有捕获目录；资源门未通过时这里防御性失败，
+    /// 不落到其他可写位置。
+    fn capture_fields(
+        &self,
+        arguments: &serde_json::Map<String, Value>,
+    ) -> Result<Value, BrokerFailure> {
+        let path = self
+            .directory
+            .ready_path()?
+            .join(format!("{}.png", unique_name()));
+        Ok(json!({
             "path": path.to_string_lossy(),
             "maxDimension": arguments
                 .get("maxDimension")
                 .and_then(Value::as_u64)
                 .unwrap_or(DEFAULT_MAX_DIMENSION),
             "timeoutMs": 5000,
-        })
+        }))
     }
 
     /// 读取截图为内联 MCP 图像；任何不一致都收敛为投递失败。
@@ -998,7 +1199,7 @@ impl Desktop {
         if let Some(mut broker) = self.broker.take() {
             broker.stop();
         }
-        let _ = fs::remove_dir_all(&self.directory);
+        self.directory.remove();
     }
 }
 
@@ -1080,16 +1281,34 @@ fn read_capture(
     Ok(raw)
 }
 
-/// 生成进程内唯一的一次性图像名。
-fn unique_name() -> String {
+/// 取得进程内唯一组件：单调纳秒时间戳与进程内递增序号。
+fn unique_components() -> (u64, u64) {
     use std::sync::atomic::{AtomicU64, Ordering};
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let sequence = COUNTER.fetch_add(1, Ordering::Relaxed);
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|elapsed| elapsed.as_nanos())
+        .map(|elapsed| u64::try_from(elapsed.as_nanos()).unwrap_or(u64::MAX))
         .unwrap_or_default();
+    (nanos, sequence)
+}
+
+/// 生成进程内唯一的一次性图像名。
+fn unique_name() -> String {
+    let (nanos, sequence) = unique_components();
     format!("{nanos:032x}{sequence:016x}")
+}
+
+/// 生成 MCP 私有捕获目录的单段名：固定前缀 + 进程号 + 紧凑唯一后缀。
+///
+/// 后缀 = 16 位十六进制纳秒（u64 精确值）+ 12 位十六进制序号（截 48 位：
+/// 同一纳秒内完成 2^48 次递增物理上不可能，截断不损害唯一性），长度按构造
+/// 封顶；最坏 21+10+1+28=60 字节，覆盖最大 u32 进程号仍低于 Windows
+/// owner-only 组件的 64 字节单段上限，字符集保持小写 ASCII、数字与连字符。
+pub(crate) fn capture_directory_name(pid: u32) -> String {
+    let (nanos, sequence) = unique_components();
+    let sequence = sequence & 0xffff_ffff_ffff;
+    format!("computer-control-mcp-{pid}-{nanos:016x}{sequence:012x}")
 }
 
 #[cfg(test)]
@@ -1107,6 +1326,36 @@ mod tests {
         assert!(wants_frame(3, 4, 2));
         // 单批也要回读，调用方才看得到结果。
         assert!(wants_frame(0, 1, 0));
+    }
+
+    #[test]
+    fn capture_directory_names_stay_within_the_component_bound() {
+        for pid in [1_u32, std::process::id(), u32::MAX] {
+            // 真实生成器输出的字符集必须与 Windows owner-only 组件的固定校验一致。
+            let name = capture_directory_name(pid);
+            assert!(
+                name.bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-'),
+                "generated name must keep the fixed charset: {name}"
+            );
+            assert!(
+                name.len() <= 64,
+                "generated name must fit the 64-byte segment bound: {name}"
+            );
+        }
+        // 最坏长度按构造封顶：前缀（含尾分隔）21 + 最大进程号 10 + 分隔 1 + 后缀 28。
+        assert_eq!(capture_directory_name(u32::MAX).len(), 60);
+    }
+
+    #[test]
+    fn capture_directory_names_stay_unique_and_file_names_keep_their_shape() {
+        // 同一进程内连号生成不得碰撞：纳秒时间戳与序号共同保证唯一性。
+        let names = std::iter::repeat_with(|| capture_directory_name(7))
+            .take(64)
+            .collect::<std::collections::HashSet<_>>();
+        assert_eq!(names.len(), 64, "rapid generation must not collide");
+        // 截图文件命名继续使用 48 位十六进制一次性名，与目录名单互不冲突。
+        assert_eq!(format!("{}.png", unique_name()).len(), 52);
     }
 
     #[test]

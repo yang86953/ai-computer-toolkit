@@ -128,9 +128,7 @@ pub fn run_stdio() -> i32 {
             Err(_) => break,
         };
         if let Some(cancel) = &token {
-            if let Some(desktop) = session.desktop.as_mut() {
-                desktop.set_cancellation(cancel.clone());
-            }
+            session.desktop.set_cancellation(cancel.clone());
         }
         let responses = session.handle(&request);
         if token.is_some() {
@@ -165,29 +163,26 @@ fn result_response(id: Value, result: Value) -> Value {
 
 /// 一个 MCP 会话的服务端状态。
 pub(crate) struct Session {
-    desktop: Option<Desktop>,
-    desktop_error: Option<String>,
+    desktop: Desktop,
     initialized: bool,
     ready: bool,
 }
 
 impl Session {
     pub(crate) fn new() -> Self {
-        // 桌面资源按需建立：初始化与枚举工具不触达桌面。
-        match Desktop::new() {
-            Ok(desktop) => Self {
-                desktop: Some(desktop),
-                desktop_error: None,
-                initialized: false,
-                ready: false,
-            },
-            Err(failure) => Self {
-                desktop: None,
-                desktop_error: Some(failure.message),
-                initialized: false,
-                ready: false,
-            },
+        // 桌面容器立即可用；broker 与私有捕获目录都按需建立，
+        // initialize、tools/list 与 computer_status 不触达桌面或文件系统。
+        Self {
+            desktop: Desktop::new(),
+            initialized: false,
+            ready: false,
         }
+    }
+
+    /// 测试注入：替换捕获目录父路径，经真实 tools/call 边界驱动目录初始化失败。
+    #[cfg(test)]
+    pub(crate) fn set_capture_parent_for_tests(&mut self, parent: std::path::PathBuf) {
+        self.desktop.set_capture_parent_for_tests(parent);
     }
 
     /// 处理一个请求，返回需要写出的零个或多个响应。
@@ -272,28 +267,7 @@ impl Session {
                 }),
             )];
         }
-        let Some(desktop) = self.desktop.as_mut() else {
-            let reason = self
-                .desktop_error
-                .clone()
-                .unwrap_or_else(|| "desktop resources are unavailable".to_owned());
-            return vec![result_response(
-                id,
-                json!({
-                    "isError": true,
-                    "content": [{
-                        "type": "text",
-                        "text": json!({
-                            "code": "CAPABILITY_UNAVAILABLE",
-                            "message": reason,
-                            "automaticRetryProhibited": true,
-                        })
-                        .to_string(),
-                    }],
-                }),
-            )];
-        };
-        let outcome = desktop.call(&name, &arguments);
+        let outcome = self.desktop.call(&name, &arguments);
         vec![result_response(
             id,
             json!({ "isError": outcome.is_error, "content": outcome.content }),
@@ -302,8 +276,6 @@ impl Session {
 
     /// 释放桌面会话与临时资源。
     pub(crate) fn dispose(&mut self) {
-        if let Some(desktop) = self.desktop.as_mut() {
-            desktop.dispose();
-        }
+        self.desktop.dispose();
     }
 }

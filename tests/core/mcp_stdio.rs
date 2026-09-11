@@ -69,11 +69,13 @@ fn binary_discovers_one_catalog_and_refuses_unauthorized_desktop() {
     assert_eq!(result["result"]["isError"], true);
     assert!(result.to_string().contains("CONSENT_REQUIRED"));
     let result = c.rpc(4, "tools/call", json!({"name":"computer_status"}));
-    assert_eq!(
-        serde_json::from_str::<Value>(result["result"]["content"][0]["text"].as_str().unwrap())
-            .unwrap(),
-        json!({"sessions":[]})
-    );
+    let status: Value = serde_json::from_str::<Value>(
+        result["result"]["content"][0]["text"].as_str().unwrap(),
+    )
+    .unwrap();
+    // 无桌面会话时列表为空；捕获目录按需建立，status 如实报告未初始化。
+    assert_eq!(status["sessions"], json!([]));
+    assert_eq!(status["captureDirectory"]["state"], "uninitialized");
     assert!(c.rpc(5, "initialize", json!({})).get("error").is_some());
 }
 #[test]
