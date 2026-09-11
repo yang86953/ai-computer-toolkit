@@ -337,6 +337,19 @@ impl DesktopEisInput {
         failure.with_provider_events(self.event_trail.snapshot())
     }
 
+    /// 刷新/预检失败转换：保持原 before_dispatch_failure 的语义
+    /// （CANCELLED→cancelled(true,0,0)，其余 before_dispatch）并冻结轨迹。
+    pub(super) fn trail_before(&self, failure: RuntimeFailure) -> DesktopSessionInputFailure {
+        if failure.code == "CANCELLED" {
+            self.with_event_trail(DesktopSessionInputFailure::cancelled(true, 0, 0))
+        } else {
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
+                failure.code,
+                failure.stage,
+            ))
+        }
+    }
+
     pub(crate) fn send_keyboard(
         &mut self,
         input: &KeyboardInput,
@@ -345,7 +358,7 @@ impl DesktopEisInput {
     ) -> Result<DesktopKeyboardDispatchFacts, DesktopSessionInputFailure> {
         let mut guard = InputExecutionGuard::new(cancellation, liveness);
         self.refresh_events(&mut guard)
-            .map_err(before_dispatch_failure)?;
+            .map_err(|failure| self.trail_before(failure))?;
         let device = self.keyboard_device.clone().ok_or_else(|| {
             self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
                 "EIS_DEVICE_UNAVAILABLE",
@@ -353,10 +366,10 @@ impl DesktopEisInput {
             ))
         })?;
         let keyboard = device.interface::<ei::Keyboard>().ok_or_else(|| {
-            DesktopSessionInputFailure::before_dispatch(
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
                 "EIS_DEVICE_UNAVAILABLE",
                 "keyboard-preflight",
-            )
+            ))
         })?;
         if !device.device().is_alive() || !keyboard.is_alive() {
             return Err(
@@ -366,19 +379,21 @@ impl DesktopEisInput {
                 )),
             );
         }
-        validate_key_mapping(input)?;
+        validate_key_mapping(input).map_err(|failure| self.trail_before(failure))?;
         let deadline = Instant::now() + Duration::from_millis(u64::from(input.timeout_ms));
         let serial = self.connection.serial();
         device.device().start_emulating(serial, self.sequence);
         self.advance_sequence();
         if self.flush_bounded(deadline).is_err() {
-            return Err(DesktopSessionInputFailure::after_dispatch(
-                "OUTCOME_UNKNOWN",
-                "start-emulating",
-                false,
-                0,
-                0,
-            ));
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::after_dispatch(
+                    "OUTCOME_UNKNOWN",
+                    "start-emulating",
+                    false,
+                    0,
+                    0,
+                )),
+            );
         }
 
         let mut progress = DispatchProgress::default();
@@ -395,45 +410,51 @@ impl DesktopEisInput {
         {
             let releases_confirmed = self.best_effort_stop(&device, &keyboard, &progress.held);
             if failure.code == "CANCELLED" {
-                return Err(DesktopSessionInputFailure::cancelled(
+                return Err(self.with_event_trail(DesktopSessionInputFailure::cancelled(
                     releases_confirmed,
                     progress.completed_steps,
                     progress.sent,
-                ));
+                )));
             }
-            return Err(DesktopSessionInputFailure::after_dispatch(
-                failure.code,
-                failure.stage,
-                releases_confirmed,
-                progress.completed_steps,
-                progress.sent,
-            ));
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::after_dispatch(
+                    failure.code,
+                    failure.stage,
+                    releases_confirmed,
+                    progress.completed_steps,
+                    progress.sent,
+                )),
+            );
         }
         device.device().stop_emulating(self.connection.serial());
         if self.flush_bounded(deadline).is_err() {
-            return Err(DesktopSessionInputFailure::after_dispatch(
-                "OUTCOME_UNKNOWN",
-                "stop-emulating",
-                true,
-                progress.completed_steps,
-                progress.sent,
-            ));
-        }
-        if let Err(failure) = guard.check_with_deadline(deadline, "stop-emulating") {
-            if failure.code == "CANCELLED" {
-                return Err(DesktopSessionInputFailure::cancelled(
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::after_dispatch(
+                    "OUTCOME_UNKNOWN",
+                    "stop-emulating",
                     true,
                     progress.completed_steps,
                     progress.sent,
-                ));
+                )),
+            );
+        }
+        if let Err(failure) = guard.check_with_deadline(deadline, "stop-emulating") {
+            if failure.code == "CANCELLED" {
+                return Err(self.with_event_trail(DesktopSessionInputFailure::cancelled(
+                    true,
+                    progress.completed_steps,
+                    progress.sent,
+                )));
             }
-            return Err(DesktopSessionInputFailure::after_dispatch(
-                failure.code,
-                failure.stage,
-                true,
-                progress.completed_steps,
-                progress.sent,
-            ));
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::after_dispatch(
+                    failure.code,
+                    failure.stage,
+                    true,
+                    progress.completed_steps,
+                    progress.sent,
+                )),
+            );
         }
         Ok(DesktopKeyboardDispatchFacts::new(
             progress.completed_steps,
@@ -450,7 +471,7 @@ impl DesktopEisInput {
     ) -> Result<DesktopPointerDispatchFacts, DesktopSessionInputFailure> {
         let mut guard = InputExecutionGuard::new(cancellation, liveness);
         self.refresh_events(&mut guard)
-            .map_err(before_dispatch_failure)?;
+            .map_err(|failure| self.trail_before(failure))?;
         let device = self.pointer_device.clone().ok_or_else(|| {
             self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
                 "EIS_DEVICE_UNAVAILABLE",
@@ -458,22 +479,22 @@ impl DesktopEisInput {
             ))
         })?;
         let pointer = device.interface::<ei::Pointer>().ok_or_else(|| {
-            DesktopSessionInputFailure::before_dispatch(
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
                 "EIS_DEVICE_UNAVAILABLE",
                 "pointer-preflight",
-            )
+            ))
         })?;
         let button = device.interface::<ei::Button>().ok_or_else(|| {
-            DesktopSessionInputFailure::before_dispatch(
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
                 "EIS_DEVICE_UNAVAILABLE",
                 "pointer-preflight",
-            )
+            ))
         })?;
         let scroll = device.interface::<ei::Scroll>().ok_or_else(|| {
-            DesktopSessionInputFailure::before_dispatch(
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
                 "EIS_DEVICE_UNAVAILABLE",
                 "pointer-preflight",
-            )
+            ))
         })?;
         if !device.device().is_alive()
             || !pointer.is_alive()
@@ -492,13 +513,15 @@ impl DesktopEisInput {
         device.device().start_emulating(serial, self.sequence);
         self.advance_sequence();
         if self.flush_bounded(deadline).is_err() {
-            return Err(DesktopSessionInputFailure::after_dispatch(
-                "OUTCOME_UNKNOWN",
-                "start-emulating",
-                false,
-                0,
-                0,
-            ));
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::after_dispatch(
+                    "OUTCOME_UNKNOWN",
+                    "start-emulating",
+                    false,
+                    0,
+                    0,
+                )),
+            );
         }
 
         let mut progress = DispatchProgress::default();
@@ -516,45 +539,51 @@ impl DesktopEisInput {
             let releases_confirmed =
                 self.best_effort_pointer_stop(&device, &button, &progress.held);
             if failure.code == "CANCELLED" {
-                return Err(DesktopSessionInputFailure::cancelled(
+                return Err(self.with_event_trail(DesktopSessionInputFailure::cancelled(
                     releases_confirmed,
                     progress.completed_steps,
                     progress.sent,
-                ));
+                )));
             }
-            return Err(DesktopSessionInputFailure::after_dispatch(
-                failure.code,
-                failure.stage,
-                releases_confirmed,
-                progress.completed_steps,
-                progress.sent,
-            ));
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::after_dispatch(
+                    failure.code,
+                    failure.stage,
+                    releases_confirmed,
+                    progress.completed_steps,
+                    progress.sent,
+                )),
+            );
         }
         device.device().stop_emulating(self.connection.serial());
         if self.flush_bounded(deadline).is_err() {
-            return Err(DesktopSessionInputFailure::after_dispatch(
-                "OUTCOME_UNKNOWN",
-                "stop-emulating",
-                true,
-                progress.completed_steps,
-                progress.sent,
-            ));
-        }
-        if let Err(failure) = guard.check_with_deadline(deadline, "stop-emulating") {
-            if failure.code == "CANCELLED" {
-                return Err(DesktopSessionInputFailure::cancelled(
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::after_dispatch(
+                    "OUTCOME_UNKNOWN",
+                    "stop-emulating",
                     true,
                     progress.completed_steps,
                     progress.sent,
-                ));
+                )),
+            );
+        }
+        if let Err(failure) = guard.check_with_deadline(deadline, "stop-emulating") {
+            if failure.code == "CANCELLED" {
+                return Err(self.with_event_trail(DesktopSessionInputFailure::cancelled(
+                    true,
+                    progress.completed_steps,
+                    progress.sent,
+                )));
             }
-            return Err(DesktopSessionInputFailure::after_dispatch(
-                failure.code,
-                failure.stage,
-                true,
-                progress.completed_steps,
-                progress.sent,
-            ));
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::after_dispatch(
+                    failure.code,
+                    failure.stage,
+                    true,
+                    progress.completed_steps,
+                    progress.sent,
+                )),
+            );
         }
         Ok(DesktopPointerDispatchFacts::new(
             progress.completed_steps,
@@ -1211,14 +1240,6 @@ impl<'a> InputExecutionGuard<'a> {
     }
 }
 
-fn before_dispatch_failure(failure: RuntimeFailure) -> DesktopSessionInputFailure {
-    if failure.code == "CANCELLED" {
-        DesktopSessionInputFailure::cancelled(true, 0, 0)
-    } else {
-        DesktopSessionInputFailure::before_dispatch(failure.code, failure.stage)
-    }
-}
-
 const fn mapping_failure() -> RuntimeFailure {
     RuntimeFailure {
         code: "INPUT_MAPPING_UNAVAILABLE",
@@ -1271,7 +1292,7 @@ fn relative_motion_samples(delta: DesktopPointerDelta, samples: u16) -> Vec<Desk
     result
 }
 
-fn validate_key_mapping(input: &KeyboardInput) -> Result<(), DesktopSessionInputFailure> {
+fn validate_key_mapping(input: &KeyboardInput) -> Result<(), RuntimeFailure> {
     let mapped = input.steps.iter().all(|step| match step {
         KeyboardStep::Key { key, .. } => key_code(key).is_some(),
         KeyboardStep::Chord { keys, .. } => keys.iter().all(|key| key_code(key).is_some()),
@@ -1280,10 +1301,7 @@ fn validate_key_mapping(input: &KeyboardInput) -> Result<(), DesktopSessionInput
     if mapped {
         Ok(())
     } else {
-        Err(DesktopSessionInputFailure::before_dispatch(
-            "INPUT_MAPPING_UNAVAILABLE",
-            "keyboard-preflight",
-        ))
+        Err(mapping_failure())
     }
 }
 
@@ -1606,5 +1624,32 @@ mod trail_tests {
             EisEventTrail::default().snapshot().iter().flatten().count(),
             0
         );
+    }
+
+    /// 接线不变式：两个 EIS 输入文件里的每个失败构造都必须经
+    /// with_event_trail 冻结轨迹。闭包清理后直接构造 after_dispatch 的
+    /// 漏接版本（真实 92f7c7 现场）必须在本测试失败。
+    #[test]
+    fn every_input_failure_construction_freezes_the_event_trail() {
+        // concat! 拆分字面量，避免本测试自身被计入。
+        let before_marker = concat!("DesktopSessionInputFailure::", "before_dispatch(");
+        let after_marker = concat!("DesktopSessionInputFailure::", "after_dispatch(");
+        let cancelled_marker = concat!("DesktopSessionInputFailure::", "cancelled(");
+        let wrapper_marker = concat!("with_event_trail(", "DesktopSessionInputFailure::");
+        for source in [
+            include_str!("desktop_input_eis.rs"),
+            include_str!("desktop_input_eis_absolute.rs"),
+        ] {
+            let constructions = source
+                .matches(before_marker)
+                .chain(source.matches(after_marker))
+                .chain(source.matches(cancelled_marker))
+                .count();
+            let wrapped = source.matches(wrapper_marker).count();
+            assert_eq!(
+                constructions, wrapped,
+                "EIS 输入失败构造必须全部经 with_event_trail 携带轨迹"
+            );
+        }
     }
 }

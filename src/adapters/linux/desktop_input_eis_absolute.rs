@@ -37,7 +37,7 @@ impl DesktopEisInput {
         let token = DesktopInputCancellation::new();
         let mut guard = InputExecutionGuard::new(&token, liveness);
         self.refresh_events(&mut guard)
-            .map_err(before_dispatch_failure)?;
+            .map_err(|failure| self.trail_before(failure))?;
         Ok(self.mapped_device().map(|(device, index)| {
             let region = &device.regions()[index];
             FrameMapping {
@@ -57,9 +57,12 @@ impl DesktopEisInput {
     ) -> Result<DesktopPointerDispatchFacts, DesktopSessionInputFailure> {
         let mut guard = InputExecutionGuard::new(cancellation, liveness);
         self.refresh_events(&mut guard)
-            .map_err(before_dispatch_failure)?;
+            .map_err(|failure| self.trail_before(failure))?;
         let (device, index) = self.mapped_device().ok_or_else(|| {
-            DesktopSessionInputFailure::before_dispatch("INPUT_MAPPING_UNAVAILABLE", "frame-point")
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
+                "INPUT_MAPPING_UNAVAILABLE",
+                "frame-point",
+            ))
         })?;
         let region = &device.regions()[index];
         let mapping = FrameMapping {
@@ -80,21 +83,30 @@ impl DesktopEisInput {
             );
         }
         let (x, y) = normalized_point(point).map_err(|_| {
-            DesktopSessionInputFailure::before_dispatch("INVALID_ARGUMENT", "frame-point")
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
+                "INVALID_ARGUMENT",
+                "frame-point",
+            ))
         })?;
         let (x, y) = (
             (f64::from(region.x) + x * f64::from(region.width)) as f32,
             (f64::from(region.y) + y * f64::from(region.height)) as f32,
         );
         let pointer = device.interface::<ei::PointerAbsolute>().ok_or_else(|| {
-            DesktopSessionInputFailure::before_dispatch("INPUT_MAPPING_UNAVAILABLE", "frame-point")
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
+                "INPUT_MAPPING_UNAVAILABLE",
+                "frame-point",
+            ))
         })?;
         let button = device.interface::<ei::Button>().ok_or_else(|| {
-            DesktopSessionInputFailure::before_dispatch("INPUT_MAPPING_UNAVAILABLE", "frame-point")
+            self.with_event_trail(DesktopSessionInputFailure::before_dispatch(
+                "INPUT_MAPPING_UNAVAILABLE",
+                "frame-point",
+            ))
         })?;
         let deadline = Instant::now() + Duration::from_millis(u64::from(timeout_ms));
         self.ensure_absolute_live(&device, point.mapping.generation, &mut guard, deadline)
-            .map_err(|failure| self.with_event_trail(before_dispatch_failure(failure)))?;
+            .map_err(|failure| self.trail_before(failure))?;
         let mut sent = 0usize;
         let mut held = None;
         let result = (|| {
@@ -158,15 +170,21 @@ impl DesktopEisInput {
                 true
             };
             if failure.code == "CANCELLED" {
-                return Err(DesktopSessionInputFailure::cancelled(released, 0, sent));
+                return Err(
+                    self.with_event_trail(DesktopSessionInputFailure::cancelled(released, 0, sent))
+                );
             }
-            return Err(DesktopSessionInputFailure::after_dispatch(
-                failure.code,
-                failure.stage,
-                released,
-                0,
-                sent,
-            ));
+            // 92f7c7 现场即此出口：start_emulating 后、motion 前的检查失败，
+            // 清理后必须携带冻结轨迹，否则该分支永远无法定位服务端事件。
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::after_dispatch(
+                    failure.code,
+                    failure.stage,
+                    released,
+                    0,
+                    sent,
+                )),
+            );
         }
         Ok(DesktopPointerDispatchFacts::new(1, sent))
     }
@@ -186,9 +204,18 @@ impl DesktopEisInput {
             return Ok(());
         }
         device.device().stop_emulating(self.connection.serial());
-        self.flush_bounded(Instant::now() + RELEASE_GRACE).map_err(|_| {
-            DesktopSessionInputFailure::after_dispatch("OUTCOME_UNKNOWN", "stop-emulating", false, 0, 0)
-        })
+        if self.flush_bounded(Instant::now() + RELEASE_GRACE).is_err() {
+            return Err(
+                self.with_event_trail(DesktopSessionInputFailure::after_dispatch(
+                    "OUTCOME_UNKNOWN",
+                    "stop-emulating",
+                    false,
+                    0,
+                    0,
+                )),
+            );
+        }
+        Ok(())
     }
 
     fn ensure_absolute_live(

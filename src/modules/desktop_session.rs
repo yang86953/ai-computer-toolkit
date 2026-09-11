@@ -1982,6 +1982,171 @@ mod tests {
         assert_eq!(opens.load(Ordering::Relaxed), 0);
     }
 
+    /// 携带轨迹的输入失败经真实模块错误映射输出 providerRecentEvents。
+    struct TrailFailingLease {
+        trail: [Option<DesktopProviderEventFact>; PROVIDER_EVENT_FACT_SNAPSHOT],
+        closes: Arc<AtomicUsize>,
+    }
+
+    impl DesktopSessionLease for TrailFailingLease {
+        fn send_keyboard(
+            &mut self,
+            _: &KeyboardInput,
+            _: &DesktopInputCancellation,
+        ) -> Result<DesktopKeyboardDispatchFacts, DesktopSessionInputFailure> {
+            Err(DesktopSessionInputFailure::after_dispatch(
+                "EIS_DEVICE_UNAVAILABLE",
+                "eis-test-stage",
+                true,
+                0,
+                0,
+            )
+            .with_provider_events(self.trail))
+        }
+
+        fn send_pointer(
+            &mut self,
+            _: &DesktopPointerInput,
+            _: &DesktopInputCancellation,
+        ) -> Result<DesktopPointerDispatchFacts, DesktopSessionInputFailure> {
+            Err(DesktopSessionInputFailure::after_dispatch(
+                "EIS_DEVICE_UNAVAILABLE",
+                "eis-test-stage",
+                true,
+                0,
+                0,
+            )
+            .with_provider_events(self.trail))
+        }
+
+        fn close(self: Box<Self>) -> Result<(), DesktopSessionPortFailure> {
+            self.closes.fetch_add(1, Ordering::Relaxed);
+            Ok(())
+        }
+    }
+
+    struct TrailFailingPort {
+        trail: [Option<DesktopProviderEventFact>; PROVIDER_EVENT_FACT_SNAPSHOT],
+        closes: Arc<AtomicUsize>,
+    }
+
+    impl DesktopSessionPort for TrailFailingPort {
+        fn open(
+            &self,
+            _: Duration,
+            _: DesktopAuthorizationPersistence,
+        ) -> Result<(Box<dyn DesktopSessionLease>, DesktopSessionFacts), DesktopSessionPortFailure>
+        {
+            Ok((
+                Box::new(TrailFailingLease {
+                    trail: self.trail,
+                    closes: Arc::clone(&self.closes),
+                }),
+                valid_facts(),
+            ))
+        }
+    }
+
+    fn fact(sequence: u64, event: &'static str) -> Option<DesktopProviderEventFact> {
+        Some(DesktopProviderEventFact {
+            sequence,
+            event,
+            generation_after: sequence + 1,
+            absolute_devices_after: 0,
+        })
+    }
+
+    #[test]
+    fn input_failure_event_trail_reaches_public_details_in_order() {
+        let mut trail = [None; PROVIDER_EVENT_FACT_SNAPSHOT];
+        trail[0] = fact(1, "device-paused");
+        trail[1] = fact(2, "device-resumed");
+        trail[2] = fact(3, "device-removed");
+        let port = TrailFailingPort {
+            trail,
+            closes: Arc::new(AtomicUsize::new(0)),
+        };
+        let closes = Arc::clone(&port.closes);
+        let mut module = DesktopSessionModule::new(port);
+        let opened = module
+            .open(
+                true,
+                true,
+                IsolationRequirement::Standard,
+                Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
+            )
+            .unwrap_or_else(|error| panic!("open failed: {error}"));
+        let error = required_error(
+            module.send_keyboard(
+                opened.session_id(),
+                DesktopConsent::explicit(true, true, false),
+                &json!({"steps": [{"type": "key", "key": "enter"}]}),
+                &DesktopInputCancellation::new(),
+            ),
+            "trail-carrying input failure must surface",
+        );
+        assert_eq!(error.code, "EIS_DEVICE_UNAVAILABLE");
+        let events = error.details["providerRecentEvents"]
+            .as_array()
+            .unwrap_or_else(|| panic!("providerRecentEvents missing: {error:?}"));
+        assert_eq!(events.len(), 3);
+        let sequences = events
+            .iter()
+            .map(|event| event["sequence"].as_u64())
+            .collect::<Vec<_>>();
+        // 从旧到新；事实字段脱敏完整。
+        assert_eq!(sequences, vec![Some(1), Some(2), Some(3)]);
+        assert_eq!(events[0]["event"], "device-paused");
+        assert_eq!(events[0]["generationAfter"], 2);
+        assert_eq!(events[0]["absoluteDevicesAfter"], 0);
+        // 安全字段保持既有语义，不因轨迹改变。
+        assert_eq!(error.details["acceptedMayHaveOccurred"], true);
+        assert_eq!(error.details["completedSteps"], 0);
+        assert_eq!(error.details["inputEventsSent"], 0);
+        assert_eq!(error.details["targetInvalidated"], true);
+        assert_eq!(error.details["retrySafe"], false);
+        assert_eq!(error.details["sessionCleanupConfirmed"], true);
+        // 失败仍作废会话并收尾 lease。
+        assert!(module.sessions().is_empty());
+        assert_eq!(closes.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn input_failure_without_trail_omits_the_details_field() {
+        let port = TrailFailingPort {
+            trail: [None; PROVIDER_EVENT_FACT_SNAPSHOT],
+            closes: Arc::new(AtomicUsize::new(0)),
+        };
+        let mut module = DesktopSessionModule::new(port);
+        let opened = module
+            .open(
+                true,
+                true,
+                IsolationRequirement::Standard,
+                Duration::from_secs(120),
+                DesktopSessionAuthorization::default(),
+            )
+            .unwrap_or_else(|error| panic!("open failed: {error}"));
+        let error = required_error(
+            module.send_pointer(
+                opened.session_id(),
+                DesktopConsent::explicit(true, true, false),
+                &json!({
+                    "coordinateSpace": "relative-logical-px",
+                    "steps": [{"type": "move", "delta": {"x": 1, "y": 1}}]
+                }),
+                &DesktopInputCancellation::new(),
+            ),
+            "plain input failure must still fail",
+        );
+        assert_eq!(error.code, "EIS_DEVICE_UNAVAILABLE");
+        assert!(
+            error.details.get("providerRecentEvents").is_none(),
+            "空轨迹必须省略字段: {error:?}"
+        );
+    }
+
     #[test]
     fn accepted_open_failure_never_allows_automatic_reauthorization() {
         let error = port_error(DesktopSessionPortFailure::after_session(
