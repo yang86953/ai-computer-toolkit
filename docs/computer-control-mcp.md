@@ -54,7 +54,7 @@ Windows 使用当前活动交互桌面；不绕过锁屏、安全桌面或权限
 `computer_connect` 始终要求完整显式确认三元组，这是唯一确认点。两个显式开启的复用模式：
 
 - `authorizationMode=session`：connect 处的一次确认覆盖整条会话。之后 `observe`/`interact`/`keys`/`pointer`/`run` 可省略确认字段并继承已授予作用域；显式传入 `confirmed=false` 或 `strictIsolation=true` 仍被拒绝，继承不能覆盖明确拒绝。缺省（`operation`）保持逐操作显式确认。
-- `rememberAuthorization=true`（仅 Linux Portal）：按系统原生 `persist_mode=2` 记住授权并保存单次 restore token（当前用户私有状态目录、原子替换、跨进程互斥），下次连接自动尝试恢复同一用户授权并轮换新 token。token 不出现在任何结果、日志或文件名中，响应只含 `restoreTokenRetained` 等脱敏事实。Portal 无法恢复时按官方语义回退正常选择弹窗，工具包不自动点击、失败不重复弹窗。Windows 无此机制，请求时在任何派发前返回 `DESKTOP_AUTHORIZATION_PERSISTENCE_UNSUPPORTED`。
+- `rememberAuthorization=true`（仅 Linux Portal）：按系统原生 `persist_mode=2` 记住授权并保存单次 restore token（当前用户私有状态目录、原子替换、跨进程互斥），下次连接自动尝试恢复同一用户授权并轮换新 token。token 不出现在任何结果、日志或文件名中，响应只含 `restoreAttempted`/`restoreTokenRetained` 等脱敏事实。`restoreAttempted` 只表示提交了已保存 token：Portal 对无法恢复的 token 按官方语义忽略并正常弹窗，免提示恢复是否真实发生不可观测，不以 token 存在或耗时当作成功证据；成功获得并保存下一枚凭据只由 `restoreTokenRetained=true` 表达。工具包不自动点击系统同意、失败不重复弹窗。Windows 无此机制，请求时在任何派发前返回 `DESKTOP_AUTHORIZATION_PERSISTENCE_UNSUPPORTED`。
 - `computer_authorization`：`action=status` 查看是否已保存可恢复授权（脱敏）；`action=forget` 清除本地保存的凭据并停止本客户端全部 live 会话。本地忘记不撤销系统 Portal 侧授权记录（`revokesSystemPortalRecords=false`），后者需在桌面环境权限管理中单独处理。
 
 详细协议语义见 [`contracts/v1/linux-desktop-session-broker-v1.md`](../contracts/v1/linux-desktop-session-broker-v1.md)。

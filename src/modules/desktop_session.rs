@@ -61,8 +61,12 @@ pub(crate) struct DesktopSessionAuthorization {
 pub(crate) struct DesktopAuthorizationPersistenceState {
     /// 本次 open 是否请求了记住授权。
     pub(crate) requested: bool,
-    /// 本次 open 是否消费了已保存授权（向 Portal 提交了 restore token）。
-    pub(crate) restored_from_saved: bool,
+    /// 本次 open 是否向 Portal 提交了已保存 token（恢复尝试）。
+    ///
+    /// 只代表提交动作，不代表免提示恢复成功：Portal 在无法恢复时按官方
+    /// 语义忽略 token 并正常弹窗，客户端无法观测是否真的免提示恢复；
+    /// 不以 token 存在或连接耗时作为恢复成功的证据。
+    pub(crate) restore_attempted: bool,
     /// 本次 open 后本地是否持有可用 restore token。
     pub(crate) token_retained: bool,
     /// 请求记住但未保存成功的原因；None 表示无异常或未请求。
@@ -2117,7 +2121,7 @@ mod tests {
                     .lock()
                     .unwrap_or_else(|poison| poison.into_inner())
                     .clone();
-                state.restored_from_saved = saved.is_some();
+                state.restore_attempted = saved.is_some();
                 if self.grants_token {
                     *self
                         .saved
@@ -2188,13 +2192,13 @@ mod tests {
             .unwrap_or_else(|error| panic!("first remembered open failed: {error}"));
         let retention = first.facts().authorization_persistence();
         assert!(retention.requested);
-        assert!(!retention.restored_from_saved);
+        assert!(!retention.restore_attempted);
         assert!(retention.token_retained);
         assert_eq!(
             module.saved_authorization().state(),
             DesktopSavedAuthorizationState::Saved
         );
-        // 第二次连接消费已保存授权并轮换出新 token。
+        // 第二次连接提交已保存 token（恢复尝试）并轮换出新 token。
         let second = module
             .open(
                 true,
@@ -2205,7 +2209,7 @@ mod tests {
             )
             .unwrap_or_else(|error| panic!("second remembered open failed: {error}"));
         let rotation = second.facts().authorization_persistence();
-        assert!(rotation.restored_from_saved);
+        assert!(rotation.restore_attempted);
         assert!(rotation.token_retained);
         // 未请求记住时 Adapter 不读写存储，事实保持缺省。
         let plain = module

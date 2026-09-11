@@ -108,13 +108,20 @@ stdio 模式与 MCP `computer_connect` 使用同一授权事实，不靠外部�
   期限为 open 的剩余 deadline；超时返回 `DESKTOP_AUTHORIZATION_BUSY`（retrySafe），不重复
   消费同一枚 token。
 - token 绝不进入 JSON、MCP 结果、日志、任务、源码或文件名。公开事实只有脱敏布尔：
-  会话视图的 `authorization.persistence.requested/restoredFromSaved/restoreTokenRetained`
+  会话视图的 `authorization.persistence.requested/restoreAttempted/restoreTokenRetained`
   与顶层 `restoreTokenRetained`；保存失败或 Portal 未授出持久化时如实报告
   `restoreTokenRetained=false`（附 `note`），不宣称已记住。轮换失败会作废可能已被消费的
   旧 token，下一次连接重新走正常授权。
+- `restoreAttempted` 只表示本次 open 向 Portal 提交了已保存 token（恢复尝试）。Portal 在
+  无法恢复时按官方语义忽略该 token 并正常弹窗，客户端无法观测免提示恢复是否真实发生；
+  本工具不把 token 存在、恢复尝试或连接耗时当作免提示恢复成功的证据。成功打开并获得
+  下一枚凭据由 `restoreTokenRetained=true` 表达，且仅表达这一点。
 - Portal 无法恢复已存授权时按官方语义回退为正常选择弹窗；本工具不自动点击系统同意，
   失败或取消也不自动重复弹窗或重放输入。接口支持不等于具体后端已实现免提示恢复，
   实机行为以桌面环境为准。
+- 经 `call_with_flags` 等待回复的 Portal 方法（`ConnectToEIS`、`OpenPipeWireRemote`）都
+  有硬期限兜底（打开序列用剩余 deadline，会话内重开用固定回复宽限）：zbus 该路径不应用
+  连接级 `method_timeout`，Portal 后端卡住不回包时不得挂死唯一 owner 线程。
 
 `authorization-status` 返回脱敏状态：`savedAuthorizationState` ∈ `saved`/`absent`/
 `unreadable`（存储未通过私有性校验时拒绝使用）与 `savedAuthorizationBackend`；不返回任何

@@ -476,7 +476,7 @@ fn session_view(view: &DesktopSessionView) -> Value {
             "mode": view.authorization().scope.as_str(),
             "persistence": {
                 "requested": persistence.requested,
-                "restoredFromSaved": persistence.restored_from_saved,
+                "restoreAttempted": persistence.restore_attempted,
                 "restoreTokenRetained": persistence.token_retained,
             },
         },

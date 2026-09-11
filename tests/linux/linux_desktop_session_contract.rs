@@ -239,7 +239,7 @@ fn broker_schema_accepts_strict_public_frames_and_rejects_native_fields()
             "mode": "session",
             "persistence": {
                 "requested": true,
-                "restoredFromSaved": true,
+                "restoreAttempted": true,
                 "restoreTokenRetained": true,
             },
         },

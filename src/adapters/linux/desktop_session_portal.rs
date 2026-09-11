@@ -3,6 +3,7 @@
 use std::{
     collections::HashMap,
     env, fs,
+    future::Future,
     io::Read,
     os::{fd::OwnedFd, unix::fs::FileTypeExt, unix::net::UnixStream},
     path::PathBuf,
@@ -221,7 +222,7 @@ impl DesktopSessionLease for PortalDesktopSessionLease {
             None => async_io::block_on(async {
                 let screen_cast =
                     portal_proxy(connection, SCREEN_CAST_INTERFACE, "capture-frame").await?;
-                open_pipe_wire_remote(&screen_cast, &session.path).await
+                open_pipe_wire_remote(&screen_cast, &session.path, PORTAL_REPLY_GRACE).await
             })
             .map(OwnedFd::from)
             .map_err(|failure| {
@@ -272,7 +273,7 @@ impl DesktopSessionLease for PortalDesktopSessionLease {
             Some(remote) => remote,
             None => async_io::block_on(async {
                 let screen_cast = portal_proxy(&self.connection, SCREEN_CAST_INTERFACE, "subscribe-frames").await?;
-                open_pipe_wire_remote(&screen_cast, &self.session.path).await
+                open_pipe_wire_remote(&screen_cast, &self.session.path, PORTAL_REPLY_GRACE).await
             }).map(OwnedFd::from).map_err(|e| DesktopSessionFrameFailure::new(e.code, e.stage, false, false))?,
         };
         self.live.subscription = Some(super::desktop_frame_subscription::PipeWireSubscription::start(
@@ -874,14 +875,19 @@ async fn establish_live_evidence(
     let projection = project_start(start, versions.0, versions.1)?;
     // Start 成功即轮换保存：即使后续 EIS/PipeWire 阶段失败，新授权仍可恢复。
     let persistence_state = retain_restore_token(remembered, projection.restore_token.as_deref());
-    let eis_fd = connect_to_eis(remote, session).await?;
+    let eis_fd = connect_to_eis(remote, session, deadline.remaining("connect-to-eis")?).await?;
     let input_timeout = deadline.remaining("eis-handshake")?;
     let mut input =
         DesktopEisInput::connect(UnixStream::from(OwnedFd::from(eis_fd)), input_timeout)
             .await
             .map_err(|failure| PortalFailure::new(failure.code(), failure.stage()))?;
     input.set_capture_mapping(projection.capture_mapping_id);
-    let pipe_wire_remote = open_pipe_wire_remote(screen_cast, session).await?;
+    let pipe_wire_remote = open_pipe_wire_remote(
+        screen_cast,
+        session,
+        deadline.remaining("open-pipewire-remote")?,
+    )
+    .await?;
     Ok(LiveEvidence {
         subscription: None,
         subscription_totals: (0, 0),
@@ -897,6 +903,8 @@ async fn establish_live_evidence(
 ///
 /// token 单次有效：Start 成功返回下一枚；未请求记住、Portal 未授出或保存
 /// 失败时如实报告未持久化，绝不伪造可恢复状态，token 也不离开本函数。
+/// `restore_attempted` 只表示提交过已保存 token；Portal 在无法恢复时按官方
+/// 语义忽略 token 并正常弹窗，免提示恢复是否真实发生不可观测。
 fn retain_restore_token(
     remembered: Option<&RememberedAuthorizationPlan>,
     granted_token: Option<&str>,
@@ -906,7 +914,7 @@ fn retain_restore_token(
     };
     let mut state = DesktopAuthorizationPersistenceState {
         requested: true,
-        restored_from_saved: plan.restore_token.is_some(),
+        restore_attempted: plan.restore_token.is_some(),
         token_retained: false,
         note: None,
     };
@@ -929,7 +937,7 @@ fn retain_restore_token(
         None => {
             state.note = Some("portal-did-not-grant-persistence");
             // Portal 未授出持久化；旧 token 若已消费同样不再可信。
-            if state.restored_from_saved {
+            if state.restore_attempted {
                 let _ = plan.store.discard_token();
             }
         }
@@ -1306,36 +1314,73 @@ async fn start_session(
         .await
 }
 
+/// Portal 方法回复的兜底期限。
+///
+/// zbus 的 `Proxy::call_with_flags` 直接等待回复，不应用连接级
+/// `method_timeout`（那只覆盖 `Connection::call_method`）。Portal 后端
+/// 卡住不回包时，无界的回复等待会挂死唯一 owner 线程，连带 inspect 与
+/// input-cancel 一起无响应（2026-09-11 实机：输入后观察重新打开
+/// PipeWire remote 卡住 80 秒）。所有经 `call_with_flags` 等待回复的
+/// Portal 调用都必须用这里或打开 deadline 兜底。
+const PORTAL_REPLY_GRACE: Duration = Duration::from_secs(2);
+
+/// 给一次 Portal 方法回复加上硬期限：超时按 `TIMEOUT` 失败闭合。
+async fn bounded_portal_reply<T, F>(
+    call: F,
+    bound: Duration,
+    failure: PortalFailure,
+) -> Result<T, PortalFailure>
+where
+    F: Future<Output = Result<T, zbus::Error>>,
+{
+    match future::race(async { Some(call.await) }, async {
+        async_io::Timer::after(bound).await;
+        None
+    })
+    .await
+    {
+        Some(Ok(value)) => Ok(value),
+        Some(Err(_)) => Err(failure),
+        None => Err(PortalFailure::new("TIMEOUT", failure.stage)),
+    }
+}
+
 async fn connect_to_eis(
     remote: &Proxy<'_>,
     session: &OwnedObjectPath,
+    bound: Duration,
 ) -> Result<ZOwnedFd, PortalFailure> {
     let options = HashMap::<&str, ZValue<'_>>::new();
-    remote
-        .call_with_flags::<_, _, ZOwnedFd>(
+    let reply = bounded_portal_reply(
+        remote.call_with_flags::<_, _, ZOwnedFd>(
             "ConnectToEIS",
             MethodFlags::NoAutoStart.into(),
             &(session, options),
-        )
-        .await
-        .map_err(|_| PortalFailure::new("EIS_CONNECTION_FAILED", "connect-to-eis"))?
-        .ok_or_else(|| PortalFailure::new("PORTAL_PROTOCOL_ERROR", "connect-to-eis"))
+        ),
+        bound,
+        PortalFailure::new("EIS_CONNECTION_FAILED", "connect-to-eis"),
+    )
+    .await?;
+    reply.ok_or_else(|| PortalFailure::new("PORTAL_PROTOCOL_ERROR", "connect-to-eis"))
 }
 
 async fn open_pipe_wire_remote(
     screen_cast: &Proxy<'_>,
     session: &OwnedObjectPath,
+    bound: Duration,
 ) -> Result<ZOwnedFd, PortalFailure> {
     let options = HashMap::<&str, ZValue<'_>>::new();
-    screen_cast
-        .call_with_flags::<_, _, ZOwnedFd>(
+    let reply = bounded_portal_reply(
+        screen_cast.call_with_flags::<_, _, ZOwnedFd>(
             "OpenPipeWireRemote",
             MethodFlags::NoAutoStart.into(),
             &(session, options),
-        )
-        .await
-        .map_err(|_| PortalFailure::new("PIPEWIRE_REMOTE_FAILED", "open-pipewire-remote"))?
-        .ok_or_else(|| PortalFailure::new("PORTAL_PROTOCOL_ERROR", "open-pipewire-remote"))
+        ),
+        bound,
+        PortalFailure::new("PIPEWIRE_REMOTE_FAILED", "open-pipewire-remote"),
+    )
+    .await?;
+    reply.ok_or_else(|| PortalFailure::new("PORTAL_PROTOCOL_ERROR", "open-pipewire-remote"))
 }
 
 async fn close_session(
@@ -1581,6 +1626,48 @@ mod tests {
     }
 
     #[test]
+    fn portal_reply_wait_cannot_hang_the_owner_thread() {
+        // 2026-09-11 实机：输入后观察重新打开 PipeWire remote 时 Portal 不回包，
+        // call_with_flags 的回复等待不应用连接 method_timeout，唯一 owner 线程
+        // 被挂死 80 秒。这里回归「永不完成的回复也必须在期限内置败」。
+        let started = Instant::now();
+        let never = async_io::block_on(bounded_portal_reply(
+            futures_lite::future::pending::<Result<ZOwnedFd, zbus::Error>>(),
+            Duration::from_millis(50),
+            PortalFailure::new("PIPEWIRE_REMOTE_FAILED", "open-pipewire-remote"),
+        ));
+        assert_eq!(
+            never,
+            Err(PortalFailure::new("TIMEOUT", "open-pipewire-remote"))
+        );
+        assert!(started.elapsed() < Duration::from_secs(5));
+        // 立即失败保持调用方给定的原错误码；立即成功原样透传。
+        let failed = async_io::block_on(bounded_portal_reply(
+            async { Err::<ZOwnedFd, _>(zbus::Error::Handshake("unreachable".to_owned())) },
+            Duration::from_secs(5),
+            PortalFailure::new("EIS_CONNECTION_FAILED", "connect-to-eis"),
+        ));
+        assert_eq!(
+            failed,
+            Err(PortalFailure::new(
+                "EIS_CONNECTION_FAILED",
+                "connect-to-eis"
+            ))
+        );
+        let ok_value = zbus::zvariant::OwnedFd::try_from(std::os::fd::OwnedFd::from(
+            std::fs::File::open("/dev/null")
+                .unwrap_or_else(|error| panic!("open /dev/null failed: {error}")),
+        ))
+        .unwrap_or_else(|error| panic!("owned fd conversion failed: {error}"));
+        let ok = async_io::block_on(bounded_portal_reply(
+            async { Ok::<_, zbus::Error>(ok_value) },
+            Duration::from_secs(5),
+            PortalFailure::new("EIS_CONNECTION_FAILED", "connect-to-eis"),
+        ));
+        assert!(ok.is_ok());
+    }
+
+    #[test]
     fn start_projection_carries_restore_token_without_native_identities() {
         let result = project_start(
             StartResponse {
@@ -1658,7 +1745,7 @@ mod tests {
         // Portal 未授出持久化：如实报告未保存。
         let denied = retain_restore_token(Some(&plan), None);
         assert!(denied.requested);
-        assert!(!denied.restored_from_saved);
+        assert!(!denied.restore_attempted);
         assert!(!denied.token_retained);
         assert_eq!(denied.note, Some("portal-did-not-grant-persistence"));
         // 授出并保存：轮换成功，token 不出现在任何公开事实里。

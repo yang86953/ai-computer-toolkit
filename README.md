@@ -124,10 +124,15 @@ is the single confirmation point. Two opt-in modes reuse that authorization:
   serialized across processes). The next connection automatically attempts to
   restore the same user authorization and rotates in the new token. Tokens
   never appear in JSON results, logs, tasks or file names; responses only
-  report desensitized facts (`restoreTokenRetained`, `restoredFromSaved`).
-  If the Portal cannot restore (permission withdrawn, monitor changed), it
-  follows its documented behavior and shows the normal selection dialog —
-  this tool never auto-clicks it and never re-prompts on failure.
+  report desensitized facts (`restoreAttempted`, `restoreTokenRetained`).
+  `restoreAttempted` only means a saved token was submitted: the Portal
+  ignores an unrestorable token and shows the normal dialog per its
+  documented behavior, and whether a restore was honored without prompting is
+  not observable by this tool — token presence, the attempt itself, or
+  elapsed time are never treated as proof of a prompt-free restore. Obtaining
+  and saving the next credential is expressed only by `restoreTokenRetained`.
+  This tool never auto-clicks the system consent and never re-prompts on
+  failure.
 
 `computer_authorization` (broker `authorization-status` /
 `forget-authorization`) exposes the same facts: `status` reports whether a

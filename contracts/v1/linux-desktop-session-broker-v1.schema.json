@@ -533,10 +533,10 @@
             "persistence": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["requested", "restoredFromSaved", "restoreTokenRetained"],
+              "required": ["requested", "restoreAttempted", "restoreTokenRetained"],
               "properties": {
                 "requested": { "type": "boolean" },
-                "restoredFromSaved": { "type": "boolean" },
+                "restoreAttempted": { "type": "boolean" },
                 "restoreTokenRetained": { "type": "boolean" },
                 "note": { "type": "string", "minLength": 1 }
               }
